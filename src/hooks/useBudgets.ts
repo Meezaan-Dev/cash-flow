@@ -14,6 +14,11 @@ import {
 import { Budget, DateRange } from '../types';
 import { normalizeBudget } from '../models/BudgetModel';
 
+type BudgetFormData = Omit<
+	Budget,
+	'id' | 'createdAt' | 'userId' | 'status' | 'actualStartDate' | 'actualEndDate'
+>;
+
 export const useBudgets = () => {
 	const [budgets, setBudgets] = useState<Budget[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -51,12 +56,25 @@ export const useBudgets = () => {
 		return () => unsubscribe();
 	}, [user]);
 
-	const addBudget = async (budget: Omit<Budget, 'id' | 'createdAt' | 'userId'>) => {
+	const addBudget = async (budget: BudgetFormData) => {
 		if (!user) throw new Error('User not authenticated');
 
 		const col = collection(db, 'users', user.uid, 'budgets');
 		await addDoc(col, {
 			...budget,
+			status: 'published',
+			userId: user.uid,
+			createdAt: Timestamp.now(),
+		});
+	};
+
+	const addDraftBudget = async (budget: BudgetFormData) => {
+		if (!user) throw new Error('User not authenticated');
+
+		const col = collection(db, 'users', user.uid, 'budgets');
+		await addDoc(col, {
+			...budget,
+			status: 'draft',
 			userId: user.uid,
 			createdAt: Timestamp.now(),
 		});
@@ -81,6 +99,20 @@ export const useBudgets = () => {
 		});
 	};
 
+	const publishBudget = async (id: string) => {
+		if (!user) throw new Error('User not authenticated');
+
+		const budget = budgets.find((item) => item.id === id);
+		if (!budget) throw new Error('Budget not found');
+
+		const ref = doc(db, 'users', user.uid, 'budgets', id);
+		await updateDoc(ref, {
+			status: 'published',
+			actualStartDate: budget.plannedStartDate,
+			actualEndDate: budget.plannedEndDate,
+		});
+	};
+
 	const deleteBudget = async (id: string) => {
 		if (!user) throw new Error('User not authenticated');
 		const ref = doc(db, 'users', user.uid, 'budgets', id);
@@ -90,8 +122,10 @@ export const useBudgets = () => {
 	return {
 		budgets,
 		addBudget,
+		addDraftBudget,
 		updateBudget,
 		startBudget,
+		publishBudget,
 		deleteBudget,
 		loading,
 	};

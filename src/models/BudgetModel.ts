@@ -36,6 +36,7 @@ type BudgetDoc = {
 	category?: string;
 	amount?: number;
 	period?: Budget['period'];
+	status?: Budget['status'];
 	plannedStartDate?: string;
 	plannedEndDate?: string;
 	actualStartDate?: string;
@@ -52,6 +53,7 @@ export const normalizeBudget = (doc: BudgetDoc): Budget => {
 		category: doc.category ?? '',
 		amount: doc.amount ?? 0,
 		period: doc.period ?? 'monthly',
+		status: doc.status ?? 'published',
 		plannedStartDate: doc.plannedStartDate ?? legacyRange.startDate,
 		plannedEndDate: doc.plannedEndDate ?? legacyRange.endDate,
 		actualStartDate: doc.actualStartDate ?? undefined,
@@ -72,37 +74,44 @@ export const calculateBudgetUsage = (
 	budget: Budget,
 	transactions: Transaction[]
 ): BudgetProgress => {
+	const isDraft = budget.status === 'draft';
 	const started = Boolean(budget.actualStartDate && budget.actualEndDate);
-	const actualRange: DateRange = {
-		startDate: budget.actualStartDate ?? '',
-		endDate: budget.actualEndDate ?? '',
+	const calculating = isDraft || started;
+	const comparisonRange: DateRange = {
+		startDate: isDraft ? budget.plannedStartDate : budget.actualStartDate ?? '',
+		endDate: isDraft ? budget.plannedEndDate : budget.actualEndDate ?? '',
 	};
 
-	const actualSpent = started
+	const actualSpent = calculating
 		? filterTransactionsByDateRangeObject(
 				transactions.filter(
 					(transaction) =>
 						transaction.type === 'expense' && transaction.category === budget.category
-					),
-				actualRange
+				),
+				comparisonRange
 		  ).reduce((sum, transaction) => sum + transaction.amount, 0)
 		: 0;
 
-	const remaining = started ? Math.max(0, budget.amount - actualSpent) : budget.amount;
-	const overBudget = started ? Math.max(0, actualSpent - budget.amount) : 0;
+	const remaining = calculating ? Math.max(0, budget.amount - actualSpent) : budget.amount;
+	const overBudget = calculating ? Math.max(0, actualSpent - budget.amount) : 0;
 	const percent =
-		started && budget.amount > 0
+		calculating && budget.amount > 0
 			? Math.min(100, (actualSpent / budget.amount) * 100)
 			: 0;
 
 	return {
 		budget,
+		status: budget.status,
+		isDraft,
 		plannedAmount: budget.amount,
 		plannedStartDate: budget.plannedStartDate,
 		plannedEndDate: budget.plannedEndDate,
 		actualStartDate: budget.actualStartDate,
 		actualEndDate: budget.actualEndDate,
+		comparisonStartDate: comparisonRange.startDate,
+		comparisonEndDate: comparisonRange.endDate,
 		started,
+		calculating,
 		actualSpent,
 		remaining,
 		overBudget,

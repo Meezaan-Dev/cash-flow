@@ -67,12 +67,15 @@ export interface Transaction {
 }
 
 // Budget
+export type BudgetStatus = 'draft' | 'published';
+
 export interface Budget {
 	id?: string;
 	userId?: string;
 	category: string;
 	amount: number;
 	period: 'monthly';
+	status: BudgetStatus;
 	plannedStartDate: string;
 	plannedEndDate: string;
 	actualStartDate?: string;
@@ -82,12 +85,17 @@ export interface Budget {
 
 export interface BudgetProgress {
 	budget: Budget;
+	status: BudgetStatus;
+	isDraft: boolean;
 	plannedAmount: number;
 	plannedStartDate: string;
 	plannedEndDate: string;
 	actualStartDate?: string;
 	actualEndDate?: string;
+	comparisonStartDate: string;
+	comparisonEndDate: string;
 	started: boolean;
+	calculating: boolean;
 	actualSpent: number;
 	remaining: number;
 	overBudget: number;

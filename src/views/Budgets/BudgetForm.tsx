@@ -30,7 +30,7 @@ interface BudgetFormProps {
 }
 
 const BudgetForm: React.FC<BudgetFormProps> = ({ onClose, budget }) => {
-	const { addBudget, updateBudget } = useBudgetsContext();
+	const { addDraftBudget, updateBudget } = useBudgetsContext();
 	const { categoryOptions } = useCategoriesContext();
 
 	const [category, setCategory] = useState('');
@@ -90,7 +90,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ onClose, budget }) => {
 			if (budget?.id) {
 				await updateBudget(budget.id, data);
 			} else {
-				await addBudget(data);
+				await addDraftBudget(data);
 			}
 			onClose();
 		} catch (err: unknown) {
@@ -105,12 +105,12 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ onClose, budget }) => {
 			<div className="w-full max-w-md rounded-2xl border bg-card p-8 shadow-xl">
 				<div className="mb-8 border-b pb-6">
 					<h2 className="text-3xl font-bold tracking-tight">
-						{budget ? 'Edit Budget' : 'New Budget'}
+						{budget ? 'Edit Budget' : 'New Draft Budget'}
 					</h2>
 					<p className="mt-1.5 text-sm text-muted-foreground">
 						{budget
 							? 'Update your planned budget amount and date range'
-							: 'Set a planned budget amount and date range for a category'}
+							: 'Plan an amount and date range before publishing it'}
 					</p>
 				</div>
 
@@ -172,8 +172,8 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ onClose, budget }) => {
 					</div>
 
 					<div className="rounded-xl border bg-muted/30 p-3 text-sm text-muted-foreground">
-						Use the budget screen filter to choose an actual date range, then click
-						Start on a budget to compare that period against this plan.
+						Draft budgets show live spend for this planned period. Publish when
+						you are ready to make the period active.
 					</div>
 
 					<div className="flex gap-3 pt-2">
@@ -182,7 +182,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({ onClose, budget }) => {
 								? 'Saving...'
 								: budget
 									? 'Update Budget'
-									: 'Create Budget'}
+									: 'Create Draft'}
 						</Button>
 						<Button type="button" variant="outline" onClick={onClose}>
 							Cancel
