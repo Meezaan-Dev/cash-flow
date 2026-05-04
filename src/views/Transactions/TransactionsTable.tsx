@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { FiTrash2, FiSettings } from 'react-icons/fi';
 import { useTransactionsContext } from '../../context/TransactionsContext';
+import { useAccountsContext } from '../../context/AccountsContext';
 import { useCategoriesContext } from '../../context/CategoriesContext';
 import DateRangeFilter from '../../components/app/DateRangeFilter';
 import { filterTransactionsByDateRangeObject } from '../../utils/dateRangeFilter';
@@ -62,6 +63,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 	onOpenSettings,
 }) => {
 	const { transactions } = useTransactionsContext();
+	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { categoryOptions, getCategoryLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
 	const tablePrefs = prefs.transactionsTable;
@@ -74,6 +76,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 		endDate: '',
 	});
 	const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
 	const { filtered, totals } = useMemo(() => {
 		const dateFiltered = filterTransactionsByDateRangeObject(transactions, dateRange);
@@ -355,10 +358,16 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 									<TableCell colSpan={5} className="py-16 text-center">
 										<div className="space-y-1">
 											<div className="text-sm font-medium">
-												Nothing to show
+												{transactions.length === 0
+													? 'No transactions yet'
+													: 'Nothing to show'}
 											</div>
 											<div className="text-sm text-muted-foreground">
-												Try adjusting your filters or search.
+												{transactions.length === 0
+													? hasNoAccounts
+														? 'Create an account first, then transactions will appear here.'
+														: 'Add your first transaction to start reviewing history.'
+													: 'Try adjusting your filters or search.'}
 											</div>
 										</div>
 									</TableCell>

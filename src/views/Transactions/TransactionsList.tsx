@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FiArrowUp, FiArrowDown, FiSearch, FiCalendar, FiSettings } from 'react-icons/fi';
 import { useTransactionsContext } from '../../context/TransactionsContext';
+import { useAccountsContext } from '../../context/AccountsContext';
 import { useCategoriesContext } from '../../context/CategoriesContext';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { Input } from '../../components/app/ui/input';
@@ -20,10 +21,12 @@ interface TransactionsListProps {
 
 const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedId, onOpenSettings }) => {
 	const { transactions } = useTransactionsContext();
+	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { getCategoryLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
 	const listPrefs = prefs.transactionsList;
 	const [search, setSearch] = useState('');
+	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
 	const sorted = useMemo(() => {
 		return [...transactions].sort(compareTransactionsByDateDesc);
@@ -192,7 +195,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 								<p className="text-sm text-muted-foreground max-w-sm mx-auto">
 									{search
 										? "Try adjusting your search terms to find what you're looking for."
-										: 'Start by adding your first transaction to track your finances.'}
+										: hasNoAccounts
+											? 'Create an account first, then your transactions will show up here.'
+											: 'Add your first transaction to start building a useful history.'}
 								</p>
 							</div>
 						</Card>
