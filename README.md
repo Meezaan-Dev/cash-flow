@@ -2,6 +2,39 @@
 
 **Cash Flow** is a multi-account personal finance web application. It lets users track income, expenses, and transfers across multiple bank and cash accounts, set spending budgets, view reports, and reconcile balances — all in real-time via Firebase.
 
+## Start Here
+
+If you are returning to the project after time away, start with [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md). It summarizes the core MVP, supporting features, architecture boundaries, and important rules.
+
+Use these docs as the main map:
+
+- [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) — quick re-entry guide and MVP boundaries.
+- [flow.md](flow.md) — data structures, Firestore paths, and app data flow.
+- [TESTING.md](TESTING.md) — automated coverage and manual regression checklist.
+- [DEPLOYMENT.md](DEPLOYMENT.md) — deployment notes.
+- [CODING_STANDARDS.md](CODING_STANDARDS.md) — engineering standards backlog and acceptance checks.
+
+## Core MVP
+
+The friendly first-run path is: sign in, create an account, add transactions, review history, then use budgets or import/export when needed.
+
+Core features:
+
+- Auth
+- Accounts
+- Transactions
+- Transfers
+- Dashboard
+- Budgets
+- Import/export
+
+Supporting features:
+
+- Recurring transactions
+- Reports
+- AI assistant
+- Marketing website components
+
 ## Key Features
 
 - **Secure Login:** User authentication with Firebase (Google + email/password).
