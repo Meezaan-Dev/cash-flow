@@ -1,149 +1,99 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { CheckCircle2 } from 'lucide-react';
 
-const XIcon = () => (
-	<svg viewBox="0 0 10 10" fill="none" className="w-2.5 h-2.5">
-		<line x1="2" y1="2" x2="8" y2="8" stroke="#F09595" strokeWidth="1.5" strokeLinecap="round" />
-		<line x1="8" y1="2" x2="2" y2="8" stroke="#F09595" strokeWidth="1.5" strokeLinecap="round" />
-	</svg>
-);
-
-const CheckIcon = () => (
-	<svg viewBox="0 0 10 10" fill="none" className="w-2.5 h-2.5">
-		<polyline
-			points="2,5.5 4.5,8 8,2.5"
-			stroke="#97C459"
-			strokeWidth="1.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-	</svg>
-);
-
-const problems = [
+const steps = [
 	{
-		title: 'Manual and error-prone',
-		body: 'Spreadsheets and paper ledgers are slow, easy to break, and give you no real-time visibility into where your money is going.',
+		title: 'Start with your accounts',
+		body: 'Add the places your money lives, then CashFlow keeps balances connected to every transaction and transfer you log.',
 	},
 	{
-		title: "No visibility until it's too late",
-		body: 'Overspending becomes invisible. Bad habits compound quietly, you only notice when the damage is done.',
+		title: 'Plan before the month gets away',
+		body: 'Create budget drafts, choose the dates that matter, and compare planned spending with real activity.',
 	},
 	{
-		title: 'The people who need it most are underserved',
-		body: 'Students, freelancers, and anyone on a tight budget have the fewest tools built for their reality.',
+		title: 'Review with less guesswork',
+		body: 'Use filters, reports, and the AI assistant to answer practical questions about categories, merchants, accounts, and trends.',
 	},
 ];
 
-const solutions = [
+const benefits = [
 	{
-		title: 'Real-time cloud sync',
-		body: 'Log a transaction in seconds. Your spending breakdown updates instantly, no manual reconciliation, ever.',
+		title: 'Less manual cleanup',
+		body: 'Recurring templates, Quick Fill, imports, exports, and custom categories keep regular admin small.',
 	},
 	{
-		title: 'Clarity before you overspend',
-		body: 'Visual charts and smart alerts surface problems early. Recurring bills track themselves, nothing falls through the cracks.',
+		title: 'Better day-to-day visibility',
+		body: 'Search, date ranges, category filters, and account views make it easier to understand a specific period.',
 	},
 	{
-		title: 'Built for real budgets',
-		body: 'Insights, multi-account support, and import/export. All in one lightweight tool designed for people who actually need it.',
+		title: 'Confidence across devices',
+		body: 'Your data is scoped to your account and synced securely, so the numbers stay available when you need them.',
 	},
 ];
 
 const ProblemSolution: React.FC = () => {
 	return (
-		<section className="relative py-32 px-4 sm:px-6 lg:px-8 bg-gray-950">
-			<div className="max-w-5xl mx-auto">
-
-				{/* Header */}
+		<section
+			id="how-it-helps"
+			className="relative bg-gray-950 px-4 py-24 sm:px-6 lg:px-8"
+		>
+			<div className="mx-auto max-w-6xl">
 				<motion.div
-					className="text-center mb-16"
+					className="mx-auto mb-14 max-w-3xl text-center"
 					initial={{ opacity: 0, y: 24 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.6 }}
 				>
-					<h2 className="text-4xl md:text-5xl font-bold text-white mb-3">
-						Why CashFlow exists
+					<p className="mb-3 text-sm font-semibold uppercase tracking-wider text-blue-400">
+						How it helps
+					</p>
+					<h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+						Simple steps from scattered spending to clear decisions
 					</h2>
-					<p className="text-gray-400 text-lg">
-						Personal finance is broken. Here's what we fixed.
+					<p className="text-base leading-relaxed text-gray-400 md:text-lg">
+						CashFlow is designed for normal money management: quick updates,
+						clear views, and fewer surprises at the end of the month.
 					</p>
 				</motion.div>
 
-				{/* Split grid */}
 				<motion.div
-					className="relative grid grid-cols-1 md:grid-cols-2 rounded-3xl overflow-hidden border border-white/10"
+					className="grid gap-4 md:grid-cols-3"
 					initial={{ opacity: 0, y: 32 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.6, delay: 0.1 }}
 				>
-					{/* VS badge */}
-					<div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-gray-950 border border-white/10 items-center justify-center">
-						<span className="text-xs text-gray-500 font-medium">vs</span>
-					</div>
-
-					{/* Problem column */}
-					<div className="bg-gray-900/60 p-8 flex flex-col gap-6">
-						<div className="flex items-center gap-3 pb-5 border-b border-white/10">
-							<span className="text-xs font-medium uppercase tracking-wide px-2.5 py-1 rounded-full bg-red-950 text-red-400 border border-red-900/50">
-								Before
-							</span>
-							<span className="text-base font-medium text-white">The problem</span>
+					{steps.map((item, i) => (
+						<div
+							key={item.title}
+							className="rounded-xl border border-gray-800 bg-gray-900/50 p-6"
+						>
+							<div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-sm font-bold text-blue-400">
+								{i + 1}
+							</div>
+							<h3 className="mb-2 text-lg font-semibold text-white">
+								{item.title}
+							</h3>
+							<p className="text-sm leading-relaxed text-gray-400">{item.body}</p>
 						</div>
-
-						{problems.map((item, i) => (
-							<motion.div
-								key={i}
-								className="grid gap-3"
-								style={{ gridTemplateColumns: '20px 1fr' }}
-								initial={{ opacity: 0, x: -16 }}
-								whileInView={{ opacity: 1, x: 0 }}
-								viewport={{ once: true }}
-								transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
-							>
-								<div className="w-5 h-5 rounded-full bg-red-950 flex items-center justify-center flex-shrink-0 mt-0.5">
-									<XIcon />
-								</div>
-								<div>
-									<p className="text-sm font-medium text-white mb-1">{item.title}</p>
-									<p className="text-sm text-gray-400 leading-relaxed">{item.body}</p>
-								</div>
-							</motion.div>
-						))}
-					</div>
-
-					{/* Solution column */}
-					<div className="bg-gray-950 p-8 flex flex-col gap-6 border-t md:border-t-0 md:border-l border-white/10">
-						<div className="flex items-center gap-3 pb-5 border-b border-white/10">
-							<span className="text-xs font-medium uppercase tracking-wide px-2.5 py-1 rounded-full bg-green-950 text-green-400 border border-green-900/50">
-								After
-							</span>
-							<span className="text-base font-medium text-white">CashFlow fixes it</span>
-						</div>
-
-						{solutions.map((item, i) => (
-							<motion.div
-								key={i}
-								className="grid gap-3"
-								style={{ gridTemplateColumns: '20px 1fr' }}
-								initial={{ opacity: 0, x: 16 }}
-								whileInView={{ opacity: 1, x: 0 }}
-								viewport={{ once: true }}
-								transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
-							>
-								<div className="w-5 h-5 rounded-full bg-green-950 flex items-center justify-center flex-shrink-0 mt-0.5">
-									<CheckIcon />
-								</div>
-								<div>
-									<p className="text-sm font-medium text-white mb-1">{item.title}</p>
-									<p className="text-sm text-gray-400 leading-relaxed">{item.body}</p>
-								</div>
-							</motion.div>
-						))}
-					</div>
+					))}
 				</motion.div>
+
+				<div className="mt-6 grid gap-3 md:grid-cols-3">
+					{benefits.map((item) => (
+						<div key={item.title} className="flex gap-3 rounded-lg p-3">
+							<CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-400" />
+							<div>
+								<p className="font-medium text-white">{item.title}</p>
+								<p className="mt-1 text-sm leading-relaxed text-gray-400">
+									{item.body}
+								</p>
+							</div>
+						</div>
+					))}
+				</div>
 			</div>
 		</section>
 	);

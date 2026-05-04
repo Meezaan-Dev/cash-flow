@@ -6,12 +6,12 @@ const faqs = [
 	{
 		question: 'Is CashFlow free to use?',
 		answer:
-			'Yes! CashFlow is completely free. Simply register for an account and start tracking your finances immediately — no credit card required.',
+			'Yes. You can register and start tracking your accounts, transactions, budgets, and reports without a credit card.',
 	},
 	{
 		question: 'How is my financial data stored?',
 		answer:
-			'Your data is stored securely in Firebase Firestore, scoped exclusively to your user account. Nobody else can access your transactions, accounts, or budgets.',
+			'Your records are stored securely and scoped to your own account, so your transactions, accounts, budgets, and recurring payments stay private to you.',
 	},
 	{
 		question: 'Can I import my existing transactions?',
@@ -21,17 +21,17 @@ const faqs = [
 	{
 		question: 'Does CashFlow support recurring expenses?',
 		answer:
-			'Yes. You can configure recurring bills and subscriptions once, and CashFlow will automatically track them every month without any manual input.',
+			'Yes. Save regular bills or income as recurring items, then use Quick Fill to create new transactions faster when they come up.',
+	},
+	{
+		question: 'Can CashFlow help me understand my spending?',
+		answer:
+			'Yes. Reports show income, expenses, categories, accounts, monthly trends, and net worth. The AI assistant can also answer simple questions about your own spending data.',
 	},
 	{
 		question: 'Can I access my data from multiple devices?',
 		answer:
-			'Yes. Because everything is stored in the cloud via Firebase, your data syncs instantly across all your devices — desktop, tablet, or mobile.',
-	},
-	{
-		question: 'What technologies power CashFlow?',
-		answer:
-			'CashFlow is built with React, TypeScript, Tailwind CSS, and Firebase (Authentication + Firestore). The UI is animated with Framer Motion.',
+			'Yes. Your account syncs in the cloud so you can use CashFlow from desktop, tablet, or mobile.',
 	},
 ];
 
@@ -43,7 +43,7 @@ const FAQ: React.FC = () => {
 	return (
 		<section
 			id="faq"
-			className="relative py-32 px-4 sm:px-6 lg:px-8 bg-gray-950"
+			className="relative bg-gray-950 px-4 py-24 sm:px-6 lg:px-8"
 		>
 			<div className="max-w-3xl mx-auto">
 				<motion.div
@@ -53,10 +53,10 @@ const FAQ: React.FC = () => {
 					viewport={{ once: true }}
 					transition={{ duration: 0.6 }}
 				>
-					<span className="inline-block px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full text-sm font-medium mb-4">
+					<span className="mb-4 inline-block rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-400">
 						FAQ
 					</span>
-					<h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+					<h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
 						Frequently Asked Questions
 					</h2>
 					<p className="text-lg text-gray-400">
@@ -72,12 +72,12 @@ const FAQ: React.FC = () => {
 							whileInView={{ opacity: 1, y: 0 }}
 							viewport={{ once: true }}
 							transition={{ duration: 0.4, delay: i * 0.07 }}
-							className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-2xl overflow-hidden"
+							className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900/50"
 						>
 							<button
 								onClick={() => toggle(i)}
 								aria-expanded={openIndex === i}
-								className="w-full flex items-center justify-between px-6 py-5 text-left text-white font-semibold hover:bg-gray-800/40 transition-colors duration-200"
+								className="flex w-full items-center justify-between px-6 py-5 text-left font-semibold text-white transition-colors duration-200 hover:bg-gray-800/40"
 							>
 								<span>{faq.question}</span>
 								<ChevronDown

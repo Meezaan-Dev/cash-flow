@@ -7,11 +7,11 @@ interface NavbarProps {
 }
 
 const navLinks = [
-	{ label: 'Home', href: '#home' },
 	{ label: 'Features', href: '#features' },
-	{ label: 'Demo', href: '#demo' },
+	{ label: 'How it helps', href: '#how-it-helps' },
+	{ label: 'Reports', href: '#reports' },
 	{ label: 'FAQ', href: '#faq' },
-	{ label: 'Contact', href: '#developer' },
+	{ label: 'Developer', href: '#developer' },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
@@ -71,7 +71,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 			}`}
 		>
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div className="relative backdrop-blur-xl bg-gray-900/80 border border-gray-800 rounded-2xl transition-all duration-500">
+				<div className="relative rounded-xl border border-gray-800 bg-gray-900/90 backdrop-blur-xl transition-all duration-500">
 					<div className="px-6 lg:px-8">
 						<div className="flex items-center justify-between h-16">
 							{/* Logo */}
@@ -87,7 +87,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 									<a
 										key={link.label}
 										href={link.href}
-										className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-all duration-300 rounded-xl hover:bg-gray-800/50"
+										className="rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/70 hover:text-white"
 									>
 										{link.label}
 									</a>
@@ -101,7 +101,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 										onClick={() => setAuthDropdownOpen(!authDropdownOpen)}
 										aria-expanded={authDropdownOpen}
 										aria-haspopup="true"
-										className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-300"
+										className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
 									>
 										Get Started
 										<ChevronDown
@@ -111,7 +111,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 									</button>
 
 									{authDropdownOpen && (
-										<div className="absolute right-0 mt-2 w-44 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+										<div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg border border-gray-700 bg-gray-900 shadow-2xl">
 											<button
 												onClick={() => {
 													onAuthClick('login');
@@ -119,8 +119,8 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 												}}
 												className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-all duration-200"
 											>
-												<LogIn size={16} className="text-blue-400" />
-												Login
+													<LogIn size={16} className="text-blue-400" />
+												Login / Demo
 											</button>
 											<button
 												onClick={() => {
@@ -139,7 +139,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 
 							{/* Mobile Menu Button */}
 							<button
-								className="md:hidden p-2.5 rounded-xl hover:bg-gray-800/50 transition-all duration-200"
+								className="rounded-lg p-2.5 transition-colors hover:bg-gray-800/70 md:hidden"
 								aria-label="Toggle navigation menu"
 								aria-expanded={mobileMenuOpen}
 								onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -164,7 +164,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 									<a
 										key={link.label}
 										href={link.href}
-										className="block px-4 py-3 text-sm font-medium text-gray-300 rounded-xl hover:bg-gray-800/50 transition-all duration-200"
+										className="block rounded-lg px-4 py-3 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/70"
 										onClick={() => setMobileMenuOpen(false)}
 									>
 										{link.label}
@@ -176,17 +176,17 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 											onAuthClick('login');
 											setMobileMenuOpen(false);
 										}}
-										className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-left text-gray-300 rounded-xl hover:bg-gray-800/50 transition-all duration-200"
+										className="flex w-full items-center gap-2.5 rounded-lg px-4 py-3 text-left text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/70"
 									>
 										<LogIn size={16} className="text-blue-400" />
-										Login
+										Login / Demo
 									</button>
 									<button
 										onClick={() => {
 											onAuthClick('register');
 											setMobileMenuOpen(false);
 										}}
-										className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all"
+										className="flex w-full items-center gap-2.5 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
 									>
 										<UserPlus size={16} />
 										Register
