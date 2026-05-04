@@ -21,12 +21,12 @@ interface TransactionsListProps {
 
 const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedId, onOpenSettings }) => {
 	const { transactions } = useTransactionsContext();
-	const { accounts } = useAccountsContext();
+	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { getCategoryLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
 	const listPrefs = prefs.transactionsList;
 	const [search, setSearch] = useState('');
-	const hasAccounts = accounts.length > 0;
+	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
 	const sorted = useMemo(() => {
 		return [...transactions].sort(compareTransactionsByDateDesc);
@@ -195,9 +195,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 								<p className="text-sm text-muted-foreground max-w-sm mx-auto">
 									{search
 										? "Try adjusting your search terms to find what you're looking for."
-										: hasAccounts
-											? 'Add your first transaction to start building a useful history.'
-											: 'Create an account first, then your transactions will show up here.'}
+										: hasNoAccounts
+											? 'Create an account first, then your transactions will show up here.'
+											: 'Add your first transaction to start building a useful history.'}
 								</p>
 							</div>
 						</Card>

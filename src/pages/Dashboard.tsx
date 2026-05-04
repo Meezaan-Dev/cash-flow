@@ -43,7 +43,7 @@ import {
 
 const Dashboard: React.FC = () => {
 	const { transactions, addTransaction, deleteTransaction } = useTransactionsContext();
-	const { accounts } = useAccountsContext();
+	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { toast } = useToast();
 
 	const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -78,6 +78,14 @@ const Dashboard: React.FC = () => {
 	}, []);
 
 	const handleCreate = useCallback(() => {
+		if (accountsLoading) {
+			toast({
+				title: 'Checking accounts',
+				description: 'Account data is still loading. Try again in a moment.',
+			});
+			return;
+		}
+
 		if (accounts.length === 0) {
 			handleCreateAccount();
 			toast({
@@ -89,7 +97,7 @@ const Dashboard: React.FC = () => {
 		setSelectedTx(null);
 		setSelectedTransactionId(null);
 		setActiveView('transaction');
-	}, [accounts.length, handleCreateAccount, toast]);
+	}, [accounts.length, accountsLoading, handleCreateAccount, toast]);
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
@@ -184,18 +192,28 @@ const Dashboard: React.FC = () => {
 	const renderMainContent = () => {
 		const hasAccounts = accounts.length > 0;
 		const hasTransactions = transactions.length > 0;
-		const primaryAction = hasAccounts
+		const primaryAction = accountsLoading
+			? {
+					title: 'Checking accounts',
+					description: 'Loading your account data',
+					onClick: handleCreate,
+					icon: FiCreditCard,
+					disabled: true,
+				}
+			: hasAccounts
 			? {
 					title: 'New transaction',
 					description: 'Track income, expense, or a transfer',
 					onClick: handleCreate,
 					icon: FiPlus,
+					disabled: false,
 				}
 			: {
 					title: 'Create your first account',
 					description: 'Add a bank, cash, savings, or credit account',
 					onClick: handleCreateAccount,
 					icon: FiCreditCard,
+					disabled: false,
 				};
 		const PrimaryIcon = primaryAction.icon;
 
@@ -250,12 +268,16 @@ const Dashboard: React.FC = () => {
 								<p>
 									{hasAccounts
 										? 'Keep the basics close.'
+										: accountsLoading
+											? 'Loading your accounts.'
 										: 'Start with one account.'}
 								</p>
 								<HelpTip
 									label={
 										hasAccounts
 											? 'Add activity, review balances, then explore budgets, recurring transactions, and reports when they become useful.'
+											: accountsLoading
+												? 'CashFlow is checking for existing accounts before showing first-run guidance.'
 											: 'After one account exists, transactions, history, and budgets will make sense right away.'
 									}
 								/>
@@ -264,6 +286,7 @@ const Dashboard: React.FC = () => {
 								<Button
 									size="lg"
 									onClick={primaryAction.onClick}
+									disabled={primaryAction.disabled}
 									className="w-full h-14 rounded-2xl px-6 text-left flex items-center justify-between"
 								>
 									<div className="flex items-center gap-3">
@@ -294,7 +317,7 @@ const Dashboard: React.FC = () => {
 								</div>
 								<div
 									className={`rounded-2xl border bg-background p-4 ${
-										hasAccounts ? '' : 'opacity-70'
+										hasAccounts || accountsLoading ? '' : 'opacity-70'
 									}`}
 								>
 									<div className="mb-2 flex items-center gap-2">
@@ -444,6 +467,14 @@ const Dashboard: React.FC = () => {
 				onClose={() => setSettingsOpen(false)}
 				initialTab={settingsInitialTab}
 				onImport={async (file) => {
+					if (accountsLoading) {
+						toast({
+							title: 'Checking accounts',
+							description: 'Account data is still loading. Try again in a moment.',
+						});
+						return;
+					}
+
 					if (accounts.length === 0) {
 						toast({
 							title: 'Import unavailable',

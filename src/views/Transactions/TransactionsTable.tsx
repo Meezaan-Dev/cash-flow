@@ -63,7 +63,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 	onOpenSettings,
 }) => {
 	const { transactions } = useTransactionsContext();
-	const { accounts } = useAccountsContext();
+	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { categoryOptions, getCategoryLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
 	const tablePrefs = prefs.transactionsTable;
@@ -76,7 +76,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 		endDate: '',
 	});
 	const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
-	const hasAccounts = accounts.length > 0;
+	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
 	const { filtered, totals } = useMemo(() => {
 		const dateFiltered = filterTransactionsByDateRangeObject(transactions, dateRange);
@@ -364,9 +364,9 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 											</div>
 											<div className="text-sm text-muted-foreground">
 												{transactions.length === 0
-													? hasAccounts
-														? 'Add your first transaction to start reviewing history.'
-														: 'Create an account first, then transactions will appear here.'
+													? hasNoAccounts
+														? 'Create an account first, then transactions will appear here.'
+														: 'Add your first transaction to start reviewing history.'
 													: 'Try adjusting your filters or search.'}
 											</div>
 										</div>

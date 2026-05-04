@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 	const { currentUser } = useAuth();
 	const { theme } = useTheme();
 	const { transactions } = useTransactionsContext();
-	const { accounts, calculateTotalBalance } = useAccountsContext();
+	const { accounts, calculateTotalBalance, loading: accountsLoading } = useAccountsContext();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -82,6 +82,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	const totalBalance = useMemo(() => calculateTotalBalance(), [calculateTotalBalance, accounts]);
+
+	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
 	const accountColorMap = useMemo(() => {
 		const map: Record<string, string> = {};
@@ -371,7 +373,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 							<div className="py-8 text-center text-xs md:text-sm text-muted-foreground">
 								{searchTerm
 									? 'No matching transactions'
-									: accounts.length === 0
+									: hasNoAccounts
 										? 'Create an account to begin tracking transactions'
 										: 'No transactions yet'}
 							</div>
@@ -386,7 +388,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 								className="w-full text-sm md:text-base h-9 md:h-10"
 							>
 								<FiPlus className="mr-2 h-4 w-4" />
-								{accounts.length === 0 ? 'Add First Account' : 'New Transaction'}
+								{hasNoAccounts ? 'Add First Account' : 'New Transaction'}
 							</Button>
 						</div>
 					)}
