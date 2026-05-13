@@ -172,16 +172,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 		}
 	}, [availableSubcategories, subcategory]);
 
-	useEffect(() => {
-		if (!transaction || type === 'transfer') return;
-		if (!category && transaction.category && transaction.category !== 'transfer') {
-			setCategory(transaction.category);
-		}
-		if (!subcategory && transaction.subcategory) {
-			setSubcategory(transaction.subcategory);
-		}
-	}, [category, subcategory, transaction, type]);
-
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError('');
