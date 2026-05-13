@@ -19,6 +19,7 @@ interface AddTransactionData {
 	accountId: string;
 	title: string;
 	category: string;
+	subcategory?: string;
 	description?: string;
 	amount: number;
 	date?: Date;

@@ -18,7 +18,9 @@ import { TRANSFER_CATEGORY_VALUE } from '../constants/categories';
 import {
 	buildCategoryLabelMap,
 	formatCategoryLabel,
+	getCategoryPathLabel as getCategoryPathLabelFromDefinitions,
 	getDefaultCategories,
+	getSubcategoryLabel as getSubcategoryLabelFromDefinitions,
 	mergeCategoryOptions,
 	normalizeCategoryDefinition,
 	slugifyCategoryLabel,
@@ -127,6 +129,28 @@ export const useCategories = () => {
 		};
 	};
 
+	const getSanitizedSubcategoryPayload = (label: string) => {
+		const trimmedLabel = label.trim();
+		const value = slugifyCategoryLabel(trimmedLabel);
+
+		if (!trimmedLabel) {
+			throw new Error('Subcategory name cannot be empty.');
+		}
+
+		if (!value) {
+			throw new Error('Subcategory name must include at least one letter or number.');
+		}
+
+		if (value === TRANSFER_CATEGORY_VALUE) {
+			throw new Error('Transfer is reserved and cannot be used as a subcategory.');
+		}
+
+		return {
+			label: trimmedLabel,
+			value,
+		};
+	};
+
 	const assertCategoryIsUnique = (value: string, categoryIdToIgnore?: string) => {
 		const conflict = categories.find(
 			(category) =>
@@ -136,6 +160,22 @@ export const useCategories = () => {
 
 		if (conflict) {
 			throw new Error(`"${conflict.label}" already exists.`);
+		}
+	};
+
+	const assertSubcategoryIsUnique = (
+		category: CategoryDefinition,
+		value: string,
+		subcategoryValueToIgnore?: string
+	) => {
+		const conflict = category.subcategories.find(
+			(subcategory) =>
+				subcategory.value !== subcategoryValueToIgnore &&
+				subcategory.value.toLowerCase() === value.toLowerCase()
+		);
+
+		if (conflict) {
+			throw new Error(`"${conflict.label}" already exists under ${category.label}.`);
 		}
 	};
 
@@ -255,20 +295,170 @@ export const useCategories = () => {
 		await deleteDoc(doc(db, USERS_COLLECTION, user!.uid, 'categories', id));
 	};
 
+	const addSubcategory = async (categoryId: string, label: string) => {
+		ensureAuthenticated();
+
+		const category = categories.find((item) => item.id === categoryId);
+		if (!category) {
+			throw new Error('Category not found.');
+		}
+
+		const payload = getSanitizedSubcategoryPayload(label);
+		assertSubcategoryIsUnique(category, payload.value);
+
+		await updateDoc(doc(db, USERS_COLLECTION, user!.uid, 'categories', categoryId), {
+			subcategories: [...category.subcategories, payload].sort((left, right) =>
+				left.label.localeCompare(right.label)
+			),
+			updatedAt: Timestamp.now(),
+		});
+	};
+
+	const renameSubcategory = async (categoryId: string, value: string, label: string) => {
+		ensureAuthenticated();
+
+		const category = categories.find((item) => item.id === categoryId);
+		if (!category) {
+			throw new Error('Category not found.');
+		}
+
+		const subcategory = category.subcategories.find((item) => item.value === value);
+		if (!subcategory) {
+			throw new Error('Subcategory not found.');
+		}
+
+		const payload = getSanitizedSubcategoryPayload(label);
+		assertSubcategoryIsUnique(category, payload.value, value);
+
+		if (subcategory.value === payload.value && subcategory.label === payload.label) {
+			return;
+		}
+
+		const transactionsRef = collection(db, USERS_COLLECTION, user!.uid, 'transactions');
+		const recurringRef = collection(
+			db,
+			USERS_COLLECTION,
+			user!.uid,
+			'recurringTransactions'
+		);
+
+		const [transactionDocs, recurringDocs] = await Promise.all([
+			getDocs(query(transactionsRef, where('category', '==', category.value))),
+			getDocs(query(recurringRef, where('category', '==', category.value))),
+		]);
+
+		const allRefs = [
+			...transactionDocs.docs
+				.filter((docRef) => docRef.data().subcategory === subcategory.value)
+				.map((docRef) => docRef.ref),
+			...recurringDocs.docs
+				.filter((docRef) => docRef.data().subcategory === subcategory.value)
+				.map((docRef) => docRef.ref),
+		];
+		const categoryRef = doc(db, USERS_COLLECTION, user!.uid, 'categories', categoryId);
+		const subcategories = category.subcategories
+			.map((item) => (item.value === value ? payload : item))
+			.sort((left, right) => left.label.localeCompare(right.label));
+		const refChunks = chunkArray(allRefs, 400);
+
+		if (refChunks.length === 0) {
+			await updateDoc(categoryRef, {
+				subcategories,
+				updatedAt: Timestamp.now(),
+			});
+			return;
+		}
+
+		for (let index = 0; index < refChunks.length; index += 1) {
+			const batch = writeBatch(db);
+			const chunk = refChunks[index];
+
+			if (index === 0) {
+				batch.update(categoryRef, {
+					subcategories,
+					updatedAt: Timestamp.now(),
+				});
+			}
+
+			for (const ref of chunk) {
+				batch.update(ref, {
+					subcategory: payload.value,
+				});
+			}
+
+			await batch.commit();
+		}
+	};
+
+	const deleteSubcategory = async (categoryId: string, value: string) => {
+		ensureAuthenticated();
+
+		const category = categories.find((item) => item.id === categoryId);
+		if (!category) {
+			throw new Error('Category not found.');
+		}
+
+		const subcategory = category.subcategories.find((item) => item.value === value);
+		if (!subcategory) {
+			throw new Error('Subcategory not found.');
+		}
+
+		const transactionsRef = collection(db, USERS_COLLECTION, user!.uid, 'transactions');
+		const recurringRef = collection(
+			db,
+			USERS_COLLECTION,
+			user!.uid,
+			'recurringTransactions'
+		);
+
+		const [transactionDocs, recurringDocs] = await Promise.all([
+			getDocs(query(transactionsRef, where('category', '==', category.value))),
+			getDocs(query(recurringRef, where('category', '==', category.value))),
+		]);
+
+		const usageCount =
+			transactionDocs.docs.filter((docRef) => docRef.data().subcategory === subcategory.value)
+				.length +
+			recurringDocs.docs.filter((docRef) => docRef.data().subcategory === subcategory.value)
+				.length;
+
+		if (usageCount > 0) {
+			throw new Error(
+				`"${subcategory.label}" is still in use and cannot be deleted yet.`
+			);
+		}
+
+		await updateDoc(doc(db, USERS_COLLECTION, user!.uid, 'categories', categoryId), {
+			subcategories: category.subcategories.filter((item) => item.value !== value),
+			updatedAt: Timestamp.now(),
+		});
+	};
+
 	const categoryOptions = useMemo(() => mergeCategoryOptions(categories), [categories]);
 	const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories]);
 
 	const getCategoryLabel = (value: string) =>
 		categoryLabelMap[value] ?? formatCategoryLabel(value);
 
+	const getSubcategoryLabel = (categoryValue: string, subcategoryValue?: string) =>
+		getSubcategoryLabelFromDefinitions(categories, categoryValue, subcategoryValue);
+
+	const getCategoryPathLabel = (categoryValue: string, subcategoryValue?: string) =>
+		getCategoryPathLabelFromDefinitions(categories, categoryValue, subcategoryValue);
+
 	return {
 		categories,
 		categoryOptions,
 		categoryLabelMap,
 		getCategoryLabel,
+		getSubcategoryLabel,
+		getCategoryPathLabel,
 		addCategory,
 		renameCategory,
 		deleteCategory,
+		addSubcategory,
+		renameSubcategory,
+		deleteSubcategory,
 		loading,
 	};
 };

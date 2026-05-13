@@ -6,11 +6,13 @@ import {
 	query,
 	onSnapshot,
 	Timestamp,
+	deleteField,
 	writeBatch,
 	getDocs,
 	getDoc,
 	increment,
 	type DocumentData,
+	type UpdateData,
 } from 'firebase/firestore';
 import { Transaction } from '../types';
 import { normalizeTransaction } from '../models/TransactionModel';
@@ -20,6 +22,7 @@ interface AddTransactionData {
 	accountId: string;
 	title: string;
 	category: string;
+	subcategory?: string;
 	description?: string;
 	amount: number;
 	date?: Date;
@@ -73,15 +76,18 @@ export const useTransactions = () => {
 
 	const addTransaction = async (data: AddTransactionData) => {
 		if (!user) throw new Error('User not authenticated');
+		if (!data.category.trim()) throw new Error('Category is required.');
 
 		const batch = writeBatch(db);
 
 		const txCol = collection(db, 'users', user.uid, 'transactions');
 		const txRef = doc(txCol);
 
-		const { date, ...rest } = data;
+		const { date, subcategory, ...rest } = data;
 		const txData: DocumentData = {
 			...rest,
+			category: rest.category.trim(),
+			...(subcategory?.trim() ? { subcategory: subcategory.trim() } : {}),
 			createdAt: Timestamp.now(),
 			userId: user.uid,
 		};
@@ -158,13 +164,40 @@ export const useTransactions = () => {
 			const snap = await getDoc(txRef);
 			const old: DocumentData | null = snap.exists() ? snap.data() : null;
 
-			const updateData: DocumentData = { ...updates };
+			if (
+				updates.type !== 'transfer' &&
+				Object.prototype.hasOwnProperty.call(updates, 'category') &&
+				!updates.category?.trim()
+			) {
+				throw new Error('Category is required.');
+			}
+
+			const updateData: DocumentData = Object.fromEntries(
+				Object.entries(updates).filter(([, value]) => value !== undefined)
+			);
+			if (typeof updates.category === 'string') {
+				updateData.category = updates.category.trim();
+			}
+			if (typeof updates.subcategory === 'string') {
+				const trimmedSubcategory = updates.subcategory.trim();
+				if (trimmedSubcategory) {
+					updateData.subcategory = trimmedSubcategory;
+				} else {
+					updateData.subcategory = deleteField();
+				}
+			}
+			if (
+				Object.prototype.hasOwnProperty.call(updates, 'subcategory') &&
+				updates.subcategory === undefined
+			) {
+				updateData.subcategory = deleteField();
+			}
 			if (updates.date instanceof Date) {
 				updateData.date = Timestamp.fromDate(updates.date);
 			}
 
 			const batch = writeBatch(db);
-			batch.update(txRef, updateData);
+			batch.update(txRef, updateData as UpdateData<Transaction>);
 
 			// Adjust account balances when amount, type, or accountId changes
 			if (old && old.type !== 'transfer') {

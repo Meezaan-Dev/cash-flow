@@ -29,6 +29,7 @@ export interface CategoryDefinition {
 	id: string;
 	value: string;
 	label: string;
+	subcategories: Category[];
 	createdAt?: Date | { toDate: () => Date };
 	updatedAt?: Date | { toDate: () => Date };
 }
@@ -60,6 +61,7 @@ export interface Transaction {
 	amount: number;
 	type: TransactionType;
 	category: string;
+	subcategory?: string;
 	description?: string;
 	date?: Date | { toDate: () => Date };
 	createdAt?: Date | { toDate: () => Date };
@@ -196,6 +198,7 @@ export interface SerializableTransaction {
 	amount: number;
 	type: TransactionType;
 	category: string;
+	subcategory?: string;
 	description?: string;
 	date?: string;
 	accountId?: string;

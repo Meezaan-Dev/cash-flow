@@ -106,7 +106,7 @@ const buildFilterLabel = (
 const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ onOpenSettings }) => {
 	const { recurringTransactions, deleteRecurringTransaction, recurringTransactionsLoading } =
 		useTransactionsContext();
-	const { categoryOptions, getCategoryLabel } = useCategoriesContext();
+	const { categoryOptions, getCategoryPathLabel } = useCategoriesContext();
 
 	const { prefs } = useFilterPreferences();
 	const recurringPrefs = prefs.recurring;
@@ -528,7 +528,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 										{formatCurrency(expense.amount)}
 									</span>
 									<span>•</span>
-									<span>{getCategoryLabel(expense.category)}</span>
+									<span>{getCategoryPathLabel(expense.category, expense.subcategory)}</span>
 									{expense.description && (
 										<>
 											<span>•</span>
@@ -565,7 +565,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 					transactions={filteredTransactions}
 					onEdit={handleEdit}
 					onDelete={handleDeleteClick}
-					getCategoryLabel={getCategoryLabel}
+					getCategoryPathLabel={getCategoryPathLabel}
 				/>
 			)}
 

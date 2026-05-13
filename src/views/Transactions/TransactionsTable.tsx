@@ -64,7 +64,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 }) => {
 	const { transactions } = useTransactionsContext();
 	const { accounts, loading: accountsLoading } = useAccountsContext();
-	const { categoryOptions, getCategoryLabel } = useCategoriesContext();
+	const { categoryOptions, getCategoryPathLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
 	const tablePrefs = prefs.transactionsTable;
 	const [search, setSearch] = useState('');
@@ -83,7 +83,8 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
 		const filtered = dateFiltered
 			.filter((tx) => {
-				const matchesSearch = tx.title.toLowerCase().includes(search.toLowerCase());
+				const searchText = `${tx.title} ${tx.subcategory ?? ''}`.toLowerCase();
+				const matchesSearch = searchText.includes(search.toLowerCase());
 				const matchesType = filterType === 'all' || tx.type === filterType;
 				const matchesCategory = filterCategory === 'all' || tx.category === filterCategory;
 				const dateValue = tx.date ?? tx.createdAt;
@@ -333,7 +334,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 												backgroundColor: categoryColor,
 											}}
 										>
-											{getCategoryLabel(tx.category)}
+											{getCategoryPathLabel(tx.category, tx.subcategory)}
 										</Badge>
 									</TableCell>
 

@@ -18,7 +18,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 const RecurringTransactionsList: React.FC = () => {
 	const { recurringTransactions, deleteRecurringTransaction, recurringTransactionsLoading } =
 		useTransactionsContext();
-	const { getCategoryLabel } = useCategoriesContext();
+	const { getCategoryPathLabel } = useCategoriesContext();
 	const [editingTransaction, setEditingTransaction] = useState<RecurringTransaction | undefined>(undefined);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -122,7 +122,12 @@ const RecurringTransactionsList: React.FC = () => {
 								<div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 									<span>{formatCurrency(transaction.amount)}</span>
 									<span className="hidden sm:inline">•</span>
-									<span>{getCategoryLabel(transaction.category)}</span>
+									<span>
+										{getCategoryPathLabel(
+											transaction.category,
+											transaction.subcategory
+										)}
+									</span>
 									{transaction.description && (
 										<>
 											<span className="hidden sm:inline">•</span>

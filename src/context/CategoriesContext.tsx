@@ -8,9 +8,14 @@ interface CategoriesContextValue {
 	categoryLabelMap: Record<string, string>;
 	loading: boolean;
 	getCategoryLabel: (value: string) => string;
+	getSubcategoryLabel: (categoryValue: string, subcategoryValue?: string) => string;
+	getCategoryPathLabel: (categoryValue: string, subcategoryValue?: string) => string;
 	addCategory: (label: string) => Promise<void>;
 	renameCategory: (id: string, label: string) => Promise<void>;
 	deleteCategory: (id: string) => Promise<void>;
+	addSubcategory: (categoryId: string, label: string) => Promise<void>;
+	renameSubcategory: (categoryId: string, value: string, label: string) => Promise<void>;
+	deleteSubcategory: (categoryId: string, value: string) => Promise<void>;
 }
 
 const CategoriesContext = createContext<CategoriesContextValue | undefined>(undefined);
