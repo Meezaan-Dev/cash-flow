@@ -26,7 +26,7 @@ const AccountDetailPage: React.FC = () => {
 	const navigate = useNavigate();
 	const { accounts } = useAccountsContext();
 	const { transactions } = useTransactionsContext();
-	const { getCategoryLabel } = useCategoriesContext();
+	const { getCategoryPathLabel } = useCategoriesContext();
 
 	const [subView, setSubView] = useState<SubView>('detail');
 
@@ -221,7 +221,7 @@ const AccountDetailPage: React.FC = () => {
 												<p className="font-medium text-sm">{tx.title}</p>
 												<p className="text-xs text-muted-foreground">
 													{tx.category
-														? `${getCategoryLabel(tx.category)} &#183; `
+														? `${getCategoryPathLabel(tx.category, tx.subcategory)} &#183; `
 														: ''}
 													{dateStr}
 												</p>

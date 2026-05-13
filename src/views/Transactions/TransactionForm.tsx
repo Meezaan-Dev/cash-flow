@@ -8,6 +8,7 @@ import { TransactionType } from '../../types';
 import { useCategoriesContext } from '../../context/CategoriesContext';
 import { Button } from '../../components/app/ui/button';
 import { Input } from '../../components/app/ui/input';
+import { Label } from '../../components/app/ui/label';
 import { Textarea } from '../../components/app/ui/textarea';
 import {
 	Select,
@@ -32,7 +33,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 }) => {
 	const { addTransaction, addTransfer, updateTransaction, recurringTransactions } = useTransactionsContext();
 	const { accounts } = useAccountsContext();
-	const { categoryOptions } = useCategoriesContext();
+	const { categories, categoryOptions } = useCategoriesContext();
 
 	const [title, setTitle] = useState('');
 	const [amount, setAmount] = useState(0);
@@ -40,8 +41,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	const [accountId, setAccountId] = useState('');
 	const [transferAccountId, setTransferAccountId] = useState('');
 	const [category, setCategory] = useState('');
+	const [subcategory, setSubcategory] = useState('');
 	const [description, setDescription] = useState('');
 	const [date, setDate] = useState<string>('');
+	const [error, setError] = useState('');
 	const [selectedRecurringId, setSelectedRecurringId] = useState<string | null>(
 		initialRecurringTransaction?.id || null
 	);
@@ -50,6 +53,39 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 		() => mergeCategoryOptions(categoryOptions, category ? [category] : []),
 		[categoryOptions, category]
 	);
+	const selectedCategory = React.useMemo(
+		() => categories.find((item) => item.value === category),
+		[categories, category]
+	);
+	const availableSubcategories = React.useMemo(
+		() =>
+			mergeCategoryOptions(
+				selectedCategory?.subcategories ?? [],
+				subcategory ? [subcategory] : []
+			),
+		[selectedCategory, subcategory]
+	);
+
+	const handleCategoryChange = (value: string) => {
+		setCategory(value);
+		setSubcategory('');
+		setError('');
+	};
+
+	const handleTypeChange = (nextType: TransactionType) => {
+		setType(nextType);
+		setError('');
+		if (
+			nextType !== 'transfer' &&
+			transaction &&
+			!category &&
+			transaction.category &&
+			transaction.category !== 'transfer'
+		) {
+			setCategory(transaction.category);
+			setSubcategory(transaction.subcategory ?? '');
+		}
+	};
 
 	// Default to first account
 	useEffect(() => {
@@ -66,7 +102,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 			setAccountId(transaction.accountId ?? '');
 			setTransferAccountId(transaction.transferAccountId ?? '');
 			setCategory(transaction.category ?? '');
+			setSubcategory(transaction.subcategory ?? '');
 			setDescription(transaction.description ?? '');
+			setError('');
 			setSelectedRecurringId(null);
 
 			let transactionDate: Date | null = null;
@@ -85,16 +123,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 			setType((initialRecurringTransaction.type as TransactionType) ?? 'expense');
 			if (initialRecurringTransaction.accountId) setAccountId(initialRecurringTransaction.accountId);
 			setCategory(initialRecurringTransaction.category ?? '');
+			setSubcategory(initialRecurringTransaction.subcategory ?? '');
 			setDescription(initialRecurringTransaction.description ?? '');
 			setDate(new Date().toISOString().split('T')[0]);
+			setError('');
 			setSelectedRecurringId(initialRecurringTransaction.id || null);
 		} else {
 			setTitle('');
 			setAmount(0);
 			setType('expense');
 			setCategory('');
+			setSubcategory('');
 			setDescription('');
 			setDate(new Date().toISOString().split('T')[0]);
+			setError('');
 			setSelectedRecurringId(null);
 		}
 	}, [transaction, initialRecurringTransaction]);
@@ -108,19 +150,55 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 				setType((selectedExpense.type as TransactionType) ?? 'expense');
 				if (selectedExpense.accountId) setAccountId(selectedExpense.accountId);
 				setCategory(selectedExpense.category ?? '');
+				setSubcategory(selectedExpense.subcategory ?? '');
 				setDescription(selectedExpense.description ?? '');
+				setError('');
 			}
 		} else if (selectedRecurringId === null && !transaction && !initialRecurringTransaction) {
 			setTitle('');
 			setAmount(0);
 			setCategory('');
+			setSubcategory('');
 			setDescription('');
+			setError('');
 		}
 	}, [selectedRecurringId, recurringTransactions, transaction, initialRecurringTransaction]);
 
+	useEffect(() => {
+		if (!subcategory) return;
+		const stillAvailable = availableSubcategories.some((item) => item.value === subcategory);
+		if (!stillAvailable) {
+			setSubcategory('');
+		}
+	}, [availableSubcategories, subcategory]);
+
+	useEffect(() => {
+		if (!transaction || type === 'transfer') return;
+		if (!category && transaction.category && transaction.category !== 'transfer') {
+			setCategory(transaction.category);
+		}
+		if (!subcategory && transaction.subcategory) {
+			setSubcategory(transaction.subcategory);
+		}
+	}, [category, subcategory, transaction, type]);
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+		setError('');
 		if (type === 'transfer' && !transferAccountId) return;
+		const categoryForSubmit =
+			type === 'transfer'
+				? 'transfer'
+				: category.trim() || transaction?.category || initialRecurringTransaction?.category || '';
+		const subcategoryForSubmit =
+			type === 'transfer'
+				? undefined
+				: subcategory.trim() || (!category ? transaction?.subcategory : undefined);
+
+		if (type !== 'transfer' && !categoryForSubmit) {
+			setError('Please select a category.');
+			return;
+		}
 		try {
 			if (transaction && transaction.id) {
 				const data: Partial<Transaction> = {
@@ -128,7 +206,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					amount: Number(amount),
 					type,
 					accountId,
-					category: type === 'transfer' ? 'transfer' : category,
+					category: categoryForSubmit,
+					subcategory: subcategoryForSubmit,
 					description,
 					date: date ? new Date(date) : new Date(),
 				};
@@ -151,7 +230,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					amount: Number(amount),
 					type,
 					accountId,
-					category,
+					category: categoryForSubmit,
+					subcategory: subcategoryForSubmit,
 					description,
 					date: date ? new Date(date) : new Date(),
 				});
@@ -159,6 +239,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 			onClose();
 		} catch (error) {
 			console.error('Failed to submit transaction:', error);
+			setError(error instanceof Error ? error.message : 'Failed to submit transaction.');
 		}
 	};
 
@@ -184,7 +265,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					<div className="mb-8 rounded-xl border border-dashed bg-muted/40 p-4">
 						<div className="mb-3 flex items-center gap-2 text-sm font-medium">
 							<FiRefreshCw className="h-4 w-4 text-primary" />
-							Quick fill from a recurring expense
+							<Label htmlFor="quick-fill">Quick fill from a recurring expense</Label>
 						</div>
 						<Select
 							value={selectedRecurringId || '__none__'}
@@ -192,7 +273,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 								setSelectedRecurringId(value === '__none__' ? null : value)
 							}
 						>
-							<SelectTrigger className="h-11 rounded-lg">
+							<SelectTrigger id="quick-fill" className="h-11 rounded-lg">
 								<SelectValue placeholder="Choose an expense to autofill" />
 							</SelectTrigger>
 							<SelectContent>
@@ -209,29 +290,38 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 				)}
 
 				<form onSubmit={handleSubmit} className="space-y-6">
+					{error && (
+						<div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+							{error}
+						</div>
+					)}
+
 					{/* Transaction Type — 3 buttons */}
-					<div className="grid grid-cols-3 gap-3">
-						{(['income', 'expense', 'transfer'] as TransactionType[]).map((t) => (
-							<Button
-								key={t}
-								type="button"
-								variant={type === t ? 'default' : 'outline'}
-								onClick={() => setType(t)}
-								className="h-14 rounded-xl capitalize"
-							>
-								{t}
-							</Button>
-						))}
+					<div className="space-y-1.5">
+						<Label className="text-sm font-medium">Transaction type *</Label>
+						<div className="grid grid-cols-3 gap-3">
+							{(['income', 'expense', 'transfer'] as TransactionType[]).map((t) => (
+								<Button
+									key={t}
+									type="button"
+									variant={type === t ? 'default' : 'outline'}
+									onClick={() => handleTypeChange(t)}
+									className="h-14 rounded-xl capitalize"
+								>
+									{t}
+								</Button>
+							))}
+						</div>
 					</div>
 
 					{/* Account Selector */}
 					{accounts.length > 0 && (
 						<div className="space-y-1.5">
-							<label className="text-sm font-medium">
+							<Label htmlFor="transaction-account" className="text-sm font-medium">
 								{type === 'transfer' ? 'From Account' : 'Account'} *
-							</label>
+							</Label>
 							<Select value={accountId} onValueChange={setAccountId}>
-								<SelectTrigger>
+								<SelectTrigger id="transaction-account">
 									<SelectValue placeholder="Select account" />
 								</SelectTrigger>
 								<SelectContent>
@@ -254,9 +344,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					{/* Transfer To Account */}
 					{type === 'transfer' && (
 						<div className="space-y-1.5">
-							<label className="text-sm font-medium">To Account *</label>
+							<Label htmlFor="transaction-transfer-account" className="text-sm font-medium">
+								To Account *
+							</Label>
 							<Select value={transferAccountId} onValueChange={setTransferAccountId}>
-								<SelectTrigger>
+								<SelectTrigger id="transaction-transfer-account">
 									<SelectValue placeholder="Select destination account" />
 								</SelectTrigger>
 								<SelectContent>
@@ -278,54 +370,114 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
 					{/* Title + Amount */}
 					<div className="grid gap-6 md:grid-cols-2">
-						<Input
-							value={title}
-							onChange={(e) => setTitle(e.target.value)}
-							placeholder="Title"
-							required
-						/>
-						<Input
-							type="number"
-							value={amount}
-							onChange={(e) => setAmount(Number(e.target.value))}
-							placeholder="Amount"
-							min="0.01"
-							step="0.01"
-							required
-						/>
+						<div className="space-y-1.5">
+							<Label htmlFor="transaction-title" className="text-sm font-medium">
+								Title *
+							</Label>
+							<Input
+								id="transaction-title"
+								value={title}
+								onChange={(e) => setTitle(e.target.value)}
+								placeholder="Title"
+								required
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<Label htmlFor="transaction-amount" className="text-sm font-medium">
+								Amount *
+							</Label>
+							<Input
+								id="transaction-amount"
+								type="number"
+								value={amount}
+								onChange={(e) => setAmount(Number(e.target.value))}
+								placeholder="Amount"
+								min="0.01"
+								step="0.01"
+								required
+							/>
+						</div>
 					</div>
 
 					{/* Category + Date — hide category for transfers */}
 					<div className="grid gap-6 md:grid-cols-2">
 						{type !== 'transfer' && (
-							<Select value={category} onValueChange={setCategory}>
-							<SelectTrigger>
-								<SelectValue placeholder="Category" />
-							</SelectTrigger>
-							<SelectContent>
-								{availableCategories.map((cat) => (
-									<SelectItem key={cat.value} value={cat.value}>
-										{cat.label}
+							<div className="space-y-1.5">
+								<Label htmlFor="transaction-category" className="text-sm font-medium">
+									Category *
+								</Label>
+								<Select value={category} onValueChange={handleCategoryChange}>
+									<SelectTrigger id="transaction-category">
+										<SelectValue placeholder="Select category" />
+									</SelectTrigger>
+									<SelectContent>
+										{availableCategories.map((cat) => (
+											<SelectItem key={cat.value} value={cat.value}>
+												{cat.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						)}
+						<div
+							className={`space-y-1.5 ${
+								type === 'transfer' ? 'col-span-1 md:col-span-2' : ''
+							}`}
+						>
+							<Label htmlFor="transaction-date" className="text-sm font-medium">
+								Date
+							</Label>
+							<Input
+								id="transaction-date"
+								type="date"
+								value={date}
+								onChange={(e) => setDate(e.target.value)}
+							/>
+						</div>
+					</div>
+
+					{type !== 'transfer' && availableSubcategories.length > 0 && (
+						<div className="space-y-1.5">
+							<Label htmlFor="transaction-subcategory" className="text-sm font-medium">
+								Subcategory
+							</Label>
+							<Select
+								value={subcategory || '__none__'}
+								onValueChange={(value) =>
+									setSubcategory(value === '__none__' ? '' : value)
+								}
+							>
+								<SelectTrigger id="transaction-subcategory">
+									<SelectValue placeholder="Select subcategory" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__none__">
+										No subcategory
 									</SelectItem>
+									{availableSubcategories.map((cat) => (
+										<SelectItem key={cat.value} value={cat.value}>
+											{cat.label}
+										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
-						)}
-						<Input
-							type="date"
-							value={date}
-							onChange={(e) => setDate(e.target.value)}
-							className={type === 'transfer' ? 'col-span-1 md:col-span-2' : ''}
-						/>
-					</div>
+						</div>
+					)}
 
 					{/* Description */}
-					<Textarea
-						value={description}
-						onChange={(e) => setDescription(e.target.value)}
-						placeholder="Optional notes"
-						rows={3}
-					/>
+					<div className="space-y-1.5">
+						<Label htmlFor="transaction-description" className="text-sm font-medium">
+							Notes
+						</Label>
+						<Textarea
+							id="transaction-description"
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							placeholder="Optional notes"
+							rows={3}
+						/>
+					</div>
 
 					{/* Actions */}
 					<div className="flex gap-3 pt-4">

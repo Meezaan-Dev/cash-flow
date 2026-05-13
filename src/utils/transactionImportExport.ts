@@ -14,7 +14,7 @@ const normalizeIsoDateOnly = (value: unknown): string => {
 };
 
 export const buildTransactionSignature = (transaction: Transaction): string => {
-	return `${transaction.title}|${transaction.amount}|${transaction.type}|${transaction.category}|${normalizeIsoDateOnly(transaction.date)}`;
+	return `${transaction.title}|${transaction.amount}|${transaction.type}|${transaction.category}|${transaction.subcategory ?? ''}|${normalizeIsoDateOnly(transaction.date)}`;
 };
 
 const parseCsv = (text: string): SerializableTransaction[] => {
@@ -40,6 +40,9 @@ const validateImportRow = (row: Record<string, unknown>, rowIndex: number): stri
 	if (missing.length) {
 		errors.push(`Row ${rowIndex}: Missing ${missing.join(', ')}`);
 	}
+	if ('category' in row && typeof row.category === 'string' && !row.category.trim()) {
+		errors.push(`Row ${rowIndex}: Missing category`);
+	}
 	const amountNum = Number(row.amount);
 	if (!isFinite(amountNum)) {
 		errors.push(`Row ${rowIndex}: Invalid amount`);
@@ -53,7 +56,7 @@ const validateImportRow = (row: Record<string, unknown>, rowIndex: number): stri
 export const importTransactionsFromFile = async (
 	file: File,
 	existingTransactions: Transaction[],
-	addTransaction: (data: { type: 'income' | 'expense'; accountId: string; title: string; category: string; description?: string; amount: number }) => Promise<void>,
+	addTransaction: (data: { type: 'income' | 'expense'; accountId: string; title: string; category: string; subcategory?: string; description?: string; amount: number }) => Promise<void>,
 	defaultAccountId: string = ''
 ): Promise<ImportResult> => {
 	if (!defaultAccountId) {
@@ -94,7 +97,8 @@ export const importTransactionsFromFile = async (
 
 		const amountNum = Number(row.amount);
 		const dateISO = row.date ? normalizeIsoDateOnly(row.date) : '';
-		const signature = `${row.title}|${amountNum}|${row.type}|${row.category}|${dateISO}`;
+		const normalizedSubcategory = row.subcategory ? String(row.subcategory).trim() : '';
+		const signature = `${row.title}|${amountNum}|${row.type}|${row.category}|${normalizedSubcategory}|${dateISO}`;
 		if (existingSignatures.has(signature)) {
 			skippedDuplicates++;
 			continue;
@@ -108,7 +112,8 @@ export const importTransactionsFromFile = async (
 				title: String(row.title),
 				amount: amountNum,
 				type: row.type as 'income' | 'expense',
-				category: String(row.category),
+				category: String(row.category).trim(),
+				subcategory: normalizedSubcategory || undefined,
 				description: row.description ? String(row.description) : '',
 				accountId: resolvedAccountId,
 			});
@@ -123,7 +128,18 @@ export const importTransactionsFromFile = async (
 };
 
 export const exportTransactionsToCsv = (transactions: Transaction[]): string => {
-	const headers = ['title', 'amount', 'type', 'category', 'description', 'date', 'createdAt', 'id', 'accountId'];
+	const headers = [
+		'title',
+		'amount',
+		'type',
+		'category',
+		'subcategory',
+		'description',
+		'date',
+		'createdAt',
+		'id',
+		'accountId',
+	];
 	const safe = (value: unknown) => {
 		if (value == null) return '';
 		const str = String(value).replace(/"/g, '""');
@@ -138,6 +154,7 @@ export const exportTransactionsToCsv = (transactions: Transaction[]): string => 
 			t.amount,
 			t.type,
 			t.category,
+			t.subcategory ?? '',
 			t.description ?? '',
 			date,
 			createdAt,

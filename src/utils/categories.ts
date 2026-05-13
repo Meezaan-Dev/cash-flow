@@ -20,8 +20,40 @@ type CategoryDoc = {
 	id: string;
 	value?: string;
 	label?: string;
+	subcategories?: unknown;
 	createdAt?: unknown;
 	updatedAt?: unknown;
+};
+
+const normalizeCategoryOption = (option: unknown): Category | null => {
+	if (!option || typeof option !== 'object') return null;
+
+	const value = 'value' in option ? String(option.value ?? '') : '';
+	const label = 'label' in option ? String(option.label ?? '') : '';
+	const normalizedValue = value || slugifyCategoryLabel(label);
+
+	if (!normalizedValue) return null;
+
+	return {
+		value: normalizedValue,
+		label: label || formatCategoryLabel(normalizedValue),
+	};
+};
+
+export const normalizeCategoryOptions = (options: unknown): Category[] => {
+	if (!Array.isArray(options)) return [];
+
+	const merged = new Map<string, Category>();
+
+	for (const option of options) {
+		const normalized = normalizeCategoryOption(option);
+		if (!normalized || normalized.value === TRANSFER_CATEGORY_VALUE) continue;
+		merged.set(normalized.value, normalized);
+	}
+
+	return Array.from(merged.values()).sort((left, right) =>
+		left.label.localeCompare(right.label)
+	);
 };
 
 export const normalizeCategoryDefinition = (doc: CategoryDoc): CategoryDefinition => {
@@ -29,6 +61,7 @@ export const normalizeCategoryDefinition = (doc: CategoryDoc): CategoryDefinitio
 		id: doc.id,
 		value: doc.value ?? doc.id,
 		label: doc.label ?? formatCategoryLabel(doc.value ?? doc.id ?? ''),
+		subcategories: normalizeCategoryOptions(doc.subcategories),
 	};
 
 	const createdParsed = doc.createdAt != null ? parseDbDateOrNull(doc.createdAt) : null;
@@ -80,7 +113,36 @@ export const buildCategoryLabelMap = (
 		categories
 			.filter((category) => category.value !== TRANSFER_CATEGORY_VALUE)
 			.map((category) => [category.value, category.label])
-	);
+		);
 
-export const getDefaultCategories = (): Array<Pick<CategoryDefinition, 'value' | 'label'>> =>
-	DEFAULT_CATEGORY_TEMPLATES.map((category) => ({ ...category }));
+export const getSubcategoryLabel = (
+	categories: Pick<CategoryDefinition, 'value' | 'subcategories'>[],
+	categoryValue: string,
+	subcategoryValue?: string
+): string => {
+	if (!subcategoryValue) return '';
+
+	const category = categories.find((item) => item.value === categoryValue);
+	const subcategory = category?.subcategories.find((item) => item.value === subcategoryValue);
+
+	return subcategory?.label ?? formatCategoryLabel(subcategoryValue);
+};
+
+export const getCategoryPathLabel = (
+	categories: Pick<CategoryDefinition, 'value' | 'label' | 'subcategories'>[],
+	categoryValue: string,
+	subcategoryValue?: string
+): string => {
+	const categoryLabel =
+		categories.find((item) => item.value === categoryValue)?.label ??
+		formatCategoryLabel(categoryValue);
+	const subcategoryLabel = getSubcategoryLabel(categories, categoryValue, subcategoryValue);
+
+	return subcategoryLabel ? `${categoryLabel} / ${subcategoryLabel}` : categoryLabel;
+};
+
+export const getDefaultCategories = (): Array<Pick<CategoryDefinition, 'value' | 'label' | 'subcategories'>> =>
+	DEFAULT_CATEGORY_TEMPLATES.map((category) => ({
+		...category,
+		subcategories: category.subcategories?.map((subcategory) => ({ ...subcategory })) ?? [],
+	}));

@@ -11,6 +11,7 @@ type TransactionDoc = {
 	amount?: number;
 	type?: string;
 	category?: string;
+	subcategory?: string;
 	description?: string;
 	transferAccountId?: string;
 	date?: unknown;
@@ -27,6 +28,7 @@ export const normalizeTransaction = (doc: TransactionDoc): Transaction => {
 		amount: doc.amount ?? 0,
 		type: (doc.type as TransactionType) ?? 'expense',
 		category: doc.category ?? '',
+		subcategory: doc.subcategory || undefined,
 		description: doc.description,
 		transferAccountId: doc.transferAccountId,
 	};

@@ -14,6 +14,7 @@ interface Transaction {
 	amount: number;
 	title: string;
 	category: string;
+	subcategory?: string;
 	description?: string;
 	type: 'income' | 'expense' | 'transfer';
 	date?: string;
@@ -122,7 +123,9 @@ function pluralize(count: number, singular: string, plural = `${singular}s`): st
 
 function getTransactionSearchText(transaction: Transaction): string {
 	return normalizeText(
-		`${transaction.title} ${transaction.description || ''} ${transaction.category}`
+		`${transaction.title} ${transaction.description || ''} ${transaction.category} ${
+			transaction.subcategory || ''
+		}`
 	);
 }
 
@@ -201,7 +204,10 @@ function sortTransactionsByNewest(transactions: Transaction[]): Transaction[] {
 
 function formatTransactionLabel(transaction: Transaction): string {
 	const dateLabel = formatTransactionDate(transaction);
-	const parts = [transaction.title || transaction.category || 'Transaction'];
+	const categoryLabel = transaction.subcategory
+		? `${transaction.category} / ${transaction.subcategory}`
+		: transaction.category;
+	const parts = [transaction.title || categoryLabel || 'Transaction'];
 	if (dateLabel) {
 		parts.push(dateLabel);
 	}
@@ -312,6 +318,7 @@ export const getUserTransactions = functions.https.onRequest(async (req, res) =>
 				amount: data.amount,
 				title: data.title,
 				category: data.category,
+				subcategory: data.subcategory,
 				type: data.type,
 				description: data.description,
 				date:
@@ -438,6 +445,7 @@ export const askAI = functions.https.onRequest(async (req, res) => {
 				title: String(data.title || data.description || 'Untitled transaction'),
 				description: data.description ? String(data.description) : '',
 				category: String(data.category || 'Uncategorized'),
+				subcategory: data.subcategory ? String(data.subcategory) : undefined,
 				type:
 					data.type === 'income' || data.type === 'transfer'
 						? data.type

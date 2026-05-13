@@ -31,21 +31,41 @@ const FREQUENCIES = [
 
 const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onClose, transaction: expense }) => {
 	const { addRecurringTransaction, updateRecurringTransaction } = useTransactionsContext();
-	const { categoryOptions } = useCategoriesContext();
+	const { categories, categoryOptions } = useCategoriesContext();
 	const [title, setTitle] = useState('');
 	const [amount, setAmount] = useState(0);
 	const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
 	const [category, setCategory] = useState('');
+	const [subcategory, setSubcategory] = useState('');
 	const [description, setDescription] = useState('');
 	const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>(
 		'monthly'
 	);
 	const [expectedDate, setExpectedDate] = useState<number | ''>('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState('');
 	const availableCategories = React.useMemo(
 		() => mergeCategoryOptions(categoryOptions, category ? [category] : []),
 		[categoryOptions, category]
 	);
+	const selectedCategory = React.useMemo(
+		() => categories.find((item) => item.value === category),
+		[categories, category]
+	);
+	const availableSubcategories = React.useMemo(
+		() =>
+			mergeCategoryOptions(
+				selectedCategory?.subcategories ?? [],
+				subcategory ? [subcategory] : []
+			),
+		[selectedCategory, subcategory]
+	);
+
+	const handleCategoryChange = (value: string) => {
+		setCategory(value);
+		setSubcategory('');
+		setError('');
+	};
 
 	useEffect(() => {
 		if (expense) {
@@ -53,22 +73,39 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			setAmount(expense.amount);
 			setTransactionType(expense.type ?? 'expense');
 			setCategory(expense.category ?? '');
+			setSubcategory(expense.subcategory ?? '');
 			setDescription(expense.description ?? '');
 			setFrequency(expense.frequency ?? 'monthly');
 			setExpectedDate(expense.expectedDate ?? '');
+			setError('');
 		} else {
 			setTitle('');
 			setAmount(0);
 			setTransactionType('expense');
 			setCategory('');
+			setSubcategory('');
 			setDescription('');
 			setFrequency('monthly');
 			setExpectedDate('');
+			setError('');
 		}
 	}, [expense]);
 
+	useEffect(() => {
+		if (!subcategory) return;
+		const stillAvailable = availableSubcategories.some((item) => item.value === subcategory);
+		if (!stillAvailable) {
+			setSubcategory('');
+		}
+	}, [availableSubcategories, subcategory]);
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+		setError('');
+		if (!category.trim()) {
+			setError('Please select a category.');
+			return;
+		}
 		setIsSubmitting(true);
 		try {
 			const normalizedExpectedDate = expectedDate === '' ? undefined : expectedDate;
@@ -78,12 +115,20 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 				: normalizedCategory;
 			const data: Pick<
 				RecurringTransaction,
-				'title' | 'amount' | 'type' | 'category' | 'description' | 'frequency' | 'expectedDate'
+				| 'title'
+				| 'amount'
+				| 'type'
+				| 'category'
+				| 'subcategory'
+				| 'description'
+				| 'frequency'
+				| 'expectedDate'
 			> = {
 				title,
 				amount: Number(amount),
 				type: transactionType,
 				category: categoryForSubmit,
+				subcategory: subcategory || undefined,
 				description,
 				frequency,
 				expectedDate: normalizedExpectedDate,
@@ -97,6 +142,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			onClose();
 		} catch (error) {
 			console.error('Error saving recurring transaction:', error);
+			setError(error instanceof Error ? error.message : 'Failed to save recurring transaction.');
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -128,6 +174,12 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			</div>
 
 			<form onSubmit={handleSubmit} className="space-y-5">
+				{error && (
+					<div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+						{error}
+					</div>
+				)}
+
 				{/* Type selector */}
 				<div className="space-y-2">
 					<Label className="flex items-center gap-2 text-sm font-medium">
@@ -211,7 +263,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 							<FiTag className="h-4 w-4 text-muted-foreground" />
 							Category
 						</Label>
-						<Select value={category} onValueChange={setCategory}>
+						<Select value={category} onValueChange={handleCategoryChange}>
 							<SelectTrigger
 								id="re-category"
 								className="h-10 rounded-lg border-2 transition-all focus:border-primary"
@@ -227,6 +279,35 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 							</SelectContent>
 						</Select>
 					</div>
+
+					{availableSubcategories.length > 0 && (
+						<div className="space-y-2">
+							<Label htmlFor="re-subcategory" className="text-sm font-medium">
+								Subcategory
+							</Label>
+							<Select
+								value={subcategory || '__none__'}
+								onValueChange={(value) =>
+									setSubcategory(value === '__none__' ? '' : value)
+								}
+							>
+								<SelectTrigger
+									id="re-subcategory"
+									className="h-10 rounded-lg border-2 transition-all focus:border-primary"
+								>
+									<SelectValue placeholder="Select a subcategory" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__none__">No subcategory</SelectItem>
+									{availableSubcategories.map((cat) => (
+										<SelectItem key={cat.value} value={cat.value}>
+											{cat.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					)}
 
 					<div className="space-y-2">
 						<Label

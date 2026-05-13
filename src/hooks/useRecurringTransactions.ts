@@ -45,6 +45,27 @@ const sanitizeRecurringPayload = (
 		sanitized.expectedDate = deleteField();
 	}
 
+	if (typeof payload.category === 'string') {
+		sanitized.category = payload.category.trim();
+	}
+
+	if (typeof payload.subcategory === 'string') {
+		const trimmedSubcategory = payload.subcategory.trim();
+		if (trimmedSubcategory) {
+			sanitized.subcategory = trimmedSubcategory;
+		} else {
+			delete sanitized.subcategory;
+		}
+	}
+
+	if (
+		allowExpectedDateDelete &&
+		Object.prototype.hasOwnProperty.call(payload, 'subcategory') &&
+		payload.subcategory === undefined
+	) {
+		sanitized.subcategory = deleteField();
+	}
+
 	return sanitized;
 };
 
@@ -96,6 +117,7 @@ export const useRecurringTransactions = () => {
 		transaction: Omit<RecurringTransaction, 'id' | 'createdAt' | 'userId'>
 	) => {
 		if (!user) throw new Error('User not authenticated');
+		if (!transaction.category.trim()) throw new Error('Category is required.');
 
 		const col = collection(db, 'users', user.uid, 'recurringTransactions');
 		const sanitizedTransaction = sanitizeRecurringPayload(transaction, false);
@@ -122,6 +144,12 @@ export const useRecurringTransactions = () => {
 	) => {
 		if (!user) throw new Error('User not authenticated');
 		try {
+			if (
+				Object.prototype.hasOwnProperty.call(updates, 'category') &&
+				!updates.category?.trim()
+			) {
+				throw new Error('Category is required.');
+			}
 			const ref = doc(db, 'users', user.uid, 'recurringTransactions', id);
 			const sanitizedUpdates = sanitizeRecurringPayload(updates, true);
 			await updateDoc(ref, sanitizedUpdates as UpdateData<RecurringTransaction>);

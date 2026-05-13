@@ -22,7 +22,7 @@ interface TransactionsListProps {
 const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedId, onOpenSettings }) => {
 	const { transactions } = useTransactionsContext();
 	const { accounts, loading: accountsLoading } = useAccountsContext();
-	const { getCategoryLabel } = useCategoriesContext();
+	const { getCategoryPathLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
 	const listPrefs = prefs.transactionsList;
 	const [search, setSearch] = useState('');
@@ -33,7 +33,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 	}, [transactions]);
 
 	const filtered = useMemo(() => {
-		return sorted.filter((tx) => tx.title.toLowerCase().includes(search.toLowerCase()));
+		return sorted.filter((tx) =>
+			`${tx.title} ${tx.subcategory ?? ''}`.toLowerCase().includes(search.toLowerCase())
+		);
 	}, [sorted, search]);
 
 	const grouped = useMemo(() => {
@@ -144,7 +146,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 																		backgroundColor: `${categoryColor}15`,
 																	}}
 																>
-																	{getCategoryLabel(tx.category)}
+																	{getCategoryPathLabel(tx.category, tx.subcategory)}
 																</Badge>
 																<span className="text-xs text-muted-foreground font-medium">
 																	{tx.type}

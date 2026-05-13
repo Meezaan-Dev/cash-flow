@@ -18,7 +18,7 @@ type Props = {
 	transactions: RecurringTransaction[];
 	onEdit: (transaction: RecurringTransaction) => void;
 	onDelete: (id: string) => void;
-	getCategoryLabel: (categoryId: string) => string;
+	getCategoryPathLabel: (categoryId: string, subcategoryId?: string) => string;
 };
 
 type DayBucketItem = {
@@ -34,7 +34,7 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 	transactions,
 	onEdit,
 	onDelete,
-	getCategoryLabel,
+	getCategoryPathLabel,
 }) => {
 	const [visibleMonth, setVisibleMonth] = useState(() => {
 		const now = new Date();
@@ -280,7 +280,10 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 									<div className="min-w-0">
 										<p className="truncate text-sm font-medium">{transaction.title}</p>
 										<p className="text-xs text-muted-foreground">
-											{getCategoryLabel(transaction.category)} •{' '}
+											{getCategoryPathLabel(
+												transaction.category,
+												transaction.subcategory
+											)} •{' '}
 											{getRecurringFrequencyLabel(transaction.frequency)}
 										</p>
 										<p className="mt-1 text-sm font-medium">

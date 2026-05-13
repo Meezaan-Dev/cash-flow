@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { FiSettings, FiDatabase, FiFilter, FiTag, FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import {
+	FiChevronDown,
+	FiChevronRight,
+	FiDatabase,
+	FiEdit2,
+	FiFilter,
+	FiPlus,
+	FiSettings,
+	FiTag,
+	FiTrash2,
+} from 'react-icons/fi';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../hooks/useAuth';
 import { signOut } from 'firebase/auth';
@@ -44,6 +54,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 		addCategory,
 		renameCategory,
 		deleteCategory,
+		addSubcategory,
+		renameSubcategory,
+		deleteSubcategory,
 	} = useCategoriesContext();
 	const { theme, setTheme } = useTheme();
 	const { prefs, setFilterVisible } = useFilterPreferences();
@@ -55,8 +68,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 		initialTab ?? 'general'
 	);
 	const [newCategoryLabel, setNewCategoryLabel] = useState('');
+	const [newSubcategoryLabels, setNewSubcategoryLabels] = useState<Record<string, string>>({});
+	const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([]);
 	const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 	const [editingCategoryLabel, setEditingCategoryLabel] = useState('');
+	const [editingSubcategory, setEditingSubcategory] = useState<{
+		categoryId: string;
+		value: string;
+	} | null>(null);
+	const [editingSubcategoryLabel, setEditingSubcategoryLabel] = useState('');
 	const [categoryError, setCategoryError] = useState('');
 	const [categoryBusy, setCategoryBusy] = useState(false);
 
@@ -71,8 +91,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	useEffect(() => {
 		if (!open) {
 			setNewCategoryLabel('');
+			setNewSubcategoryLabels({});
+			setExpandedCategoryIds([]);
 			setEditingCategoryId(null);
 			setEditingCategoryLabel('');
+			setEditingSubcategory(null);
+			setEditingSubcategoryLabel('');
 			setCategoryError('');
 			setCategoryBusy(false);
 		}
@@ -121,6 +145,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 		}
 	};
 
+	const handleAddSubcategory = async (categoryId: string) => {
+		const label = newSubcategoryLabels[categoryId] ?? '';
+		setCategoryError('');
+		setCategoryBusy(true);
+		setExpandedCategoryIds((current) =>
+			current.includes(categoryId) ? current : [...current, categoryId]
+		);
+		try {
+			await addSubcategory(categoryId, label);
+			setNewSubcategoryLabels((current) => ({ ...current, [categoryId]: '' }));
+		} catch (error) {
+			setCategoryError(
+				error instanceof Error
+					? error.message
+					: 'Unable to add subcategory right now.'
+			);
+		} finally {
+			setCategoryBusy(false);
+		}
+	};
+
 	const handleStartRename = (id: string, label: string) => {
 		setEditingCategoryId(id);
 		setEditingCategoryLabel(label);
@@ -146,6 +191,50 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 		}
 	};
 
+	const handleStartRenameSubcategory = (
+		categoryId: string,
+		value: string,
+		label: string
+	) => {
+		setEditingSubcategory({ categoryId, value });
+		setEditingSubcategoryLabel(label);
+		setExpandedCategoryIds((current) =>
+			current.includes(categoryId) ? current : [...current, categoryId]
+		);
+		setCategoryError('');
+	};
+
+	const toggleCategoryExpanded = (categoryId: string) => {
+		setExpandedCategoryIds((current) =>
+			current.includes(categoryId)
+				? current.filter((id) => id !== categoryId)
+				: [...current, categoryId]
+		);
+	};
+
+	const handleSaveRenameSubcategory = async () => {
+		if (!editingSubcategory) return;
+		setCategoryError('');
+		setCategoryBusy(true);
+		try {
+			await renameSubcategory(
+				editingSubcategory.categoryId,
+				editingSubcategory.value,
+				editingSubcategoryLabel
+			);
+			setEditingSubcategory(null);
+			setEditingSubcategoryLabel('');
+		} catch (error) {
+			setCategoryError(
+				error instanceof Error
+					? error.message
+					: 'Unable to rename subcategory right now.'
+			);
+		} finally {
+			setCategoryBusy(false);
+		}
+	};
+
 	const handleDeleteCategory = async (id: string) => {
 		setCategoryError('');
 		setCategoryBusy(true);
@@ -156,6 +245,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 				error instanceof Error
 					? error.message
 					: 'Unable to delete category right now.'
+			);
+		} finally {
+			setCategoryBusy(false);
+		}
+	};
+
+	const handleDeleteSubcategory = async (categoryId: string, value: string) => {
+		setCategoryError('');
+		setCategoryBusy(true);
+		try {
+			await deleteSubcategory(categoryId, value);
+		} catch (error) {
+			setCategoryError(
+				error instanceof Error
+					? error.message
+					: 'Unable to delete subcategory right now.'
 			);
 		} finally {
 			setCategoryBusy(false);
@@ -460,82 +565,250 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 											<div className="space-y-2">
 												{categories.map((category) => {
 													const isEditing = editingCategoryId === category.id;
+													const newSubcategoryLabel =
+														newSubcategoryLabels[category.id] ?? '';
+													const isExpanded = expandedCategoryIds.includes(category.id);
 
 													return (
 														<div
 															key={category.id}
-															className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+															className="rounded-lg border p-3"
 														>
-															{isEditing ? (
-																<Input
-																	value={editingCategoryLabel}
-																	onChange={(e) =>
-																		setEditingCategoryLabel(e.target.value)
-																	}
-																	className="flex-1"
-																/>
-															) : (
-																<div>
-																	<p className="font-medium">{category.label}</p>
-																	<p className="text-xs text-muted-foreground">
-																		{category.value}
-																	</p>
-																</div>
-															)}
+															<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+																<div className="flex min-w-0 flex-1 items-start gap-2">
+																	<Button
+																		type="button"
+																		size="icon"
+																		variant="ghost"
+																		onClick={() => toggleCategoryExpanded(category.id)}
+																		aria-label={
+																			isExpanded
+																				? `Hide ${category.label} subcategories`
+																				: `Show ${category.label} subcategories`
+																		}
+																		aria-expanded={isExpanded}
+																		className="h-8 w-8 shrink-0"
+																	>
+																		{isExpanded ? (
+																			<FiChevronDown className="h-4 w-4" />
+																		) : (
+																			<FiChevronRight className="h-4 w-4" />
+																		)}
+																	</Button>
 
-															<div className="flex items-center gap-2">
-																{isEditing ? (
-																	<>
-																		<Button
-																			type="button"
-																			size="sm"
-																			onClick={handleSaveRename}
-																			disabled={
-																				categoryBusy ||
-																				!editingCategoryLabel.trim()
+																	{isEditing ? (
+																		<Input
+																			value={editingCategoryLabel}
+																			onChange={(e) =>
+																				setEditingCategoryLabel(e.target.value)
 																			}
-																		>
-																			Save
-																		</Button>
-																		<Button
+																			className="flex-1"
+																		/>
+																	) : (
+																		<button
 																			type="button"
-																			size="sm"
-																			variant="outline"
-																			onClick={() => {
-																				setEditingCategoryId(null);
-																				setEditingCategoryLabel('');
-																				setCategoryError('');
-																			}}
+																			onClick={() => toggleCategoryExpanded(category.id)}
+																			className="min-w-0 flex-1 text-left"
 																		>
-																			Cancel
-																		</Button>
-																	</>
-																) : (
-																	<>
-																		<Button
-																			type="button"
-																			size="icon"
-																			variant="ghost"
-																			onClick={() =>
-																				handleStartRename(category.id, category.label)
-																			}
-																			aria-label={`Edit ${category.label}`}
-																		>
-																			<FiEdit2 className="h-4 w-4" />
-																		</Button>
-																		<Button
-																			type="button"
-																			size="icon"
-																			variant="ghost"
-																			onClick={() => handleDeleteCategory(category.id)}
-																			aria-label={`Delete ${category.label}`}
-																			className="text-destructive hover:text-destructive"
-																		>
-																			<FiTrash2 className="h-4 w-4" />
-																		</Button>
-																	</>
-																)}
+																			<p className="font-medium">{category.label}</p>
+																			<p className="text-xs text-muted-foreground">
+																				{category.value}
+																				{` • ${category.subcategories.length} ${
+																					category.subcategories.length === 1
+																						? 'subcategory'
+																						: 'subcategories'
+																				}`}
+																			</p>
+																		</button>
+																	)}
+																</div>
+
+																<div className="flex items-center gap-2">
+																	{isEditing ? (
+																		<>
+																			<Button
+																				type="button"
+																				size="sm"
+																				onClick={handleSaveRename}
+																				disabled={
+																					categoryBusy ||
+																					!editingCategoryLabel.trim()
+																				}
+																			>
+																				Save
+																			</Button>
+																			<Button
+																				type="button"
+																				size="sm"
+																				variant="outline"
+																				onClick={() => {
+																					setEditingCategoryId(null);
+																					setEditingCategoryLabel('');
+																					setCategoryError('');
+																				}}
+																			>
+																				Cancel
+																			</Button>
+																		</>
+																	) : (
+																		<>
+																			<Button
+																				type="button"
+																				size="icon"
+																				variant="ghost"
+																				onClick={() =>
+																					handleStartRename(category.id, category.label)
+																				}
+																				aria-label={`Edit ${category.label}`}
+																			>
+																				<FiEdit2 className="h-4 w-4" />
+																			</Button>
+																			<Button
+																				type="button"
+																				size="icon"
+																				variant="ghost"
+																				onClick={() => handleDeleteCategory(category.id)}
+																				aria-label={`Delete ${category.label}`}
+																				className="text-destructive hover:text-destructive"
+																			>
+																				<FiTrash2 className="h-4 w-4" />
+																			</Button>
+																		</>
+																	)}
+																</div>
 															</div>
+
+															{isExpanded && (
+															<div className="mt-3 space-y-2 border-t pt-3">
+																<p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+																	Subcategories
+																</p>
+																{category.subcategories.length > 0 ? (
+																	<div className="space-y-2">
+																		{category.subcategories.map((subcategory) => {
+																			const isEditingSubcategory =
+																				editingSubcategory?.categoryId === category.id &&
+																				editingSubcategory.value === subcategory.value;
+
+																			return (
+																				<div
+																					key={subcategory.value}
+																					className="flex flex-col gap-2 rounded-md bg-muted/40 p-2 sm:flex-row sm:items-center sm:justify-between"
+																				>
+																					{isEditingSubcategory ? (
+																						<Input
+																							value={editingSubcategoryLabel}
+																							onChange={(e) =>
+																								setEditingSubcategoryLabel(e.target.value)
+																							}
+																							className="flex-1"
+																						/>
+																					) : (
+																						<div>
+																							<p className="text-sm font-medium">
+																								{subcategory.label}
+																							</p>
+																							<p className="text-xs text-muted-foreground">
+																								{subcategory.value}
+																							</p>
+																						</div>
+																					)}
+																					<div className="flex items-center gap-2">
+																						{isEditingSubcategory ? (
+																							<>
+																								<Button
+																									type="button"
+																									size="sm"
+																									onClick={handleSaveRenameSubcategory}
+																									disabled={
+																										categoryBusy ||
+																										!editingSubcategoryLabel.trim()
+																									}
+																								>
+																									Save
+																								</Button>
+																								<Button
+																									type="button"
+																									size="sm"
+																									variant="outline"
+																									onClick={() => {
+																										setEditingSubcategory(null);
+																										setEditingSubcategoryLabel('');
+																										setCategoryError('');
+																									}}
+																								>
+																									Cancel
+																								</Button>
+																							</>
+																						) : (
+																							<>
+																								<Button
+																									type="button"
+																									size="icon"
+																									variant="ghost"
+																									onClick={() =>
+																										handleStartRenameSubcategory(
+																											category.id,
+																											subcategory.value,
+																											subcategory.label
+																										)
+																									}
+																									aria-label={`Edit ${subcategory.label}`}
+																								>
+																									<FiEdit2 className="h-4 w-4" />
+																								</Button>
+																								<Button
+																									type="button"
+																									size="icon"
+																									variant="ghost"
+																									onClick={() =>
+																										handleDeleteSubcategory(
+																											category.id,
+																											subcategory.value
+																										)
+																									}
+																									aria-label={`Delete ${subcategory.label}`}
+																									className="text-destructive hover:text-destructive"
+																								>
+																									<FiTrash2 className="h-4 w-4" />
+																								</Button>
+																							</>
+																						)}
+																					</div>
+																				</div>
+																			);
+																		})}
+																	</div>
+																) : (
+																	<p className="text-sm text-muted-foreground">
+																		No subcategories yet.
+																	</p>
+																)}
+
+																<div className="flex flex-col gap-2 sm:flex-row">
+																	<Input
+																		value={newSubcategoryLabel}
+																		onChange={(e) =>
+																			setNewSubcategoryLabels((current) => ({
+																				...current,
+																				[category.id]: e.target.value,
+																			}))
+																		}
+																		placeholder={`Add subcategory under ${category.label}`}
+																		className="flex-1"
+																	/>
+																	<Button
+																		type="button"
+																		variant="outline"
+																		onClick={() => handleAddSubcategory(category.id)}
+																		disabled={categoryBusy || !newSubcategoryLabel.trim()}
+																	>
+																		<FiPlus className="mr-2 h-4 w-4" />
+																		Add
+																	</Button>
+																</div>
+															</div>
+															)}
 														</div>
 													);
 												})}

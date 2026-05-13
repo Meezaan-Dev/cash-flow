@@ -15,7 +15,7 @@ async function verifyToken(authHeader) {
         const decodedToken = await admin.auth().verifyIdToken(token);
         return decodedToken;
     }
-    catch (error) {
+    catch (_a) {
         throw new Error('Invalid or expired token');
     }
 }
@@ -66,7 +66,7 @@ function pluralize(count, singular, plural = `${singular}s`) {
     return count === 1 ? singular : plural;
 }
 function getTransactionSearchText(transaction) {
-    return normalizeText(`${transaction.title} ${transaction.description || ''} ${transaction.category}`);
+    return normalizeText(`${transaction.title} ${transaction.description || ''} ${transaction.category} ${transaction.subcategory || ''}`);
 }
 function extractMerchantQuery(question) {
     const patterns = [
@@ -128,7 +128,10 @@ function sortTransactionsByNewest(transactions) {
 }
 function formatTransactionLabel(transaction) {
     const dateLabel = formatTransactionDate(transaction);
-    const parts = [transaction.title || transaction.category || 'Transaction'];
+    const categoryLabel = transaction.subcategory
+        ? `${transaction.category} / ${transaction.subcategory}`
+        : transaction.category;
+    const parts = [transaction.title || categoryLabel || 'Transaction'];
     if (dateLabel) {
         parts.push(dateLabel);
     }
@@ -215,6 +218,7 @@ exports.getUserTransactions = functions.https.onRequest(async (req, res) => {
                 amount: data.amount,
                 title: data.title,
                 category: data.category,
+                subcategory: data.subcategory,
                 type: data.type,
                 description: data.description,
                 date: (_d = (_b = (_a = parseDate(data.date)) === null || _a === void 0 ? void 0 : _a.toISOString()) !== null && _b !== void 0 ? _b : (_c = parseDate(data.createdAt)) === null || _c === void 0 ? void 0 : _c.toISOString()) !== null && _d !== void 0 ? _d : '',
@@ -326,6 +330,7 @@ exports.askAI = functions.https.onRequest(async (req, res) => {
                 title: String(data.title || data.description || 'Untitled transaction'),
                 description: data.description ? String(data.description) : '',
                 category: String(data.category || 'Uncategorized'),
+                subcategory: data.subcategory ? String(data.subcategory) : undefined,
                 type: data.type === 'income' || data.type === 'transfer'
                     ? data.type
                     : 'expense',
@@ -358,7 +363,8 @@ exports.askAI = functions.https.onRequest(async (req, res) => {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         const inThisMonth = (transaction) => {
-            const parsedDate = parseDate(transaction.date);
+            var _a;
+            const parsedDate = (_a = parseDate(transaction.date)) !== null && _a !== void 0 ? _a : parseDate(transaction.createdAt);
             if (!parsedDate) {
                 return false;
             }

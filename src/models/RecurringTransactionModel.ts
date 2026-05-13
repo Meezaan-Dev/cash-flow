@@ -6,6 +6,7 @@ export interface RecurringTransaction {
 	amount: number;
 	type?: 'income' | 'expense';
 	category: string;
+	subcategory?: string;
 	description?: string;
 	frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
 	expectedDate?: number;
@@ -20,6 +21,7 @@ type RecurringDoc = {
 	amount?: number;
 	type?: string;
 	category?: string;
+	subcategory?: string;
 	description?: string;
 	frequency?: string;
 	expectedDate?: unknown;
@@ -50,6 +52,7 @@ export const normalizeRecurringTransaction = (doc: RecurringDoc): RecurringTrans
 		amount: doc.amount ?? 0,
 		type: (doc.type as RecurringTransaction['type']) ?? 'expense',
 		category: doc.category ?? '',
+		subcategory: doc.subcategory || undefined,
 		description: doc.description,
 		frequency: doc.frequency as RecurringTransaction['frequency'],
 		expectedDate: normalizeExpectedDate(doc.expectedDate),
