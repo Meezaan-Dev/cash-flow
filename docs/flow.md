@@ -89,7 +89,7 @@ Legacy top-level `transactions` and `recurringExpenses` collections exist as **r
 |---|---|---|
 | `useAccounts` | `users/{uid}/accounts` | `onSnapshot`, `addAccount`, `updateAccount`, `deleteAccount`, `updateBalance(delta)` |
 | `useBudgets` | `users/{uid}/budgets` | `onSnapshot`, `addBudget`, `updateBudget`, `deleteBudget` |
-| `useTransactions` | `users/{uid}/transactions` | `onSnapshot`, `addTransaction` (batch tx + balance), `addTransfer` (batch 2 tx + 2 balances), `deleteTransaction` (batch delete + reverse balance) |
+| `useTransactions` | `users/{uid}/transactions` | `onSnapshot`, `addTransaction` (batch tx + balance; requires account), `addTransfer` (batch 2 tx + 2 balances; requires both accounts), `deleteTransaction` (batch delete + reverse balance; skips missing accounts) |
 | `useRecurringTransactions` | `users/{uid}/recurringTransactions` | `onSnapshot`, `addRecurringTransaction`, `updateRecurringTransaction`, `deleteRecurringTransaction` |
 
 **Controller Layer** (`src/controllers/`)
@@ -229,7 +229,7 @@ MVC Architecture:
                             --> [RecurringTransactions]--> [useRecurringTransactions]--> Firestore recurringTransactions
 
 All hooks use onSnapshot() for real-time updates.
-All writes to transactions also update account.balance via writeBatch + increment().
+All writes to transactions also update account.balance via writeBatch + increment() when the account exists.
 ```
 
 ---
@@ -245,4 +245,4 @@ All writes to transactions also update account.balance via writeBatch + incremen
 | Delete expense | `account.balance += amount` (reversed) |
 | Reconcile | creates income or expense adjustment transaction |
 
-All balance updates use `increment()` inside a `writeBatch` — no read-modify-write race conditions.
+All balance updates use `increment()` inside a `writeBatch` — no read-modify-write race conditions. If an account document is missing, balance updates are skipped for deletes/edits and creation throws an error.
