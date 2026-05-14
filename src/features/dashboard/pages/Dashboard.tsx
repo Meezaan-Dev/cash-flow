@@ -253,7 +253,7 @@ const Dashboard: React.FC = () => {
 			case 'recurring':
 				return <RecurringTransactionsView onOpenSettings={() => handleOpenSettings('filters')} />;
 			case 'reports':
-				return <ReportsView />;
+				return <ReportsView onOpenSettings={() => handleOpenSettings('filters')} />;
 			default:
 				return (
 					<div className="flex flex-1 items-center justify-center px-4 py-8 md:px-6">
@@ -440,6 +440,7 @@ const Dashboard: React.FC = () => {
 				onViewChange={handleViewChange}
 				onOpenLogin={() => setAuthModalOpen(true)}
 				onOpenSettings={() => handleOpenSettings('general')}
+				onOpenHistory={handleOpenHistory}
 			/>
 
 			<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

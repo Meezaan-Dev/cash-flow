@@ -1,4 +1,5 @@
 import {
+	buildCategoryPathOptions,
 	getCategoryPathLabel,
 	getSubcategoryLabel,
 	normalizeCategoryDefinition,
@@ -48,5 +49,43 @@ describe('category utilities', () => {
 				{ value: 'groceries', label: 'Duplicate Groceries' },
 			])
 		).toEqual([{ value: 'groceries', label: 'Duplicate Groceries' }]);
+	});
+
+	it('builds category and subcategory path options for quick editing', () => {
+		expect(
+			buildCategoryPathOptions([
+				{
+					value: 'food',
+					label: 'Food',
+					subcategories: [
+						{ value: 'groceries', label: 'Groceries' },
+						{ value: 'takeaways_eating_out', label: 'Takeaways / Eating Out' },
+					],
+				},
+				{
+					value: 'transfer',
+					label: 'Transfer',
+					subcategories: [],
+				},
+			])
+		).toEqual([
+			{
+				value: 'food',
+				category: 'food',
+				label: 'Food',
+			},
+			{
+				value: 'food/groceries',
+				category: 'food',
+				subcategory: 'groceries',
+				label: 'Food / Groceries',
+			},
+			{
+				value: 'food/takeaways_eating_out',
+				category: 'food',
+				subcategory: 'takeaways_eating_out',
+				label: 'Food / Takeaways / Eating Out',
+			},
+		]);
 	});
 });

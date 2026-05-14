@@ -2,6 +2,13 @@ import { Category, CategoryDefinition } from '@/types';
 import { DEFAULT_CATEGORY_TEMPLATES, TRANSFER_CATEGORY_VALUE } from '@/features/categories/constants/categories';
 import { parseDbDateOrNull } from '@/utils/date';
 
+export interface CategoryPathOption {
+	value: string;
+	category: string;
+	subcategory?: string;
+	label: string;
+}
+
 export const slugifyCategoryLabel = (label: string): string =>
 	label
 		.trim()
@@ -140,6 +147,28 @@ export const getCategoryPathLabel = (
 
 	return subcategoryLabel ? `${categoryLabel} / ${subcategoryLabel}` : categoryLabel;
 };
+
+export const buildCategoryPathOptions = (
+	categories: Pick<CategoryDefinition, 'value' | 'label' | 'subcategories'>[]
+): CategoryPathOption[] =>
+	categories
+		.filter((category) => category.value !== TRANSFER_CATEGORY_VALUE)
+		.flatMap((category) => {
+			const categoryOption: CategoryPathOption = {
+				value: category.value,
+				category: category.value,
+				label: category.label,
+			};
+
+			const subcategoryOptions = category.subcategories.map((subcategory) => ({
+				value: `${category.value}/${subcategory.value}`,
+				category: category.value,
+				subcategory: subcategory.value,
+				label: `${category.label} / ${subcategory.label}`,
+			}));
+
+			return [categoryOption, ...subcategoryOptions];
+		});
 
 export const getDefaultCategories = (): Array<Pick<CategoryDefinition, 'value' | 'label' | 'subcategories'>> =>
 	DEFAULT_CATEGORY_TEMPLATES.map((category) => ({

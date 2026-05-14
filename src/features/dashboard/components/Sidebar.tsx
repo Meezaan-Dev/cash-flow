@@ -35,18 +35,20 @@ interface SidebarProps {
 	toggleSidebar: () => void;
 	onOpenSettings?: () => void;
 	onOpenLogin?: () => void;
+	onOpenHistory?: () => void;
 	onViewChange: (view: ViewType) => void;
 	activeView: ViewType;
 }
 
 interface NavItem {
-	id: ViewType;
+	id: ViewType | 'history';
 	label: string;
 	icon: React.ElementType;
 }
 
 const NAV_ITEMS: NavItem[] = [
 	{ id: 'dashboard', label: 'Dashboard', icon: FiGrid },
+	{ id: 'history', label: 'All Transactions', icon: FiList },
 	{ id: 'accounts', label: 'Accounts', icon: FiList },
 	{ id: 'budgets', label: 'Budgets', icon: FiTarget },
 	{ id: 'recurring', label: 'Recurring', icon: FiRefreshCw },
@@ -62,6 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 	toggleSidebar,
 	onOpenSettings,
 	onOpenLogin,
+	onOpenHistory,
 	onViewChange,
 	activeView,
 }) => {
@@ -99,11 +102,15 @@ const Sidebar: React.FC<SidebarProps> = ({
 	}, [onCreate, toggleSidebar]);
 
 	const handleViewClick = useCallback(
-		(view: ViewType) => {
-			onViewChange(view);
+		(view: NavItem['id']) => {
+			if (view === 'history') {
+				onOpenHistory?.();
+			} else {
+				onViewChange(view);
+			}
 			if (window.innerWidth < 768) toggleSidebar();
 		},
-		[onViewChange, toggleSidebar]
+		[onOpenHistory, onViewChange, toggleSidebar]
 	);
 
 	const handleTransactionClick = useCallback(
@@ -236,7 +243,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 								</p>
 								<div className="space-y-1">
 									{NAV_ITEMS.map(({ id, label, icon: Icon }) => {
-										const isActive = activeView === id;
+										const isActive =
+											id === 'history'
+												? activeView === 'table' || activeView === 'list'
+												: activeView === id;
 										return (
 											<button
 												key={id}
