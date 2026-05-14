@@ -1,6 +1,10 @@
 import React from 'react';
 import { FiArrowDownRight, FiArrowUpRight, FiCreditCard, FiPlus } from 'react-icons/fi';
-import { ACCOUNT_TYPE_LABELS } from '@/features/accounts/models/AccountModel';
+import {
+	ACCOUNT_TYPE_LABELS,
+	calculateNetWorth,
+	getAccountLiability,
+} from '@/features/accounts/models/AccountModel';
 import { Account } from '@/types';
 import { formatCurrency } from '@/utils/formatCurrency';
 
@@ -16,10 +20,7 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 	const hasOverflow = accounts.length > 4;
 	const displayAccounts = accounts.slice(0, hasOverflow ? 3 : 4);
 	const remainingCount = Math.max(0, accounts.length - displayAccounts.length);
-	const totalBalance = accounts.reduce((sum, account) => {
-		if (account.type === 'credit') return sum - Math.abs(account.balance);
-		return sum + account.balance;
-	}, 0);
+	const totalBalance = calculateNetWorth(accounts).netWorth;
 
 	return (
 		<section
@@ -46,12 +47,18 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 				</button>
 			</div>
 
-			<div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
+			<div
+				className="grid gap-px bg-border"
+				style={{
+					gridTemplateColumns:
+						'repeat(auto-fit, minmax(min(100%, 18rem), 1fr))',
+				}}
+			>
 				{displayAccounts.length === 0 ? (
 					<button
 						type="button"
 						onClick={onOpenAccounts}
-						className="flex min-h-16 items-center gap-3 bg-card p-3 text-left transition-colors hover:bg-muted/60 sm:col-span-2 xl:col-span-4"
+						className="flex min-h-16 items-center gap-3 bg-card p-3 text-left transition-colors hover:bg-muted/60"
 					>
 						<span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
 							<FiPlus className="h-4 w-4" />
@@ -66,8 +73,7 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 				) : (
 					<>
 						{displayAccounts.map((account) => {
-							const isNegative =
-								account.balance < 0 || account.type === 'credit';
+							const isNegative = getAccountLiability(account) > 0;
 							const BalanceIcon = isNegative ? FiArrowDownRight : FiArrowUpRight;
 							const balanceTone = isNegative
 								? 'text-red-600 dark:text-red-400'

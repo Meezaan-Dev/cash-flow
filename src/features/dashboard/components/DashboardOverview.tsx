@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FiEye, FiSearch, FiSettings } from 'react-icons/fi';
 import AIChatbot from '@/features/ai/components/AIChatbot';
 import { useAccountsContext } from '@/features/accounts/context/AccountsContext';
@@ -12,6 +12,11 @@ import MonthlyDigest from '@/features/dashboard/components/MonthlyDigest';
 import QuickTransactionPanel from '@/features/dashboard/components/QuickTransactionPanel';
 import RecentTransactionsPanel from '@/features/dashboard/components/RecentTransactionsPanel';
 import { calculateDashboardSummary } from '@/features/dashboard/utils/dashboardSummary';
+import {
+	DashboardDigestPeriod,
+	loadDashboardDigestPeriod,
+	saveDashboardDigestPeriod,
+} from '@/features/dashboard/utils/digestPeriod';
 
 interface DashboardOverviewProps {
 	onCreateAccount: () => void;
@@ -31,9 +36,16 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 	const { transactions } = useTransactionsContext();
 	const { accounts } = useAccountsContext();
 	const { getCategoryPathLabel } = useCategoriesContext();
+	const [digestPeriod, setDigestPeriod] = useState<DashboardDigestPeriod>(() =>
+		loadDashboardDigestPeriod()
+	);
+	const handleDigestPeriodChange = useCallback((nextPeriod: DashboardDigestPeriod) => {
+		setDigestPeriod(nextPeriod);
+		saveDashboardDigestPeriod(nextPeriod);
+	}, []);
 	const summary = useMemo(
-		() => calculateDashboardSummary(transactions, accounts),
-		[accounts, transactions]
+		() => calculateDashboardSummary(transactions, accounts, new Date(), digestPeriod),
+		[accounts, digestPeriod, transactions]
 	);
 	const netWorthTone =
 		summary.saved >= 0
@@ -50,7 +62,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 							<span>Net worth {formatCurrency(summary.netWorth)}</span>
 							<span className={netWorthTone}>
 								{summary.saved >= 0 ? '+' : ''}
-								{formatCurrency(summary.saved)} this month
+								{formatCurrency(summary.saved)} this period
 							</span>
 						</div>
 					</div>
@@ -86,7 +98,11 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 				</header>
 
 				<div className="flex min-h-0 flex-1 flex-col gap-4">
-					<MonthlyDigest summary={summary} />
+					<MonthlyDigest
+						summary={summary}
+						period={digestPeriod}
+						onPeriodChange={handleDigestPeriodChange}
+					/>
 
 					<div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.95fr)_minmax(320px,0.9fr)]">
 						<RecentTransactionsPanel

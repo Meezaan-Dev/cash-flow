@@ -1,3 +1,8 @@
+import { calculateNetWorth } from '@/features/accounts/models/AccountModel';
+import {
+	DashboardDigestPeriod,
+	getDashboardDigestDateRange,
+} from '@/features/dashboard/utils/digestPeriod';
 import { Account, Transaction } from '@/types';
 import { parseDbDateOrNull } from '@/utils/date';
 
@@ -8,20 +13,11 @@ export interface DashboardSummary {
 	transactionCount: number;
 	netWorth: number;
 	monthLabel: string;
+	periodLabel: string;
+	startDate: string;
+	endDate: string;
 	progressPercent: number;
 }
-
-const formatDateInput = (date: Date): string => {
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, '0');
-	const day = String(date.getDate()).padStart(2, '0');
-	return `${year}-${month}-${day}`;
-};
-
-const getCurrentMonthDateRange = (today = new Date()) => ({
-	startDate: formatDateInput(new Date(today.getFullYear(), today.getMonth(), 1)),
-	endDate: formatDateInput(today),
-});
 
 const getTransactionDate = (transaction: Transaction): Date | null =>
 	parseDbDateOrNull(transaction.date) ?? parseDbDateOrNull(transaction.createdAt);
@@ -34,12 +30,31 @@ const isInDateRange = (date: Date, startDate: string, endDate: string): boolean 
 	return date >= start && date <= end;
 };
 
+const formatPeriodLabel = (startDate: string, endDate: string): string => {
+	const start = new Date(startDate);
+	const end = new Date(endDate);
+	const includeStartYear = start.getFullYear() !== end.getFullYear();
+	const startLabel = start.toLocaleDateString('en-ZA', {
+		day: 'numeric',
+		month: 'short',
+		...(includeStartYear ? { year: 'numeric' as const } : {}),
+	});
+	const endLabel = end.toLocaleDateString('en-ZA', {
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric',
+	});
+
+	return `${startLabel} - ${endLabel}`;
+};
+
 export const calculateDashboardSummary = (
 	transactions: Transaction[],
 	accounts: Account[],
-	today = new Date()
+	today = new Date(),
+	digestPeriod?: DashboardDigestPeriod
 ): DashboardSummary => {
-	const { startDate, endDate } = getCurrentMonthDateRange(today);
+	const { startDate, endDate } = getDashboardDigestDateRange(digestPeriod, today);
 	const monthTransactions = transactions.filter((transaction) => {
 		const date = getTransactionDate(transaction);
 		return date ? isInDateRange(date, startDate, endDate) : false;
@@ -51,10 +66,7 @@ export const calculateDashboardSummary = (
 	const expense = monthTransactions
 		.filter((transaction) => transaction.type === 'expense')
 		.reduce((sum, transaction) => sum + transaction.amount, 0);
-	const netWorth = accounts.reduce((sum, account) => {
-		if (account.type === 'credit') return sum - Math.abs(account.balance);
-		return sum + account.balance;
-	}, 0);
+	const netWorth = calculateNetWorth(accounts).netWorth;
 	const progressPercent =
 		income > 0 ? Math.min(100, Math.max(0, ((income - expense) / income) * 100)) : 0;
 
@@ -68,6 +80,9 @@ export const calculateDashboardSummary = (
 			month: 'long',
 			year: 'numeric',
 		}),
+		periodLabel: formatPeriodLabel(startDate, endDate),
+		startDate,
+		endDate,
 		progressPercent,
 	};
 };

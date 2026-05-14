@@ -87,4 +87,61 @@ describe('calculateDashboardSummary', () => {
 		expect(summary.netWorth).toBe(0);
 		expect(summary.progressPercent).toBe(0);
 	});
+
+	it('calculates net worth from signed balances for credit accounts', () => {
+		const summary = calculateDashboardSummary(
+			[],
+			[
+				{ id: 'cheque', name: 'Cheque', type: 'debit', balance: 1000 },
+				{ id: 'credit-positive', name: 'Credit', type: 'credit', balance: 3500 },
+				{ id: 'credit-negative', name: 'Overdrawn', type: 'credit', balance: -100 },
+			],
+			new Date('2026-05-14T12:00:00')
+		);
+
+		expect(summary.netWorth).toBe(4400);
+	});
+
+	it('summarizes transactions inside a custom digest period', () => {
+		const summary = calculateDashboardSummary(
+			[
+				{
+					id: 'before-period',
+					accountId: 'cheque',
+					title: 'Before period',
+					amount: 100,
+					type: 'expense',
+					category: 'food',
+					date: new Date('2026-04-24T10:00:00'),
+				},
+				{
+					id: 'in-period',
+					accountId: 'cheque',
+					title: 'In period',
+					amount: 200,
+					type: 'expense',
+					category: 'food',
+					date: new Date('2026-04-25T10:00:00'),
+				},
+				{
+					id: 'income',
+					accountId: 'cheque',
+					title: 'Salary',
+					amount: 1000,
+					type: 'income',
+					category: 'personal',
+					date: new Date('2026-05-25T10:00:00'),
+				},
+			],
+			[],
+			new Date('2026-05-14T12:00:00'),
+			{ mode: 'customCycle', startDay: 25, endDay: 25 }
+		);
+
+		expect(summary.startDate).toBe('2026-04-25');
+		expect(summary.endDate).toBe('2026-05-25');
+		expect(summary.income).toBe(1000);
+		expect(summary.expense).toBe(200);
+		expect(summary.transactionCount).toBe(2);
+	});
 });

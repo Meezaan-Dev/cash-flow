@@ -68,6 +68,26 @@ describe('AccountBalanceStrip', () => {
 		expect(onOpenAccounts).toHaveBeenCalledTimes(1);
 	});
 
+	it('does not mark a positive credit balance as owing', () => {
+		render(
+			<AccountBalanceStrip
+				accounts={[
+					{
+						id: 'credit-positive',
+						name: 'Credit Card',
+						type: 'credit',
+						balance: 3500,
+					},
+				]}
+				onOpenAccounts={jest.fn()}
+			/>
+		);
+
+		expect(screen.getByText('Available')).toBeInTheDocument();
+		expect(screen.queryByText('Owing')).not.toBeInTheDocument();
+		expect(screen.getByText(/1 linked - net/i)).toHaveTextContent(/net R/);
+	});
+
 	it('renders an empty state that opens account creation', async () => {
 		const user = userEvent.setup();
 		const onOpenAccounts = jest.fn();
