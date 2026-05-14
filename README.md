@@ -4,15 +4,15 @@
 
 ## Start Here
 
-If you are returning to the project after time away, start with [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md). It summarizes the core MVP, supporting features, architecture boundaries, and important rules.
+If you are returning to the project after time away, start with [PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md). It summarizes the core MVP, supporting features, architecture boundaries, and important rules.
 
 Use these docs as the main map:
 
-- [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) — quick re-entry guide and MVP boundaries.
-- [flow.md](flow.md) — data structures, Firestore paths, and app data flow.
-- [TESTING.md](TESTING.md) — automated coverage and manual regression checklist.
-- [DEPLOYMENT.md](DEPLOYMENT.md) — deployment notes.
-- [CODING_STANDARDS.md](CODING_STANDARDS.md) — engineering standards backlog and acceptance checks.
+- [PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md) — quick re-entry guide and MVP boundaries.
+- [flow.md](docs/flow.md) — data structures, Firestore paths, and app data flow.
+- [TESTING.md](docs/TESTING.md) — automated coverage and manual regression checklist.
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) — deployment notes.
+- [CODING_STANDARDS.md](docs/CODING_STANDARDS.md) — engineering standards backlog and acceptance checks.
 
 ## Core MVP
 
@@ -48,7 +48,7 @@ Supporting features:
 - **Recurring Transactions:** Create income or expense recurring templates accessible from the dedicated "Recurring" sidebar view, with filtering by frequency, category, and type, and Quick Fill support in the transaction form.
 - **AI Assistant:** Ask natural-language questions about spending, categories, merchants, and account trends from your own transaction data.
 - **Import/Export:** Import transactions from CSV/JSON with validation and deduping; export all data as CSV/JSON.
-- **MVC Architecture:** Clean separation of concerns — models, hooks, controllers, contexts, views.
+- **Feature-Based Architecture:** Code is grouped by domain (`src/features/*`) so related pages, views, hooks, models, and context live together.
 - **Theme Support:** Dark and light mode throughout.
 - **Cloud Sync:** All data stored under `users/{userId}/` subcollections in Firestore.
 
@@ -102,21 +102,23 @@ firebase deploy --only firestore:rules
 
 ```
 src/
-├── pages/           # Route-level screens (Dashboard, Home, AccountDetail)
-├── views/
-│   ├── Accounts/    # AccountsList, AccountForm, TransferForm, ReconcileForm
-│   ├── Budgets/     # BudgetsList, BudgetForm
-│   ├── RecurringTransactions/ # RecurringTransactionsView, RecurringTransactionsList, RecurringTransactionForm
-│   ├── Reports/     # ReportsView (4 chart sections)
-│   └── Transactions/# TransactionForm, TransactionsTable, TransactionsList
-├── components/app/  # Reusable app components (Sidebar, SettingsModal, ui primitives)
-├── context/         # Global state — Accounts, Budgets, Transactions, Theme
-├── hooks/           # Data layer — useAccounts, useBudgets, useTransactions, useRecurringTransactions, useAuth
-├── controllers/     # Business logic — AccountsController, BudgetsController, TransactionsController, RecurringTransactionsController, ReportsController
-├── models/          # Domain models, normalization — Account, Budget, Transaction, RecurringTransaction
-├── services/        # Firebase init
-├── utils/           # Pure utilities (date, formatting, import/export, dateRangeFilter)
-└── types/           # Shared TypeScript interfaces
+├── features/
+│   ├── accounts/          # Account pages, views, model, controller, hook, context
+│   ├── auth/              # Auth modal, route guard, auth hook
+│   ├── budgets/           # Budget views, model, controller, hook, context
+│   ├── categories/        # Category constants, utils, controller, hook, context
+│   ├── dashboard/         # Dashboard page plus sidebar/settings shell components
+│   ├── filters/           # Date range filter component + filter prefs context/utils
+│   ├── marketing/         # Home page and website sections
+│   ├── recurring/         # Recurring views, model, controller, hook
+│   ├── reports/           # Reports view/controller and chart component
+│   ├── theme/             # Theme context + dropdown/hook
+│   └── transactions/      # Transaction views, model, controller, hook, import/export
+├── components/app/ui/     # Shared UI primitives (button, dialog, input, etc.)
+├── services/              # Firebase init + API client
+├── utils/                 # Shared generic utilities (date, currency, test utils)
+├── themes/                # Theme token objects
+└── types/                 # Shared TypeScript interfaces
 ```
 
 ## Architecture & Data Flow
@@ -132,13 +134,11 @@ All data is stored under user-scoped subcollections:
 | `users/{userId}/budgets/{id}` | Monthly spending budgets |
 | `users/{userId}/recurringTransactions/{id}` | Recurring transaction templates (income or expense) |
 
-### MVC Layers
+### Feature Modules
 
-- **Models** — data interfaces, Firestore normalization, pure utility functions (`src/models/`)
-- **Hooks** — Firestore read/write with `onSnapshot` real-time listeners (`src/hooks/`)
-- **Controllers** — business logic wrapping hooks, exposed to UI via context (`src/controllers/`)
-- **Contexts** — React Context providers: `AccountsContext`, `BudgetsContext`, `TransactionsContext` (`src/context/`)
-- **Views** — feature UI components consuming contexts (`src/views/`, `src/pages/`)
+- **Feature modules** — each domain in `src/features/*` owns its pages, views, hooks, models, controllers, and context.
+- **Shared UI primitives** — reusable UI building blocks live in `src/components/app/ui/`.
+- **Cross-feature utilities and types** — common helpers remain in `src/utils/`, `src/themes/`, and `src/types/`.
 
 ### Account Balance Integrity
 

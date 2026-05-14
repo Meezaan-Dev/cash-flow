@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 import { getIdToken } from 'firebase/auth';
-import { AskAIRequest, AskAIResponse } from '../types';
+import { AskAIRequest, AskAIResponse } from '@/types';
 
 // API response interface
 export interface ApiResponse<T> {

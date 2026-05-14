@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import React from 'react';
 
 // Mock Firebase for authentication tests
-jest.mock('./services/firebase', () => ({
+jest.mock('@/services/firebase', () => ({
 	auth: {
 		currentUser: null,
 		onAuthStateChanged: jest.fn((callback: (user: unknown) => void) => {
