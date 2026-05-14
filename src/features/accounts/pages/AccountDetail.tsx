@@ -11,7 +11,11 @@ import {
 import { useAccountsContext } from '@/features/accounts/context/AccountsContext';
 import { useTransactionsContext } from '@/features/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/features/categories/context/CategoriesContext';
-import { ACCOUNT_TYPE_LABELS } from '@/features/accounts/models/AccountModel';
+import {
+	ACCOUNT_TYPE_LABELS,
+	getAccountAvailableBalance,
+	getAccountLiability,
+} from '@/features/accounts/models/AccountModel';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { parseDbDate } from '@/utils/date';
 import { Button } from '@/components/app/ui/button';
@@ -85,6 +89,9 @@ const AccountDetailPage: React.FC = () => {
 		);
 	}
 
+	const availableBalance = getAccountAvailableBalance(account);
+	const liability = getAccountLiability(account);
+
 	return (
 		<div className="flex flex-col min-h-screen bg-background">
 			<div className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -143,7 +150,7 @@ const AccountDetailPage: React.FC = () => {
 							</div>
 						</div>
 
-						<div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+						<div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 							<div>
 								<p className="text-xs text-muted-foreground mb-1">
 									Current Balance
@@ -158,6 +165,41 @@ const AccountDetailPage: React.FC = () => {
 									{formatCurrency(account.balance)}
 								</p>
 							</div>
+							<div>
+								<p className="text-xs text-muted-foreground mb-1">
+									{account.type === 'credit'
+										? 'Available Credit'
+										: 'Available Balance'}
+								</p>
+								<p
+									className={`text-xl font-semibold ${
+										availableBalance < 0
+											? 'text-red-600 dark:text-red-400'
+											: 'text-green-600 dark:text-green-400'
+									}`}
+								>
+									{formatCurrency(availableBalance)}
+								</p>
+								{account.type === 'credit' && (
+									<p className="mt-1 text-xs text-muted-foreground">
+										Limit {formatCurrency(account.creditLimit ?? 0)}
+									</p>
+								)}
+							</div>
+							{account.type === 'credit' && (
+								<div>
+									<p className="text-xs text-muted-foreground mb-1">Debt</p>
+									<p
+										className={`text-xl font-semibold ${
+											liability > 0
+												? 'text-red-600 dark:text-red-400'
+												: 'text-foreground'
+										}`}
+									>
+										{formatCurrency(liability)}
+									</p>
+								</div>
+							)}
 							<div>
 								<p className="text-xs text-muted-foreground mb-1">
 									Total Income

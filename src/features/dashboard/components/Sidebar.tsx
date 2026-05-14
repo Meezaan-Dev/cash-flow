@@ -73,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 	const { currentUser } = useAuth();
 	const { theme } = useTheme();
 	const { transactions } = useTransactionsContext();
-	const { accounts, calculateTotalBalance, loading: accountsLoading } = useAccountsContext();
+	const { accounts, calculateAvailableBalance, loading: accountsLoading } = useAccountsContext();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 	const [transactionsExpanded, setTransactionsExpanded] = useState(false);
@@ -86,8 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 	const logo = theme === 'dark' ? logoLight : logoDark;
 
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	const totalBalance = useMemo(() => calculateTotalBalance(), [calculateTotalBalance, accounts]);
+	const availableBalance = calculateAvailableBalance();
 
 	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
@@ -208,7 +207,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 								</h3>
 								{accounts.length > 0 && (
 									<p className="text-xs text-muted-foreground truncate">
-										{formatCurrency(totalBalance)}
+										{formatCurrency(availableBalance)}
 									</p>
 								)}
 							</div>

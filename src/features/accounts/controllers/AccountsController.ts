@@ -1,6 +1,9 @@
 import { useAccounts } from '@/features/accounts/hooks/useAccounts';
 import { Account, AccountType, NetWorthData } from '@/types';
-import { calculateNetWorth } from '@/features/accounts/models/AccountModel';
+import {
+	calculateAvailableBalance,
+	calculateNetWorth,
+} from '@/features/accounts/models/AccountModel';
 
 interface AccountsControllerReturn {
 	accounts: Account[];
@@ -12,6 +15,7 @@ interface AccountsControllerReturn {
 	getAccountById: (id: string) => Account | undefined;
 	getAccountsByType: (type: AccountType) => Account[];
 	calculateTotalBalance: () => number;
+	calculateAvailableBalance: () => number;
 	calculateNetWorth: () => NetWorthData;
 }
 
@@ -30,6 +34,7 @@ export const useAccountsController = (): AccountsControllerReturn => {
 		getAccountsByType: (type) => accounts.filter((a) => a.type === type),
 		calculateTotalBalance: () =>
 			accounts.reduce((sum, a) => sum + a.balance, 0),
+		calculateAvailableBalance: () => calculateAvailableBalance(accounts),
 		calculateNetWorth: () => calculateNetWorth(accounts),
 	};
 };

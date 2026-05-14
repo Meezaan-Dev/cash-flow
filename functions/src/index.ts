@@ -27,6 +27,7 @@ interface Account {
 	name: string;
 	type: string;
 	balance: number;
+	creditLimit?: number;
 	currency: string;
 }
 
@@ -464,6 +465,7 @@ export const askAI = functions.https.onRequest(async (req, res) => {
 				name: String(data.name || 'Unnamed account'),
 				type: String(data.type || 'account'),
 				balance: Number(data.balance || 0),
+				creditLimit: Number(data.creditLimit || 0),
 				currency: String(data.currency || 'ZAR'),
 			});
 		});

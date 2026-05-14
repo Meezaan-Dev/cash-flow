@@ -11,6 +11,7 @@ import {
 	SubcategoryReport,
 	Transaction,
 } from '@/types';
+import { calculateNetWorth } from '@/features/accounts/models/AccountModel';
 import { parseDbDateOrNull } from '@/utils/date';
 
 const CHART_COLORS = [
@@ -385,17 +386,5 @@ export const getMonthlyTrend = (
 };
 
 export const getNetWorth = (accounts: Account[]): NetWorthData => {
-	const assets = accounts
-		.filter((a) => a.type !== 'credit')
-		.reduce((sum, a) => sum + a.balance, 0);
-
-	const liabilities = accounts
-		.filter((a) => a.type === 'credit')
-		.reduce((sum, a) => sum + Math.abs(a.balance), 0);
-
-	return {
-		assets,
-		liabilities,
-		netWorth: assets - liabilities,
-	};
+	return calculateNetWorth(accounts);
 };

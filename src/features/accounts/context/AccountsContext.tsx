@@ -12,6 +12,7 @@ interface AccountsContextValue {
 	getAccountById: (id: string) => Account | undefined;
 	getAccountsByType: (type: AccountType) => Account[];
 	calculateTotalBalance: () => number;
+	calculateAvailableBalance: () => number;
 	calculateNetWorth: () => NetWorthData;
 }
 
