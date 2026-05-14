@@ -37,6 +37,16 @@ interface AddTransferData {
 	date?: Date;
 }
 
+const chunkArray = <T,>(items: T[], size: number): T[][] => {
+	const chunks: T[][] = [];
+
+	for (let index = 0; index < items.length; index += size) {
+		chunks.push(items.slice(index, index + size));
+	}
+
+	return chunks;
+};
+
 export const useTransactions = () => {
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -233,6 +243,40 @@ export const useTransactions = () => {
 		}
 	};
 
+	const bulkUpdateTransactionCategories = async (
+		ids: string[],
+		category: string,
+		subcategory?: string
+	) => {
+		if (!user) throw new Error('User not authenticated');
+
+		const trimmedCategory = category.trim();
+		const trimmedSubcategory = subcategory?.trim() ?? '';
+		const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+
+		if (!trimmedCategory) {
+			throw new Error('Category is required.');
+		}
+
+		if (uniqueIds.length === 0) {
+			return;
+		}
+
+		for (const chunk of chunkArray(uniqueIds, 400)) {
+			const batch = writeBatch(db);
+
+			for (const id of chunk) {
+				const txRef = doc(db, 'users', user.uid, 'transactions', id);
+				batch.update(txRef, {
+					category: trimmedCategory,
+					subcategory: trimmedSubcategory || deleteField(),
+				});
+			}
+
+			await batch.commit();
+		}
+	};
+
 	const deleteTransaction = async (id: string) => {
 		if (!user) throw new Error('User not authenticated');
 		try {
@@ -304,6 +348,7 @@ export const useTransactions = () => {
 		addTransaction,
 		addTransfer,
 		updateTransaction,
+		bulkUpdateTransactionCategories,
 		deleteTransaction,
 		deleteAllTransactions,
 		loading,

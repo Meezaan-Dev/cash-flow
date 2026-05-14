@@ -523,6 +523,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 											</div>
 										</div>
 									</div>
+
+									{/* Reports */}
+									<div>
+										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+											Reports
+										</h3>
+										<div className="space-y-3 rounded-lg border p-4 sm:p-5">
+											{(
+												[
+													['dateRange', 'Date range filter'],
+													['summaryCards', 'Summary cards'],
+													['incomeExpenseTrend', 'Income vs expenses trend'],
+													['categoryBreakdown', 'Spending by category'],
+													['subcategoryBreakdown', 'Spending by subcategory'],
+													['accountActivity', 'Activity by account'],
+													['netWorth', 'Net worth breakdown'],
+												] as [keyof FilterPreferences['reports'], string][]
+											).map(([key, label]) => (
+												<div key={key} className="flex items-center justify-between gap-4">
+													<Label htmlFor={`rep-${key}`} className="cursor-pointer">
+														{label}
+													</Label>
+													<Switch
+														id={`rep-${key}`}
+														checked={prefs.reports[key]}
+														onCheckedChange={(checked: boolean) =>
+															setFilterVisible('reports', key, checked)
+														}
+													/>
+												</div>
+											))}
+										</div>
+									</div>
 								</div>
 							)}
 

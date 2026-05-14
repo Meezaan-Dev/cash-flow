@@ -177,4 +177,65 @@ describe('useTransactions', () => {
 			})
 		);
 	});
+
+	it('bulk updates selected transaction categories with trimmed path values', async () => {
+		const { result } = renderHook(() => useTransactions());
+
+		await act(async () => {
+			await result.current.bulkUpdateTransactionCategories(
+				['transaction-1', 'transaction-2', 'transaction-1'],
+				' food ',
+				' groceries '
+			);
+		});
+
+		expect(mockBatch.update).toHaveBeenCalledTimes(2);
+		expect(mockBatch.update).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				path: expect.arrayContaining(['transactions', 'transaction-1']),
+			}),
+			{
+				category: 'food',
+				subcategory: 'groceries',
+			}
+		);
+		expect(mockBatch.update).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				path: expect.arrayContaining(['transactions', 'transaction-2']),
+			}),
+			{
+				category: 'food',
+				subcategory: 'groceries',
+			}
+		);
+		expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+	});
+
+	it('deletes subcategory when bulk updating to a category-only option', async () => {
+		const { result } = renderHook(() => useTransactions());
+
+		await act(async () => {
+			await result.current.bulkUpdateTransactionCategories(['transaction-1'], 'food');
+		});
+
+		expect(mockBatch.update).toHaveBeenCalledWith(
+			expect.anything(),
+			{
+				category: 'food',
+				subcategory: '__delete_field__',
+			}
+		);
+	});
+
+	it('rejects empty category values before bulk updating', async () => {
+		const { result } = renderHook(() => useTransactions());
+
+		await expect(
+			result.current.bulkUpdateTransactionCategories(['transaction-1'], '   ')
+		).rejects.toThrow('Category is required.');
+		expect(mockBatch.update).not.toHaveBeenCalled();
+		expect(mockBatch.commit).not.toHaveBeenCalled();
+	});
 });

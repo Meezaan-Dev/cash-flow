@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FiTrash2, FiSettings } from 'react-icons/fi';
 import { useTransactionsContext } from '@/features/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/features/accounts/context/AccountsContext';
@@ -26,8 +26,12 @@ import {
 } from '@/components/app/ui/select';
 import { Button } from '@/components/app/ui/button';
 import { Badge } from '@/components/app/ui/badge';
+import { useToast } from '@/components/app/ui/use-toast';
 import { useFilterPreferences } from '@/features/filters/context/FilterPreferencesContext';
-import { mergeCategoryOptions } from '@/features/categories/utils/categories';
+import {
+	buildCategoryPathOptions,
+	mergeCategoryOptions,
+} from '@/features/categories/utils/categories';
 import { getCategoryColor } from '@/features/categories/utils/categoryColors';
 
 interface TransactionsTableProps {
@@ -62,10 +66,11 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 	selectedId,
 	onOpenSettings,
 }) => {
-	const { transactions } = useTransactionsContext();
+	const { transactions, bulkUpdateTransactionCategories } = useTransactionsContext();
 	const { accounts, loading: accountsLoading } = useAccountsContext();
-	const { categoryOptions, getCategoryPathLabel } = useCategoriesContext();
+	const { categories, categoryOptions, getCategoryPathLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
+	const { toast } = useToast();
 	const tablePrefs = prefs.transactionsTable;
 	const [search, setSearch] = useState('');
 	const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -76,6 +81,10 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 		endDate: '',
 	});
 	const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+	const [bulkCategoryValue, setBulkCategoryValue] = useState('');
+	const [isBulkSaving, setIsBulkSaving] = useState(false);
+	const selectVisibleRef = useRef<HTMLInputElement>(null);
 	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
 	const { filtered, totals } = useMemo(() => {
@@ -122,6 +131,44 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 	);
 
 	const visibleTransactions = filtered.slice(0, visibleCount);
+	const visibleSelectableTransactions = useMemo(
+		() => visibleTransactions.filter((tx) => tx.id && tx.type !== 'transfer'),
+		[visibleTransactions]
+	);
+	const selectedCount = selectedIds.size;
+	const allVisibleSelected =
+		visibleSelectableTransactions.length > 0 &&
+		visibleSelectableTransactions.every((tx) => tx.id && selectedIds.has(tx.id));
+	const someVisibleSelected = visibleSelectableTransactions.some(
+		(tx) => tx.id && selectedIds.has(tx.id)
+	);
+	const categoryPathOptions = useMemo(
+		() => buildCategoryPathOptions(categories),
+		[categories]
+	);
+	const selectedBulkCategory = categoryPathOptions.find(
+		(option) => option.value === bulkCategoryValue
+	);
+
+	useEffect(() => {
+		setSelectedIds((previous) => {
+			const availableIds = new Set(
+				transactions
+					.filter((tx) => tx.id && tx.type !== 'transfer')
+					.map((tx) => tx.id!)
+			);
+			const next = new Set(
+				Array.from(previous).filter((id) => availableIds.has(id))
+			);
+			return next.size === previous.size ? previous : next;
+		});
+	}, [transactions]);
+
+	useEffect(() => {
+		if (selectVisibleRef.current) {
+			selectVisibleRef.current.indeterminate = someVisibleSelected && !allVisibleSelected;
+		}
+	}, [allVisibleSelected, someVisibleSelected]);
 
 	const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
 		const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -131,6 +178,71 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 	};
 
 	const resetVisibleCount = () => setVisibleCount(INITIAL_VISIBLE_COUNT);
+	const clearSelection = () => setSelectedIds(new Set());
+	const resetVisibleCountAndSelection = () => {
+		resetVisibleCount();
+		clearSelection();
+	};
+
+	const toggleTransactionSelection = (id: string) => {
+		setSelectedIds((previous) => {
+			const next = new Set(previous);
+			if (next.has(id)) {
+				next.delete(id);
+			} else {
+				next.add(id);
+			}
+			return next;
+		});
+	};
+
+	const toggleVisibleSelection = () => {
+		setSelectedIds((previous) => {
+			const next = new Set(previous);
+			if (allVisibleSelected) {
+				visibleSelectableTransactions.forEach((tx) => {
+					if (tx.id) next.delete(tx.id);
+				});
+			} else {
+				visibleSelectableTransactions.forEach((tx) => {
+					if (tx.id) next.add(tx.id);
+				});
+			}
+			return next;
+		});
+	};
+
+	const handleApplyBulkCategory = async () => {
+		if (!selectedBulkCategory) return;
+
+		setIsBulkSaving(true);
+		try {
+			await bulkUpdateTransactionCategories(
+				Array.from(selectedIds),
+				selectedBulkCategory.category,
+				selectedBulkCategory.subcategory
+			);
+			clearSelection();
+			setBulkCategoryValue('');
+			toast({
+				title: 'Categories updated',
+				description: `${selectedCount} ${
+					selectedCount === 1 ? 'transaction' : 'transactions'
+				} moved to ${selectedBulkCategory.label}.`,
+			});
+		} catch (error) {
+			toast({
+				title: 'Update failed',
+				description:
+					error instanceof Error
+						? error.message
+						: 'Could not update the selected transactions.',
+				variant: 'destructive',
+			});
+		} finally {
+			setIsBulkSaving(false);
+		}
+	};
 
 	const allFiltersHidden =
 		!tablePrefs.search &&
@@ -176,7 +288,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 							value={search}
 							onChange={(e) => {
 								setSearch(e.target.value);
-								resetVisibleCount();
+								resetVisibleCountAndSelection();
 							}}
 							className="h-10 flex-1 min-w-[220px] border-none focus-visible:ring-0"
 						/>
@@ -187,7 +299,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 							value={filterType}
 							onValueChange={(value: string) => {
 								setFilterType(value as 'all' | 'income' | 'expense');
-								resetVisibleCount();
+								resetVisibleCountAndSelection();
 							}}
 						>
 							<SelectTrigger className="h-10 w-[120px] rounded-xl">
@@ -206,7 +318,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 							value={filterCategory}
 							onValueChange={(value: string) => {
 								setFilterCategory(value);
-								resetVisibleCount();
+								resetVisibleCountAndSelection();
 							}}
 						>
 							<SelectTrigger className="h-10 w-[150px] rounded-xl">
@@ -239,7 +351,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 							value={filterMonth}
 							onValueChange={(value: string) => {
 								setFilterMonth(value);
-								resetVisibleCount();
+								resetVisibleCountAndSelection();
 							}}
 						>
 							<SelectTrigger className="h-10 w-[130px] rounded-xl">
@@ -260,14 +372,56 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 							dateRange={dateRange}
 							onDateRangeChange={(newRange) => {
 								setDateRange(newRange);
-								resetVisibleCount();
+								resetVisibleCountAndSelection();
 							}}
 							onClear={() => {
 								setDateRange({ startDate: '', endDate: '' });
-								resetVisibleCount();
+								resetVisibleCountAndSelection();
 							}}
 						/>
 					)}
+				</div>
+			)}
+
+			{selectedCount > 0 && (
+				<div
+					className="flex flex-wrap items-center gap-3 rounded-2xl border bg-muted/40 p-3"
+					onClick={(event) => event.stopPropagation()}
+				>
+					<div className="text-sm font-medium">
+						{selectedCount} {selectedCount === 1 ? 'transaction' : 'transactions'} selected
+					</div>
+					<Select
+						value={bulkCategoryValue}
+						onValueChange={setBulkCategoryValue}
+						disabled={isBulkSaving}
+					>
+						<SelectTrigger className="h-10 min-w-[240px] flex-1 rounded-xl sm:flex-none">
+							<SelectValue placeholder="Choose category" />
+						</SelectTrigger>
+						<SelectContent>
+							{categoryPathOptions.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<Button
+						type="button"
+						onClick={handleApplyBulkCategory}
+						disabled={!selectedBulkCategory || isBulkSaving}
+					>
+						{isBulkSaving ? 'Applying...' : 'Apply'}
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={clearSelection}
+						disabled={isBulkSaving}
+					>
+						Clear selection
+					</Button>
 				</div>
 			)}
 
@@ -280,6 +434,18 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 					<Table>
 						<TableHeader className="sticky top-0 z-10 bg-card/80 backdrop-blur">
 							<TableRow className="hover:bg-transparent">
+								<TableHead className="w-12">
+									<input
+										ref={selectVisibleRef}
+										type="checkbox"
+										aria-label="Select visible transactions"
+										checked={allVisibleSelected}
+										disabled={visibleSelectableTransactions.length === 0}
+										onChange={toggleVisibleSelection}
+										onClick={(event) => event.stopPropagation()}
+										className="h-4 w-4 rounded border-input accent-primary"
+									/>
+								</TableHead>
 								<TableHead>Description</TableHead>
 								<TableHead className="text-right">{amountHeader}</TableHead>
 								<TableHead className="text-right">Date</TableHead>
@@ -291,6 +457,8 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 						<TableBody>
 							{visibleTransactions.map((tx) => {
 								const categoryColor = getCategoryColor(tx.category);
+								const isSelectable = Boolean(tx.id && tx.type !== 'transfer');
+								const isSelected = Boolean(tx.id && selectedIds.has(tx.id));
 								return (
 								<TableRow
 									key={tx.id}
@@ -298,6 +466,19 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 									className={`cursor-pointer transition-colors ${tx.id === selectedId ? 'bg-muted' : 'hover:bg-muted/40'
 										}`}
 								>
+									<TableCell>
+										<input
+											type="checkbox"
+											aria-label={`Select ${tx.title}`}
+											checked={isSelected}
+											disabled={!isSelectable || isBulkSaving}
+											onChange={() => {
+												if (tx.id) toggleTransactionSelection(tx.id);
+											}}
+											onClick={(event) => event.stopPropagation()}
+											className="h-4 w-4 rounded border-input accent-primary disabled:cursor-not-allowed disabled:opacity-40"
+										/>
+									</TableCell>
 									<TableCell>
 										<div className="font-medium">{tx.title}</div>
 										<div className="text-xs text-muted-foreground">
@@ -356,7 +537,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
 							{filtered.length === 0 && (
 								<TableRow>
-									<TableCell colSpan={5} className="py-16 text-center">
+									<TableCell colSpan={6} className="py-16 text-center">
 										<div className="space-y-1">
 											<div className="text-sm font-medium">
 												{transactions.length === 0

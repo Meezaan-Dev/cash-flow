@@ -1,4 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import {
+	DEFAULT_FILTER_PREFS,
+	mergeFilterPreferences,
+} from '@/features/filters/utils/filterPreferences';
 
 export interface FilterPreferences {
 	recurring: {
@@ -18,43 +22,27 @@ export interface FilterPreferences {
 	transactionsList: {
 		search: boolean;
 	};
+	reports: {
+		dateRange: boolean;
+		summaryCards: boolean;
+		incomeExpenseTrend: boolean;
+		categoryBreakdown: boolean;
+		subcategoryBreakdown: boolean;
+		accountActivity: boolean;
+		netWorth: boolean;
+	};
 }
-
-const DEFAULT_PREFS: FilterPreferences = {
-	recurring: {
-		frequency: true,
-		category: true,
-		type: true,
-		date: true,
-		sortBy: true,
-	},
-	transactionsTable: {
-		search: true,
-		type: true,
-		category: true,
-		month: true,
-		dateRange: true,
-	},
-	transactionsList: {
-		search: true,
-	},
-};
 
 const STORAGE_KEY = 'cashflow_filter_prefs';
 
 function loadPrefs(): FilterPreferences {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
-		if (!raw) return DEFAULT_PREFS;
-		const parsed = JSON.parse(raw) as Partial<FilterPreferences>;
-		// Deep-merge with defaults so new keys are always present
-		return {
-			recurring: { ...DEFAULT_PREFS.recurring, ...parsed.recurring },
-			transactionsTable: { ...DEFAULT_PREFS.transactionsTable, ...parsed.transactionsTable },
-			transactionsList: { ...DEFAULT_PREFS.transactionsList, ...parsed.transactionsList },
-		};
+		if (!raw) return DEFAULT_FILTER_PREFS;
+		const parsed = JSON.parse(raw);
+		return mergeFilterPreferences(parsed);
 	} catch {
-		return DEFAULT_PREFS;
+		return DEFAULT_FILTER_PREFS;
 	}
 }
 
@@ -99,7 +87,7 @@ export const FilterPreferencesProvider: React.FC<{ children: ReactNode }> = ({ c
 
 	const resetPrefs = useCallback(() => {
 		localStorage.removeItem(STORAGE_KEY);
-		setPrefs(DEFAULT_PREFS);
+		setPrefs(DEFAULT_FILTER_PREFS);
 	}, []);
 
 	return (

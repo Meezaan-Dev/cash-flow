@@ -111,12 +111,64 @@ export interface CategoryReport {
 	color: string;
 }
 
+export interface SubcategoryReport {
+	category: string;
+	subcategory?: string;
+	amount: number;
+	color: string;
+}
+
+export interface CategoryBreakdownSubcategory {
+	category: string;
+	subcategory?: string;
+	amount: number;
+	percentage: number;
+}
+
+export interface CategoryBreakdownReport {
+	category: string;
+	amount: number;
+	color: string;
+	subcategories: CategoryBreakdownSubcategory[];
+}
+
+export interface MonthlySubcategorySummary {
+	category: string;
+	subcategory?: string;
+	amount: number;
+	percentage: number;
+	transactionCount: number;
+	previousAmount: number;
+	deltaAmount: number;
+}
+
+export interface MonthlyCategorySummary {
+	category: string;
+	amount: number;
+	percentage: number;
+	transactionCount: number;
+	previousAmount: number;
+	deltaAmount: number;
+	color: string;
+	subcategories: MonthlySubcategorySummary[];
+}
+
 export interface AccountReport {
 	accountId: string;
 	accountName: string;
 	color: string;
 	income: number;
 	expense: number;
+}
+
+export interface MonthlyAccountSummary {
+	accountId: string;
+	accountName: string;
+	color: string;
+	income: number;
+	expense: number;
+	net: number;
+	transactionCount: number;
 }
 
 export interface MonthlyTrend {

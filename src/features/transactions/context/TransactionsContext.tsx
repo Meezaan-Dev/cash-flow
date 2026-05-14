@@ -31,6 +31,11 @@ loading: boolean;
 addTransaction: (data: AddTransactionData) => Promise<void>;
 addTransfer: (data: AddTransferData) => Promise<void>;
 updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
+bulkUpdateTransactionCategories: (
+ids: string[],
+category: string,
+subcategory?: string
+) => Promise<void>;
 deleteTransaction: (id: string) => Promise<void>;
 deleteAllTransactions: () => Promise<void>;
 getExpenses: () => Transaction[];
