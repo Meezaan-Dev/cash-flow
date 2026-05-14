@@ -1,16 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-	FiBarChart2,
-	FiCreditCard,
-	FiList,
-	FiMenu,
-	FiPlus,
-	FiRefreshCw,
-	FiTarget,
-} from 'react-icons/fi';
+import { FiMenu } from 'react-icons/fi';
 import { useTransactionsContext } from '@/features/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/features/accounts/context/AccountsContext';
 import { Transaction, ViewType } from '@/types';
+import DashboardOverview from '@/features/dashboard/components/DashboardOverview';
 import Sidebar from '@/features/dashboard/components/Sidebar';
 import SettingsModal from '@/features/dashboard/components/SettingsModal';
 import TransactionForm from '@/features/transactions/views/TransactionForm';
@@ -32,7 +25,6 @@ import {
 	DialogTitle,
 } from '@/components/app/ui/dialog';
 import { Button } from '@/components/app/ui/button';
-import HelpTip from '@/components/app/ui/help-tip';
 import { useToast } from '@/components/app/ui/use-toast';
 import { Toaster } from '@/components/app/ui/toaster';
 import {
@@ -190,33 +182,6 @@ const Dashboard: React.FC = () => {
 	};
 
 	const renderMainContent = () => {
-		const hasAccounts = accounts.length > 0;
-		const hasTransactions = transactions.length > 0;
-		const primaryAction = accountsLoading
-			? {
-					title: 'Checking accounts',
-					description: 'Loading your account data',
-					onClick: handleCreate,
-					icon: FiCreditCard,
-					disabled: true,
-				}
-			: hasAccounts
-			? {
-					title: 'New transaction',
-					description: 'Track income, expense, or a transfer',
-					onClick: handleCreate,
-					icon: FiPlus,
-					disabled: false,
-				}
-			: {
-					title: 'Create your first account',
-					description: 'Add a bank, cash, savings, or credit account',
-					onClick: handleCreateAccount,
-					icon: FiCreditCard,
-					disabled: false,
-				};
-		const PrimaryIcon = primaryAction.icon;
-
 		switch (activeView) {
 			case 'transaction':
 				return (
@@ -256,172 +221,13 @@ const Dashboard: React.FC = () => {
 				return <ReportsView onOpenSettings={() => handleOpenSettings('filters')} />;
 			default:
 				return (
-					<div className="flex flex-1 items-center justify-center px-4 py-8 md:px-6">
-						<div className="w-full max-w-5xl text-center">
-							<div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-								<span className="text-primary text-lg">&#10022;</span>
-							</div>
-							<h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
-								CashFlow
-							</h1>
-							<div className="mx-auto mb-8 flex max-w-xl items-center justify-center gap-2 text-muted-foreground">
-								<p>
-									{hasAccounts
-										? 'Keep the basics close.'
-										: accountsLoading
-											? 'Loading your accounts.'
-										: 'Start with one account.'}
-								</p>
-								<HelpTip
-									label={
-										hasAccounts
-											? 'Add activity, review balances, then explore budgets, recurring transactions, and reports when they become useful.'
-											: accountsLoading
-												? 'CashFlow is checking for existing accounts before showing first-run guidance.'
-											: 'After one account exists, transactions, history, and budgets will make sense right away.'
-									}
-								/>
-							</div>
-							<div className="mb-6">
-								<Button
-									size="lg"
-									onClick={primaryAction.onClick}
-									disabled={primaryAction.disabled}
-									className="w-full h-14 rounded-2xl px-6 text-left flex items-center justify-between"
-								>
-									<div className="flex items-center gap-3">
-										<PrimaryIcon className="h-5 w-5 flex-shrink-0" />
-										<div>
-											<div className="font-medium">{primaryAction.title}</div>
-											<div className="text-sm text-primary-foreground/80">
-												{primaryAction.description}
-											</div>
-										</div>
-									</div>
-									<span className="text-lg">&#8594;</span>
-								</Button>
-							</div>
-
-							<div className="mb-6 grid grid-cols-1 gap-3 text-left sm:grid-cols-3">
-								<div className="rounded-2xl border bg-background p-4">
-									<div className="mb-2 flex items-center gap-2">
-										<span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-											1
-										</span>
-										<span className="font-medium">Accounts</span>
-										<HelpTip label="Accounts are the foundation. Create one before adding income, expenses, transfers, or imports." />
-									</div>
-									<p className="text-sm text-muted-foreground">
-										Add the places your money lives.
-									</p>
-								</div>
-								<div
-									className={`rounded-2xl border bg-background p-4 ${
-										hasAccounts || accountsLoading ? '' : 'opacity-70'
-									}`}
-								>
-									<div className="mb-2 flex items-center gap-2">
-										<span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-											2
-										</span>
-										<span className="font-medium">Transactions</span>
-										<HelpTip label="Transactions update account balances automatically, so they become useful once an account exists." />
-									</div>
-									<p className="text-sm text-muted-foreground">
-										Log income, spending, and transfers.
-									</p>
-								</div>
-								<div
-									className={`rounded-2xl border bg-background p-4 ${
-										hasTransactions ? '' : 'opacity-70'
-									}`}
-								>
-									<div className="mb-2 flex items-center gap-2">
-										<span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-											3
-										</span>
-										<span className="font-medium">Review</span>
-										<HelpTip label="History, budgets, and reports are most helpful after at least one transaction has been added." />
-									</div>
-									<p className="text-sm text-muted-foreground">
-										Check history, budgets, and reports.
-									</p>
-								</div>
-							</div>
-
-							{hasAccounts && (
-								<div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-									<button
-										onClick={() => setActiveView('accounts')}
-										className="rounded-2xl border bg-background p-4 text-left transition-colors hover:bg-muted/50"
-									>
-										<div className="flex items-center gap-2 mb-1">
-											<FiCreditCard className="h-4 w-4" />
-											<span className="font-medium">Accounts</span>
-										</div>
-										<div className="text-sm text-muted-foreground">
-											{accounts.length} ready
-										</div>
-										<p className="text-sm text-muted-foreground">
-											Manage balances
-										</p>
-									</button>
-									<button
-										onClick={() => setActiveView('budgets')}
-										title="Optional: use budgets once you want a spending plan."
-										className="rounded-2xl border bg-background p-4 text-left transition-colors hover:bg-muted/50"
-									>
-										<div className="flex items-center gap-2 mb-1">
-											<FiTarget className="h-4 w-4" />
-											<span className="font-medium">Budgets</span>
-										</div>
-										<p className="text-sm text-muted-foreground">
-											Optional spending plan
-										</p>
-									</button>
-									<button
-										onClick={handleOpenHistory}
-										title={
-											hasTransactions
-												? 'Review all transactions.'
-												: 'Add one transaction first so history has something to show.'
-										}
-										className="rounded-2xl border bg-background p-4 text-left transition-colors hover:bg-muted/50"
-									>
-										<div className="flex items-center gap-2 mb-1">
-											<FiList className="h-4 w-4" />
-											<span className="font-medium">History</span>
-										</div>
-										<p className="text-sm text-muted-foreground">
-											{hasTransactions ? 'All transactions' : 'Ready after your first entry'}
-										</p>
-									</button>
-									<button
-										onClick={() => setActiveView('recurring')}
-										title="Optional: save repeat income or expenses as templates."
-										className="rounded-2xl border bg-background p-4 text-left transition-colors hover:bg-muted/50"
-									>
-										<div className="flex items-center gap-2 mb-1">
-											<FiRefreshCw className="h-4 w-4" />
-											<span className="font-medium">Recurring</span>
-										</div>
-										<p className="text-sm text-muted-foreground">
-											Optional templates
-										</p>
-									</button>
-								</div>
-							)}
-							{hasTransactions && (
-								<button
-									onClick={() => setActiveView('reports')}
-									className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-								>
-									<FiBarChart2 className="h-4 w-4" />
-									View reports when you want a bigger picture
-								</button>
-							)}
-						</div>
-					</div>
+					<DashboardOverview
+						onCreateAccount={handleCreateAccount}
+						onOpenAccounts={() => setActiveView('accounts')}
+						onOpenHistory={handleOpenHistory}
+						onOpenSettings={() => handleOpenSettings('general')}
+						onSelectTransaction={handleSelect}
+					/>
 				);
 		}
 	};

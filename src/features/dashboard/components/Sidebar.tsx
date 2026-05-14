@@ -9,9 +9,11 @@ import {
 	FiGrid,
 	FiTarget,
 	FiBarChart2,
+	FiChevronDown,
 	FiList,
 	FiRefreshCw,
 	FiChevronLeft,
+	FiChevronRight,
 } from 'react-icons/fi';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Transaction, ViewType } from '@/types';
@@ -74,6 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 	const { accounts, calculateTotalBalance, loading: accountsLoading } = useAccountsContext();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+	const [transactionsExpanded, setTransactionsExpanded] = useState(false);
 
 	useEffect(() => {
 		const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -265,8 +268,32 @@ const Sidebar: React.FC<SidebarProps> = ({
 								</div>
 							</div>
 
-							{/* Search */}
 							<div className="border-b p-2">
+								<button
+									type="button"
+									onClick={() => setTransactionsExpanded((current) => !current)}
+									className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+									aria-expanded={transactionsExpanded}
+									aria-controls="sidebar-transactions"
+								>
+									<span className="flex items-center gap-3">
+										<FiList className="h-4 w-4 flex-shrink-0" />
+										<span>Sidebar transactions</span>
+									</span>
+									<span className="flex items-center gap-2">
+										<span className="text-xs">{transactions.length}</span>
+										{transactionsExpanded ? (
+											<FiChevronDown className="h-4 w-4" />
+										) : (
+											<FiChevronRight className="h-4 w-4" />
+										)}
+									</span>
+								</button>
+							</div>
+
+							{/* Search */}
+							{transactionsExpanded && (
+								<div className="border-b p-2">
 								<div className="relative">
 									<FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 									<Input
@@ -287,108 +314,116 @@ const Sidebar: React.FC<SidebarProps> = ({
 									)}
 								</div>
 							</div>
+							)}
 						</>
 					)}
 
 					{/* Transaction list */}
-					<div className="flex-1 overflow-y-auto p-2 scroll-smooth">
-						{filteredTransactions.length > 0 ? (
-							<div className="space-y-4">
-								{Object.entries(groupedTransactions).map(([date, txs]) => (
-									<div key={date} className="space-y-1">
-										<div className="sticky top-0 z-10 bg-card px-2 py-1 text-xs font-semibold text-muted-foreground bg-opacity-95 backdrop-blur-sm border-b">
-											{date}
-										</div>
-										<div className="space-y-2 pt-1">
-											{txs.map((tx) => {
-												const acctColor =
-													accountColorMap[tx.accountId] ?? '#6366f1';
-												return (
-													<div
-														key={tx.id}
-														onClick={() =>
-															handleTransactionClick(tx)
-														}
-														onKeyDown={(e) => {
-															if (
-																e.key === 'Enter' ||
-																e.key === ' '
-															)
-																handleTransactionClick(tx);
-														}}
-														role="button"
-														tabIndex={0}
-														className={`group flex cursor-pointer items-center justify-between rounded-lg border p-2 md:p-3 transition-colors ${
-															selectedId === tx.id
-																? 'border-primary bg-accent'
-																: 'border-border bg-background hover:bg-muted'
-														}`}
-													>
-														<div className="flex items-center gap-2 flex-1 min-w-0">
-															<span
-																className="h-2 w-2 rounded-full flex-shrink-0"
-																style={{
-																	backgroundColor: acctColor,
-																}}
-															/>
-															<div className="flex-1 min-w-0">
-																<h4 className="truncate font-medium text-sm md:text-base">
-																	{tx.title}
-																</h4>
-																<div className="mt-0.5 flex items-center gap-1 text-xs">
-																	<span
-																		className={`font-medium ${
-																			tx.type === 'income'
-																				? 'text-green-600 dark:text-green-400'
-																				: tx.type ===
-																					  'transfer'
-																					? 'text-blue-500'
-																					: 'text-red-600 dark:text-red-400'
-																		}`}
-																	>
-																		{tx.type === 'income' ? (
-																			<FiArrowUp className="inline h-3 w-3" />
-																		) : tx.type ===
-																		  'transfer' ? (
-																			<span>&#8644;</span>
-																		) : (
-																			<FiArrowDown className="inline h-3 w-3" />
-																		)}
-																		{' '}
-																		{formatCurrency(
-																			tx.amount
-																		)}
-																	</span>
+					<div
+						id="sidebar-transactions"
+						className="min-h-0 flex-1 overflow-hidden"
+						hidden={!transactionsExpanded}
+					>
+						<div className="h-full overflow-y-auto p-2 scroll-smooth">
+							{filteredTransactions.length > 0 ? (
+								<div className="space-y-4">
+									{Object.entries(groupedTransactions).map(([date, txs]) => (
+										<div key={date} className="space-y-1">
+											<div className="sticky top-0 z-10 bg-card px-2 py-1 text-xs font-semibold text-muted-foreground bg-opacity-95 backdrop-blur-sm border-b">
+												{date}
+											</div>
+											<div className="space-y-2 pt-1">
+												{txs.map((tx) => {
+													const acctColor =
+														accountColorMap[tx.accountId] ?? '#6366f1';
+													return (
+														<div
+															key={tx.id}
+															onClick={() =>
+																handleTransactionClick(tx)
+															}
+															onKeyDown={(e) => {
+																if (
+																	e.key === 'Enter' ||
+																	e.key === ' '
+																)
+																	handleTransactionClick(tx);
+															}}
+															role="button"
+															tabIndex={0}
+															className={`group flex cursor-pointer items-center justify-between rounded-lg border p-2 md:p-3 transition-colors ${
+																selectedId === tx.id
+																	? 'border-primary bg-accent'
+																	: 'border-border bg-background hover:bg-muted'
+															}`}
+														>
+															<div className="flex items-center gap-2 flex-1 min-w-0">
+																<span
+																	className="h-2 w-2 rounded-full flex-shrink-0"
+																	style={{
+																		backgroundColor: acctColor,
+																	}}
+																/>
+																<div className="flex-1 min-w-0">
+																	<h4 className="truncate font-medium text-sm md:text-base">
+																		{tx.title}
+																	</h4>
+																	<div className="mt-0.5 flex items-center gap-1 text-xs">
+																		<span
+																			className={`font-medium ${
+																				tx.type === 'income'
+																					? 'text-green-600 dark:text-green-400'
+																					: tx.type ===
+																						  'transfer'
+																						? 'text-blue-500'
+																						: 'text-red-600 dark:text-red-400'
+																			}`}
+																		>
+																			{tx.type === 'income' ? (
+																				<FiArrowUp className="inline h-3 w-3" />
+																			) : tx.type ===
+																			  'transfer' ? (
+																				<span>&#8644;</span>
+																			) : (
+																				<FiArrowDown className="inline h-3 w-3" />
+																			)}
+																			{' '}
+																			{formatCurrency(
+																				tx.amount
+																			)}
+																		</span>
+																	</div>
 																</div>
 															</div>
+															<button
+																onClick={(e) => {
+																	e.stopPropagation();
+																	if (tx.id) onDelete(tx.id);
+																}}
+																className="ml-2 opacity-0 transition-opacity group-hover:opacity-100"
+																aria-label="Delete transaction"
+															>
+																<FiX className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+															</button>
 														</div>
-														<button
-															onClick={(e) => {
-																e.stopPropagation();
-																if (tx.id) onDelete(tx.id);
-															}}
-															className="ml-2 opacity-0 transition-opacity group-hover:opacity-100"
-															aria-label="Delete transaction"
-														>
-															<FiX className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-														</button>
-													</div>
-												);
-											})}
+													);
+												})}
+											</div>
 										</div>
-									</div>
-								))}
-							</div>
-						) : (
-							<div className="py-8 text-center text-xs md:text-sm text-muted-foreground">
-								{searchTerm
-									? 'No matching transactions'
-									: hasNoAccounts
-										? 'Create an account to begin tracking transactions'
-										: 'No transactions yet'}
-							</div>
-						)}
+									))}
+								</div>
+							) : (
+								<div className="py-8 text-center text-xs md:text-sm text-muted-foreground">
+									{searchTerm
+										? 'No matching transactions'
+										: hasNoAccounts
+											? 'Create an account to begin tracking transactions'
+											: 'No transactions yet'}
+								</div>
+							)}
+						</div>
 					</div>
+					{!transactionsExpanded && <div className="flex-1" />}
 
 					{/* New Transaction Button */}
 					{!collapsed && (

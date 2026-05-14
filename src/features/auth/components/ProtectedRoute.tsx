@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/services/firebase';
 import AIChatbot from '@/features/ai/components/AIChatbot';
@@ -9,8 +9,10 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+	const location = useLocation();
 	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);
+	const shouldRenderFloatingAssistant = location.pathname !== '/dashboard';
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -58,7 +60,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 	return (
 		<>
 			{children}
-			<AIChatbot />
+			{shouldRenderFloatingAssistant && <AIChatbot />}
 		</>
 	);
 }

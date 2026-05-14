@@ -24,7 +24,11 @@ const createMessage = (
 	createdAt: Date.now(),
 });
 
-const AIChatbot: React.FC = () => {
+interface AIChatbotProps {
+	variant?: 'floating' | 'docked';
+}
+
+const AIChatbot: React.FC<AIChatbotProps> = ({ variant = 'floating' }) => {
 	const { currentUser } = useAuth();
 	const { askQuestion } = useAIChatController();
 
@@ -32,6 +36,9 @@ const AIChatbot: React.FC = () => {
 	const [inputValue, setInputValue] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
 	const [messages, setMessages] = useState<AIChatMessage[]>([]);
+	const [isDockedMobile, setIsDockedMobile] = useState(
+		() => window.innerWidth < 1280
+	);
 
 	const messagesRef = useRef<HTMLDivElement | null>(null);
 	const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -43,9 +50,9 @@ const AIChatbot: React.FC = () => {
 	);
 
 	useEffect(() => {
-		if (!isOpen) return;
+		if (!isOpen && variant === 'floating') return;
 		inputRef.current?.focus();
-	}, [isOpen]);
+	}, [isOpen, variant]);
 
 	useEffect(() => {
 		const container = messagesRef.current;
@@ -66,6 +73,14 @@ const AIChatbot: React.FC = () => {
 		return () => window.removeEventListener('keydown', handleEscape);
 	}, [isOpen]);
 
+	useEffect(() => {
+		if (variant !== 'docked') return;
+
+		const handleResize = () => setIsDockedMobile(window.innerWidth < 1280);
+		window.addEventListener('resize', handleResize);
+		return () => window.removeEventListener('resize', handleResize);
+	}, [variant]);
+
 	const appendMessage = (message: AIChatMessage) => {
 		setMessages((prev) => [...prev, message]);
 	};
@@ -79,11 +94,9 @@ const AIChatbot: React.FC = () => {
 
 		if (!currentUser?.uid) {
 			appendMessage(
-				createMessage(
-					'assistant',
-					'Please log in to use the AI assistant.',
-					{ isError: true }
-				)
+				createMessage('assistant', 'Please log in to use the AI assistant.', {
+					isError: true,
+				})
 			);
 			return;
 		}
@@ -130,128 +143,176 @@ const AIChatbot: React.FC = () => {
 		inputRef.current?.focus();
 	};
 
+	const renderMessages = () => (
+		<div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+			{messages.length === 0 ? (
+				<div className="space-y-2">
+					<p className="text-xs font-medium text-muted-foreground">Try asking:</p>
+					<div className="flex flex-wrap gap-2">
+						{SUGGESTED_PROMPTS.map((prompt) => (
+							<Button
+								key={prompt}
+								type="button"
+								variant="outline"
+								size="sm"
+								className="h-auto whitespace-normal py-1.5 text-left text-xs"
+								onClick={() => void handleSend(prompt)}
+								disabled={!isAuthenticated || isLoading}
+							>
+								{prompt}
+							</Button>
+						))}
+					</div>
+					{!isAuthenticated && (
+						<p className="pt-1 text-xs text-destructive">
+							Please log in to use the AI assistant.
+						</p>
+					)}
+				</div>
+			) : (
+				messages.map((message) => (
+					<div
+						key={message.id}
+						data-testid={`chat-message-${message.role}`}
+						className={`flex ${
+							message.role === 'user' ? 'justify-end' : 'justify-start'
+						}`}
+					>
+						<div
+							className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+								message.role === 'user'
+									? 'bg-primary text-primary-foreground'
+									: message.isError
+										? 'border border-destructive/30 bg-destructive/10 text-destructive'
+										: 'bg-muted text-foreground'
+							}`}
+						>
+							{message.content}
+						</div>
+					</div>
+				))
+			)}
+
+			{isLoading && (
+				<div className="flex justify-start">
+					<div className="rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground">
+						AI is thinking...
+					</div>
+				</div>
+			)}
+		</div>
+	);
+
+	const renderComposer = () => (
+		<div className="border-t p-3">
+			<div className="flex items-end gap-2">
+				<Textarea
+					ref={inputRef}
+					value={inputValue}
+					onChange={(event) => setInputValue(event.target.value)}
+					onKeyDown={handleInputKeyDown}
+					placeholder="Ask a question about your finances..."
+					className="min-h-[44px] max-h-32 resize-none"
+					rows={2}
+					disabled={!isAuthenticated || isLoading}
+				/>
+				<Button
+					type="button"
+					size="icon"
+					onClick={() => void handleSend()}
+					disabled={!canSend}
+					aria-label="Send message"
+				>
+					<FiSend className="h-4 w-4" />
+				</Button>
+			</div>
+			{!isAuthenticated && (
+				<p className="mt-2 text-xs text-destructive">
+					Please log in to use the AI assistant.
+				</p>
+			)}
+		</div>
+	);
+
+	const renderPanel = (options?: { onClose?: () => void; docked?: boolean }) => (
+		<section
+			aria-label="AI assistant"
+			className={`flex flex-col overflow-hidden border bg-card ${
+				options?.docked
+					? 'h-full min-h-0 rounded-lg'
+					: 'h-[min(32rem,calc(var(--vh-screen)-6rem))] w-[calc(100vw-2rem)] max-w-md rounded-2xl shadow-2xl'
+			}`}
+		>
+			<div className="flex items-center justify-between border-b px-4 py-3">
+				<div>
+					<h2 className="text-sm font-semibold">AI Assistant</h2>
+					<p className="text-xs text-muted-foreground">
+						Ask about your spending, accounts, and budgets
+					</p>
+				</div>
+				<div className="flex items-center gap-1">
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						onClick={clearChat}
+						aria-label="Clear chat"
+						disabled={messages.length === 0 && !inputValue}
+					>
+						<FiTrash2 className="h-4 w-4" />
+					</Button>
+					{options?.onClose && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							onClick={options.onClose}
+							aria-label="Close AI assistant"
+						>
+							<FiX className="h-4 w-4" />
+						</Button>
+					)}
+				</div>
+			</div>
+			{renderMessages()}
+			{renderComposer()}
+		</section>
+	);
+
+	if (variant === 'docked') {
+		if (!isDockedMobile) {
+			return renderPanel({ docked: true });
+		}
+
+		return (
+			<div className="fixed bottom-4 right-4 z-[70]">
+				{isOpen && (
+					<div className="mb-3">
+						{renderPanel({ onClose: () => setIsOpen(false) })}
+					</div>
+				)}
+				<Button
+					type="button"
+					size="icon"
+					className="h-12 w-12 rounded-full shadow-xl"
+					onClick={() => setIsOpen((prev) => !prev)}
+					aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
+				>
+					{isOpen ? (
+						<FiX className="h-5 w-5" />
+					) : (
+						<FiMessageCircle className="h-5 w-5" />
+					)}
+				</Button>
+			</div>
+		);
+	}
+
 	return (
 		<div className="fixed bottom-4 right-4 z-[70] md:bottom-6 md:right-6">
 			{isOpen && (
-				<div className="mb-3 flex h-[min(32rem,calc(var(--vh-screen)-6rem))] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl">
-					<div className="flex items-center justify-between border-b px-4 py-3">
-						<div>
-							<h2 className="text-sm font-semibold">AI Assistant</h2>
-							<p className="text-xs text-muted-foreground">
-								Ask about your spending, accounts, and budgets
-							</p>
-						</div>
-						<div className="flex items-center gap-1">
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								onClick={clearChat}
-								aria-label="Clear chat"
-								disabled={messages.length === 0 && !inputValue}
-							>
-								<FiTrash2 className="h-4 w-4" />
-							</Button>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								onClick={() => setIsOpen(false)}
-								aria-label="Close AI assistant"
-							>
-								<FiX className="h-4 w-4" />
-							</Button>
-						</div>
-					</div>
-
-					<div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-						{messages.length === 0 ? (
-							<div className="space-y-2">
-								<p className="text-xs font-medium text-muted-foreground">
-									Try asking:
-								</p>
-								<div className="flex flex-wrap gap-2">
-									{SUGGESTED_PROMPTS.map((prompt) => (
-										<Button
-											key={prompt}
-											type="button"
-											variant="outline"
-											size="sm"
-											className="h-auto whitespace-normal py-1.5 text-left text-xs"
-											onClick={() => void handleSend(prompt)}
-											disabled={!isAuthenticated || isLoading}
-										>
-											{prompt}
-										</Button>
-									))}
-								</div>
-								{!isAuthenticated && (
-									<p className="pt-1 text-xs text-destructive">
-										Please log in to use the AI assistant.
-									</p>
-								)}
-							</div>
-						) : (
-							messages.map((message) => (
-								<div
-									key={message.id}
-									data-testid={`chat-message-${message.role}`}
-									className={`flex ${
-										message.role === 'user' ? 'justify-end' : 'justify-start'
-									}`}
-								>
-									<div
-										className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-											message.role === 'user'
-												? 'bg-primary text-primary-foreground'
-												: message.isError
-													? 'border border-destructive/30 bg-destructive/10 text-destructive'
-													: 'bg-muted text-foreground'
-										}`}
-									>
-										{message.content}
-									</div>
-								</div>
-							))
-						)}
-
-						{isLoading && (
-							<div className="flex justify-start">
-								<div className="rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground">
-									AI is thinking...
-								</div>
-							</div>
-						)}
-					</div>
-
-					<div className="border-t p-3">
-						<div className="flex items-end gap-2">
-							<Textarea
-								ref={inputRef}
-								value={inputValue}
-								onChange={(event) => setInputValue(event.target.value)}
-								onKeyDown={handleInputKeyDown}
-								placeholder="Ask a question about your finances..."
-								className="min-h-[44px] max-h-32 resize-none"
-								rows={2}
-								disabled={!isAuthenticated || isLoading}
-							/>
-							<Button
-								type="button"
-								size="icon"
-								onClick={() => void handleSend()}
-								disabled={!canSend}
-								aria-label="Send message"
-							>
-								<FiSend className="h-4 w-4" />
-							</Button>
-						</div>
-						{!isAuthenticated && (
-							<p className="mt-2 text-xs text-destructive">
-								Please log in to use the AI assistant.
-							</p>
-						)}
-					</div>
+				<div className="mb-3">
+					{renderPanel({ onClose: () => setIsOpen(false) })}
 				</div>
 			)}
 

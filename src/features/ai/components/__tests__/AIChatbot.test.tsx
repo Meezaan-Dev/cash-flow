@@ -137,4 +137,20 @@ describe('AIChatbot', () => {
 		expect(screen.getAllByText('Please log in to use the AI assistant.').length).toBeGreaterThan(0);
 		expect(screen.getByRole('button', { name: /send message/i })).toBeDisabled();
 	});
+
+	it('renders docked mode inline on desktop without the floating launcher', () => {
+		Object.defineProperty(window, 'innerWidth', {
+			configurable: true,
+			writable: true,
+			value: 1440,
+		});
+
+		render(<AIChatbot variant="docked" />);
+
+		expect(screen.getByRole('region', { name: /ai assistant/i })).toBeInTheDocument();
+		expect(screen.getByText('AI Assistant')).toBeInTheDocument();
+		expect(
+			screen.queryByRole('button', { name: /open ai assistant/i })
+		).not.toBeInTheDocument();
+	});
 });
