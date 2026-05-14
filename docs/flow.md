@@ -25,6 +25,7 @@
 - `amount: number`
 - `type: 'income' | 'expense' | 'transfer'`
 - `category: string`
+- `subcategory?: string`
 - `description?: string`
 - `date?: Date | { toDate: () => Date }`
 - `createdAt?: Date | { toDate: () => Date }`
@@ -50,8 +51,10 @@ A transfer is represented as **two Transaction documents** — both with `type: 
 - `amount: number`
 - `type?: 'income' | 'expense'`
 - `category: string`
+- `subcategory?: string`
 - `description?: string`
 - `frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly'`
+- `expectedDate?: number`
 - `createdAt?: Date | { toDate: () => Date }`
 
 ---
@@ -65,6 +68,7 @@ users/{userId}/
   transactions/{transactionId}   — income, expense, and transfer records
   accounts/{accountId}           — financial accounts (debit, credit, savings, cash)
   budgets/{budgetId}             — monthly category budgets
+  categories/{categoryId}        — custom categories and subcategories
   recurringTransactions/{id}     — recurring transaction templates (income or expense)
 ```
 

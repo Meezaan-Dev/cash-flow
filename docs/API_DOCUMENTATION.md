@@ -166,6 +166,7 @@ interface Transaction {
 	amount: number;
 	type: 'income' | 'expense' | 'transfer';
 	category: string;
+	subcategory?: string;
 	description?: string;
 	date?: string;
 	createdAt?: string;
