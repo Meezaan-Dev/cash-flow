@@ -1,14 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from './context/ThemeContext';
-import { TransactionsProvider } from './context/TransactionsContext';
-import { AccountsProvider } from './context/AccountsContext';
-import { BudgetsProvider } from './context/BudgetsContext';
-import { CategoriesProvider } from './context/CategoriesContext';
-import { FilterPreferencesProvider } from './context/FilterPreferencesContext';
-import ProtectedRoute from './components/app/ProtectedRoute';
-import Home from './pages/Home';
-import Dashboard from './pages/Dashboard';
-import AccountDetailPage from './pages/AccountDetail';
+import { ThemeProvider } from '@/features/theme/context/ThemeContext';
+import { TransactionsProvider } from '@/features/transactions/context/TransactionsContext';
+import { AccountsProvider } from '@/features/accounts/context/AccountsContext';
+import { BudgetsProvider } from '@/features/budgets/context/BudgetsContext';
+import { CategoriesProvider } from '@/features/categories/context/CategoriesContext';
+import { FilterPreferencesProvider } from '@/features/filters/context/FilterPreferencesContext';
+import ProtectedRoute from '@/features/auth/components/ProtectedRoute';
+import Home from '@/features/marketing/pages/Home';
+import Dashboard from '@/features/dashboard/pages/Dashboard';
+import AccountDetailPage from '@/features/accounts/pages/AccountDetail';
 
 function App() {
 	return (

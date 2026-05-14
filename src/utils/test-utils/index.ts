@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider } from '../../context/ThemeContext';
+import { ThemeProvider } from '@/features/theme/context/ThemeContext';
 
 // Mock user data for authentication tests
 export const mockUser = {
@@ -12,7 +12,7 @@ export const mockUser = {
 };
 
 // Import the mocked auth from setupTests
-import { auth } from '../../services/firebase';
+import { auth } from '@/services/firebase';
 
 // Setup authenticated user
 export const setupAuthenticatedUser = () => {
