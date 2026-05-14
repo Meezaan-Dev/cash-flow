@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAccountsContext } from '@/features/accounts/context/AccountsContext';
 import { Account } from '@/types';
-import { ACCOUNT_COLORS, ACCOUNT_TYPE_LABELS } from '@/features/accounts/models/AccountModel';
+import {
+	ACCOUNT_COLORS,
+	ACCOUNT_TYPE_LABELS,
+	normalizeAccountType,
+} from '@/features/accounts/models/AccountModel';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import {
@@ -24,6 +28,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 	const [bank, setBank] = useState('');
 	const [type, setType] = useState<Account['type']>('debit');
 	const [balance, setBalance] = useState(0);
+	const [creditLimit, setCreditLimit] = useState(0);
 	const [color, setColor] = useState(ACCOUNT_COLORS[0]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
@@ -32,8 +37,9 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 		if (account) {
 			setName(account.name);
 			setBank(account.bank ?? '');
-			setType(account.type);
+			setType(normalizeAccountType(account.type));
 			setBalance(account.balance);
+			setCreditLimit(account.creditLimit ?? 0);
 			setColor(account.color ?? ACCOUNT_COLORS[0]);
 		}
 	}, [account]);
@@ -47,11 +53,14 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 		setLoading(true);
 		setError('');
 		try {
+			const normalizedType = normalizeAccountType(type);
 			const data = {
 				name: name.trim(),
 				bank: bank.trim() || undefined,
-				type,
+				type: normalizedType,
 				balance: Number(balance),
+				creditLimit:
+					normalizedType === 'credit' ? Math.max(Number(creditLimit), 0) : 0,
 				color,
 				currency: 'ZAR',
 			};
@@ -94,7 +103,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 						<label className="text-sm font-medium">Account Type</label>
 						<Select
 							value={type}
-							onValueChange={(v) => setType(v as Account['type'])}
+							onValueChange={(v) => setType(normalizeAccountType(v))}
 						>
 							<SelectTrigger className="h-11">
 								<SelectValue placeholder="Select type" />
@@ -133,17 +142,32 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 					</div>
 
 					{/* Initial Balance */}
-					<div className="space-y-1.5">
-						<label className="text-sm font-medium">
-							{account ? 'Current Balance' : 'Opening Balance'} (ZAR)
-						</label>
-						<Input
-							type="number"
-							step="0.01"
-							value={balance}
-							onChange={(e) => setBalance(Number(e.target.value))}
-							placeholder="0.00"
-						/>
+					<div className="grid gap-4 md:grid-cols-2">
+						<div className="space-y-1.5">
+							<label className="text-sm font-medium">
+								{account ? 'Current Balance' : 'Opening Balance'} (ZAR)
+							</label>
+							<Input
+								type="number"
+								step="0.01"
+								value={balance}
+								onChange={(e) => setBalance(Number(e.target.value))}
+								placeholder="0.00"
+							/>
+						</div>
+						{type === 'credit' && (
+							<div className="space-y-1.5">
+								<label className="text-sm font-medium">Credit Limit (ZAR)</label>
+								<Input
+									type="number"
+									min="0"
+									step="0.01"
+									value={creditLimit}
+									onChange={(e) => setCreditLimit(Number(e.target.value))}
+									placeholder="0.00"
+								/>
+							</div>
+						)}
 					</div>
 
 					{/* Colour picker */}

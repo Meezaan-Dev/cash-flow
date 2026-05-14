@@ -5,6 +5,7 @@ import {
 	getMonthlyAccountSummaries,
 	getMonthlyCategorySummaries,
 	getPreviousMonthDateRange,
+	getNetWorth,
 	getSpendingBySubcategory,
 } from '../ReportsController';
 import { Account, Transaction } from '@/types';
@@ -20,6 +21,26 @@ const baseTransaction: Transaction = {
 };
 
 describe('ReportsController', () => {
+	it('calculates net worth from signed balances without treating credit type as debt', () => {
+		const accounts: Account[] = [
+			{ id: 'account-1', name: 'Cheque', type: 'debit', balance: 1000 },
+			{
+				id: 'account-2',
+				name: 'Credit',
+				type: 'credit',
+				balance: 3500,
+				creditLimit: 300,
+			},
+			{ id: 'account-3', name: 'Overdrawn', type: 'credit', balance: -100 },
+		];
+
+		expect(getNetWorth(accounts)).toEqual({
+			assets: 4500,
+			liabilities: 100,
+			netWorth: 4400,
+		});
+	});
+
 	it('builds a current month range from day 1 through today', () => {
 		expect(getCurrentMonthDateRange(new Date('2026-05-14T12:00:00Z'))).toEqual({
 			startDate: '2026-05-01',

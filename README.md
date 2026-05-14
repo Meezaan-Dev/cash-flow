@@ -142,9 +142,9 @@ All data is stored under user-scoped subcollections:
 
 ### Account Balance Integrity
 
-- Every `addTransaction` call in `useTransactions` uses a Firestore `writeBatch` to atomically write the transaction document and update the account balance via `increment()`.
-- Transfers create two transaction records (one per account) and update both balances in the same batch.
-- `deleteTransaction` reverses the balance update in the same batch.
+- Every `addTransaction` call in `useTransactions` uses a Firestore `writeBatch` to atomically write the transaction document and update the account balance via `increment()`; it fails fast if the account is missing.
+- Transfers create two transaction records (one per account) and update both balances in the same batch; both accounts must exist.
+- `deleteTransaction` reverses the balance update in the same batch and skips balance updates if the account document is missing.
 
 ## State Management
 

@@ -45,6 +45,7 @@ export interface Account {
 	type: AccountType;
 	currency?: string;
 	balance: number;
+	creditLimit?: number;
 	color?: string;
 	icon?: string;
 	createdAt?: Date | { toDate: () => Date };

@@ -142,6 +142,11 @@ This guide provides step-by-step instructions for deploying the Firebase Cloud F
             allow read, write: if request.auth != null && request.auth.uid == userId;
             allow create: if request.auth != null && request.auth.uid == userId;
           }
+
+                    match /categories/{categoryId} {
+                        allow read, write: if request.auth != null && request.auth.uid == userId;
+                        allow create: if request.auth != null && request.auth.uid == userId;
+                    }
         }
 
         // Legacy top-level collections (backward compatibility, read-only)

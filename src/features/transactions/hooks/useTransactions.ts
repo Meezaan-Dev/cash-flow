@@ -88,6 +88,12 @@ export const useTransactions = () => {
 		if (!user) throw new Error('User not authenticated');
 		if (!data.category.trim()) throw new Error('Category is required.');
 
+		const accountRef = doc(db, 'users', user.uid, 'accounts', data.accountId);
+		const accountSnap = await getDoc(accountRef);
+		if (!accountSnap.exists()) {
+			throw new Error('Account not found.');
+		}
+
 		const batch = writeBatch(db);
 
 		const txCol = collection(db, 'users', user.uid, 'transactions');
@@ -109,7 +115,6 @@ export const useTransactions = () => {
 		batch.set(txRef, txData);
 
 		// Update account balance
-		const accountRef = doc(db, 'users', user.uid, 'accounts', data.accountId);
 		const balanceDelta = data.type === 'income' ? data.amount : -data.amount;
 		batch.update(accountRef, { balance: increment(balanceDelta) });
 
@@ -118,6 +123,16 @@ export const useTransactions = () => {
 
 	const addTransfer = async (data: AddTransferData) => {
 		if (!user) throw new Error('User not authenticated');
+
+		const fromRef = doc(db, 'users', user.uid, 'accounts', data.fromAccountId);
+		const toRef = doc(db, 'users', user.uid, 'accounts', data.toAccountId);
+		const [fromSnap, toSnap] = await Promise.all([
+			getDoc(fromRef),
+			getDoc(toRef),
+		]);
+		if (!fromSnap.exists() || !toSnap.exists()) {
+			throw new Error('Account not found.');
+		}
 
 		const batch = writeBatch(db);
 		const txCol = collection(db, 'users', user.uid, 'transactions');
@@ -155,11 +170,9 @@ export const useTransactions = () => {
 		});
 
 		// Debit source account balance
-		const fromRef = doc(db, 'users', user.uid, 'accounts', data.fromAccountId);
 		batch.update(fromRef, { balance: increment(-data.amount) });
 
 		// Credit destination account balance
-		const toRef = doc(db, 'users', user.uid, 'accounts', data.toAccountId);
 		batch.update(toRef, { balance: increment(data.amount) });
 
 		await batch.commit();
@@ -225,13 +238,24 @@ export const useTransactions = () => {
 					// Reverse old balance on old account, apply new balance on new account
 					const oldAccountRef = doc(db, 'users', user.uid, 'accounts', oldAccountId);
 					const newAccountRef = doc(db, 'users', user.uid, 'accounts', newAccountId);
-					batch.update(oldAccountRef, { balance: increment(-oldDelta) });
-					batch.update(newAccountRef, { balance: increment(newDelta) });
+					const [oldAcctSnap, newAcctSnap] = await Promise.all([
+						getDoc(oldAccountRef),
+						getDoc(newAccountRef),
+					]);
+					if (oldAcctSnap.exists()) {
+						batch.update(oldAccountRef, { balance: increment(-oldDelta) });
+					}
+					if (newAcctSnap.exists()) {
+						batch.update(newAccountRef, { balance: increment(newDelta) });
+					}
 				} else {
 					const balanceChange = newDelta - oldDelta;
 					if (balanceChange !== 0) {
 						const accountRef = doc(db, 'users', user.uid, 'accounts', oldAccountId);
-						batch.update(accountRef, { balance: increment(balanceChange) });
+						const acctSnap = await getDoc(accountRef);
+						if (acctSnap.exists()) {
+							batch.update(accountRef, { balance: increment(balanceChange) });
+						}
 					}
 				}
 			}
@@ -298,19 +322,28 @@ export const useTransactions = () => {
 					if (partner?.id) {
 						const partnerRef = doc(db, 'users', user.uid, 'transactions', partner.id);
 						batch.delete(partnerRef);
-						// Reverse credit on destination account
+						// Reverse credit on destination account if it exists
 						const partnerAccountRef = doc(db, 'users', user.uid, 'accounts', partner.accountId);
-						batch.update(partnerAccountRef, { balance: increment(-partner.amount) });
+						const partnerAcctSnap = await getDoc(partnerAccountRef);
+						if (partnerAcctSnap.exists()) {
+							batch.update(partnerAccountRef, { balance: increment(-partner.amount) });
+						}
 					}
-					// Reverse debit on source account
+					// Reverse debit on source account if it exists
 					const sourceAccountRef = doc(db, 'users', user.uid, 'accounts', tx.accountId);
-					batch.update(sourceAccountRef, { balance: increment(tx.amount) });
+					const sourceAcctSnap = await getDoc(sourceAccountRef);
+					if (sourceAcctSnap.exists()) {
+						batch.update(sourceAccountRef, { balance: increment(tx.amount) });
+					}
 				} else {
 					const accountRef = doc(db, 'users', user.uid, 'accounts', tx.accountId);
-					if (tx.type === 'income') {
-						batch.update(accountRef, { balance: increment(-tx.amount) });
-					} else if (tx.type === 'expense') {
-						batch.update(accountRef, { balance: increment(tx.amount) });
+					const acctSnap = await getDoc(accountRef);
+					if (acctSnap.exists()) {
+						if (tx.type === 'income') {
+							batch.update(accountRef, { balance: increment(-tx.amount) });
+						} else if (tx.type === 'expense') {
+							batch.update(accountRef, { balance: increment(tx.amount) });
+						}
 					}
 				}
 			}
