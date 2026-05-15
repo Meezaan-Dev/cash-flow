@@ -6,6 +6,7 @@ import {
 	getAccountLiability,
 } from '@/features/accounts/models/AccountModel';
 import { Account } from '@/types';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 
 interface AccountBalanceStripProps {
@@ -24,18 +25,27 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 	const displayAccounts = accounts.slice(0, displayLimit);
 	const remainingCount = Math.max(0, accounts.length - displayAccounts.length);
 	const totalBalance = calculateNetWorth(accounts).netWorth;
+	const headerPadding = compact ? 'p-3' : 'p-4';
+	const contentSpacing = compact ? 'gap-2 p-2' : 'gap-3 p-3';
+	const rowDensity = compact ? 'min-h-16 p-2.5' : 'min-h-24 p-3';
+	const totalTextSize = compact ? 'text-xl' : 'text-2xl';
 
 	return (
 		<section
 			aria-label="Account balances"
 			className="overflow-hidden rounded-lg border bg-card shadow-sm"
 		>
-			<div className={`flex items-start justify-between gap-3 border-b bg-muted/20 ${compact ? 'p-3' : 'p-4'}`}>
+			<div
+				className={cn(
+					'flex items-start justify-between gap-3 border-b bg-muted/20',
+					headerPadding
+				)}
+			>
 				<div className="min-w-0">
 					<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 						Accounts
 					</p>
-					<p className={`mt-1 font-semibold tracking-tight ${compact ? 'text-xl' : 'text-2xl'}`}>
+					<p className={cn('mt-1 font-semibold tracking-tight', totalTextSize)}>
 						{formatCurrency(totalBalance)}
 					</p>
 					<p className="mt-1 truncate text-xs text-muted-foreground">
@@ -54,7 +64,7 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 			</div>
 
 			<div
-				className={`grid ${compact ? 'gap-2 p-2' : 'gap-3 p-3'}`}
+				className={cn('grid', contentSpacing)}
 				style={{
 					gridTemplateColumns:
 						'repeat(auto-fit, minmax(min(100%, 18rem), 1fr))',
@@ -64,7 +74,10 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 					<button
 						type="button"
 						onClick={onOpenAccounts}
-						className={`flex items-center gap-3 rounded-md border bg-background text-left transition-colors hover:bg-muted/60 ${compact ? 'min-h-16 p-2.5' : 'min-h-24 p-3'}`}
+						className={cn(
+							'flex items-center gap-3 rounded-md border bg-background text-left transition-colors hover:bg-muted/60',
+							rowDensity
+						)}
 					>
 						<span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
 							<FiPlus className="h-4 w-4" />
@@ -90,7 +103,10 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 									key={account.id ?? account.name}
 									type="button"
 									onClick={onOpenAccounts}
-									className={`group relative flex min-w-0 items-center justify-between gap-3 overflow-hidden rounded-md border bg-background text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${compact ? 'min-h-16 p-2.5' : 'min-h-24 p-3'}`}
+									className={cn(
+										'group relative flex min-w-0 items-center justify-between gap-3 overflow-hidden rounded-md border bg-background text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+										rowDensity
+									)}
 								>
 									<span
 										className="absolute inset-y-3 left-0 w-1 rounded-r-full"
@@ -130,7 +146,10 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 							<button
 								type="button"
 								onClick={onOpenAccounts}
-								className={`flex min-w-0 items-center justify-between gap-3 rounded-md border bg-background text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${compact ? 'min-h-16 p-2.5' : 'min-h-24 p-3'}`}
+								className={cn(
+									'flex min-w-0 items-center justify-between gap-3 rounded-md border bg-background text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+									rowDensity
+								)}
 							>
 								<span className="min-w-0">
 									<span className="block text-sm font-medium">

@@ -26,12 +26,12 @@ const createMessage = (
 
 interface AIChatbotProps {
 	variant?: 'floating' | 'docked';
-	forceDocked?: boolean;
+	alwaysDocked?: boolean;
 }
 
 const AIChatbot: React.FC<AIChatbotProps> = ({
 	variant = 'floating',
-	forceDocked = false,
+	alwaysDocked = false,
 }) => {
 	const { currentUser } = useAuth();
 	const { askQuestion } = useAIChatController();
@@ -284,7 +284,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({
 	);
 
 	if (variant === 'docked') {
-		if (forceDocked || !isDockedMobile) {
+		if (alwaysDocked || !isDockedMobile) {
 			return renderPanel({ docked: true });
 		}
 

@@ -8,6 +8,7 @@ import {
 	FiShoppingCart,
 } from 'react-icons/fi';
 import { Account, Transaction } from '@/types';
+import { cn } from '@/lib/utils';
 import { parseDbDate } from '@/utils/date';
 import { formatCurrency } from '@/utils/formatCurrency';
 
@@ -55,6 +56,8 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 				.slice(0, compact ? 5 : 6),
 		[compact, transactions]
 	);
+	const rowPadding = compact ? 'py-2' : 'py-3';
+	const iconSize = compact ? 'h-9 w-9' : 'h-10 w-10';
 
 	return (
 		<section className="flex h-full min-h-0 flex-col rounded-lg border bg-card p-3 shadow-sm">
@@ -106,10 +109,16 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 								key={transaction.id ?? `${transaction.title}-${date.toISOString()}`}
 								type="button"
 								onClick={() => onSelect(transaction)}
-								className={`group flex w-full items-center gap-3 px-1 text-left transition-colors hover:bg-muted/50 sm:px-2 ${compact ? 'py-2' : 'py-3'}`}
+								className={cn(
+									'group flex w-full items-center gap-3 px-1 text-left transition-colors hover:bg-muted/50 sm:px-2',
+									rowPadding
+								)}
 							>
 								<span
-									className={`${compact ? 'h-9 w-9' : 'h-10 w-10'} flex flex-shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground`}
+									className={cn(
+										'flex flex-shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground',
+										iconSize
+									)}
 									style={{ borderLeftColor: color, borderLeftWidth: 4 }}
 								>
 									<Icon className="h-4 w-4" />
@@ -133,7 +142,9 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 									</span>
 								</span>
 								<span className="min-w-[6rem] text-right">
-									<span className={`block text-sm font-semibold tabular-nums ${amountTone}`}>
+									<span
+										className={cn('block text-sm font-semibold tabular-nums', amountTone)}
+									>
 										{amountPrefix}
 										{formatCurrency(transaction.amount)}
 									</span>

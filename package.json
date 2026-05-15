@@ -14,10 +14,6 @@
 		"test:coverage": "jest --coverage"
 	},
 	"dependencies": {
-		"@emotion/react": "^11.14.0",
-		"@emotion/styled": "^11.14.1",
-		"@mui/icons-material": "^7.3.10",
-		"@mui/material": "^7.3.10",
 		"@radix-ui/react-avatar": "^1.1.11",
 		"@radix-ui/react-dialog": "^1.1.15",
 		"@radix-ui/react-label": "^2.1.8",
@@ -27,7 +23,6 @@
 		"@radix-ui/react-slot": "^1.2.0",
 		"@radix-ui/react-switch": "^1.2.6",
 		"@radix-ui/react-toast": "^1.2.15",
-		"@toolpad/core": "^0.16.0",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"firebase": "^11.10.0",

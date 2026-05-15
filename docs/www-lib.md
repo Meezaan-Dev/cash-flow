@@ -12,16 +12,6 @@ Import all third-party libraries and packages first.
 ```js
 import React, { useState, useMemo } from 'react';
 import { FiDollarSign, FiPieChart, FiPlusCircle } from 'react-icons/fi';
-import {
-	Dialog,
-	DialogTitle,
-	DialogContent,
-	DialogContentText,
-	DialogActions,
-	Button,
-	Alert,
-	Snackbar,
-} from '@mui/material';
 ```
 
 ## 2. **Internal Imports**
@@ -30,9 +20,17 @@ After external libraries, import your internal modules:
 
 - **Hooks** (e.g., custom hooks)
 - **Types** (e.g., TypeScript types)
-- **Components** (e.g., UI components)
+- **Components** (e.g., shared UI primitives and feature components)
 
 ```js
+import { Button } from '@/components/app/ui/button';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/app/ui/dialog';
 import { useTransactions } from '../hooks/useTransactions';
 import { Transaction, ViewType } from '../types';
 import PieChart from '../components/PieChart';

@@ -3,13 +3,6 @@ import userEvent from '@testing-library/user-event';
 import AuthModals from '../AuthModals';
 import { clearAllMocks } from '@/utils/test-utils';
 
-// Mock Material-UI icons
-jest.mock('@mui/icons-material', () => ({
-	Visibility: () => <span data-testid="visibility-icon">Visibility</span>,
-	VisibilityOff: () => <span data-testid="visibility-off-icon">VisibilityOff</span>,
-	Close: () => <span data-testid="close-icon">Close</span>,
-}));
-
 // Mock Firebase auth before importing the component
 jest.mock('firebase/auth', () => ({
 	createUserWithEmailAndPassword: jest.fn(),

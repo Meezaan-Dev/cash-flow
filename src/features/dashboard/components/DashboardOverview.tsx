@@ -122,7 +122,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 							compact
 						/>
 						<div className="min-h-[28rem] xl:min-h-0">
-							<AIChatbot variant="docked" forceDocked />
+							<AIChatbot variant="docked" alwaysDocked />
 						</div>
 					</div>
 				</div>
