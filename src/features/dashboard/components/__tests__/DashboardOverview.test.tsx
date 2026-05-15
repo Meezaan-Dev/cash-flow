@@ -10,8 +10,17 @@ const mockOnSelectTransaction = jest.fn();
 
 jest.mock('@/features/ai/components/AIChatbot', () => ({
 	__esModule: true,
-	default: ({ variant }: { variant?: string }) => (
-		<div data-testid="assistant-variant">{variant}</div>
+	default: ({
+		alwaysDocked,
+		variant,
+	}: {
+		alwaysDocked?: boolean;
+		variant?: string;
+	}) => (
+		<div data-testid="assistant-variant">
+			{variant}
+			{alwaysDocked ? ':always-docked' : ''}
+		</div>
 	),
 }));
 
@@ -97,7 +106,7 @@ describe('DashboardOverview', () => {
 		mockAddTransfer.mockResolvedValue(undefined);
 	});
 
-	it('renders the redesigned executive dashboard panels with a docked assistant', () => {
+	it('renders the cockpit dashboard with digest, accounts, transactions, and docked AI', () => {
 		render(
 			<DashboardOverview
 				onOpenAccounts={mockOnOpenAccounts}
@@ -110,10 +119,11 @@ describe('DashboardOverview', () => {
 		expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
 		expect(screen.getByText(/Net worth/i)).toBeInTheDocument();
 		expect(screen.getByText(/digest/i)).toBeInTheDocument();
-		expect(screen.queryByText('Money movement')).not.toBeInTheDocument();
 		expect(screen.getByText('Accounts')).toBeInTheDocument();
 		expect(screen.getByText('Recent')).toBeInTheDocument();
-		expect(screen.queryByText('New transaction')).not.toBeInTheDocument();
-		expect(screen.getByTestId('assistant-variant')).toHaveTextContent('docked');
+		expect(screen.getByText('Latest transactions')).toBeInTheDocument();
+		expect(screen.getByTestId('assistant-variant')).toHaveTextContent(
+			'docked:always-docked'
+		);
 	});
 });

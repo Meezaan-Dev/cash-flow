@@ -50,7 +50,7 @@ const Dashboard: React.FC = () => {
 	const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'data' | 'filters'>('general');
 	const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-	React.useEffect(() => {
+	useEffect(() => {
 		let timeoutId: ReturnType<typeof setTimeout> | undefined;
 		const handleResize = () => {
 			if (timeoutId !== undefined) clearTimeout(timeoutId);
