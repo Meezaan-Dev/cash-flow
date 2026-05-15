@@ -1,10 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
 import DashboardOverview from '@/features/dashboard/components/DashboardOverview';
 
 const mockAddTransaction = jest.fn();
 const mockAddTransfer = jest.fn();
-const mockOnCreateAccount = jest.fn();
 const mockOnOpenAccounts = jest.fn();
 const mockOnOpenHistory = jest.fn();
 const mockOnOpenSettings = jest.fn();
@@ -99,10 +97,9 @@ describe('DashboardOverview', () => {
 		mockAddTransfer.mockResolvedValue(undefined);
 	});
 
-	it('renders the reference-style dashboard panels with a docked assistant', () => {
+	it('renders the redesigned executive dashboard panels with a docked assistant', () => {
 		render(
 			<DashboardOverview
-				onCreateAccount={mockOnCreateAccount}
 				onOpenAccounts={mockOnOpenAccounts}
 				onOpenHistory={mockOnOpenHistory}
 				onOpenSettings={mockOnOpenSettings}
@@ -111,38 +108,12 @@ describe('DashboardOverview', () => {
 		);
 
 		expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+		expect(screen.getByText(/Net worth/i)).toBeInTheDocument();
 		expect(screen.getByText(/digest/i)).toBeInTheDocument();
+		expect(screen.queryByText('Money movement')).not.toBeInTheDocument();
+		expect(screen.getByText('Accounts')).toBeInTheDocument();
 		expect(screen.getByText('Recent')).toBeInTheDocument();
-		expect(screen.getByText('New transaction')).toBeInTheDocument();
+		expect(screen.queryByText('New transaction')).not.toBeInTheDocument();
 		expect(screen.getByTestId('assistant-variant')).toHaveTextContent('docked');
-	});
-
-	it('submits a quick expense through the transaction context', async () => {
-		const user = userEvent.setup();
-		render(
-			<DashboardOverview
-				onCreateAccount={mockOnCreateAccount}
-				onOpenAccounts={mockOnOpenAccounts}
-				onOpenHistory={mockOnOpenHistory}
-				onOpenSettings={mockOnOpenSettings}
-				onSelectTransaction={mockOnSelectTransaction}
-			/>
-		);
-
-		await user.type(screen.getByLabelText('Amount'), '123.45');
-		await user.type(screen.getByLabelText('Description'), 'Lunch');
-		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
-
-		await waitFor(() => {
-			expect(mockAddTransaction).toHaveBeenCalledWith(
-				expect.objectContaining({
-					accountId: 'acc-1',
-					amount: 123.45,
-					title: 'Lunch',
-					type: 'expense',
-					category: 'food',
-				})
-			);
-		});
 	});
 });

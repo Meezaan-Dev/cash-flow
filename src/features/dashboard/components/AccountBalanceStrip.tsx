@@ -11,30 +11,36 @@ import { formatCurrency } from '@/utils/formatCurrency';
 interface AccountBalanceStripProps {
 	accounts: Account[];
 	onOpenAccounts: () => void;
+	compact?: boolean;
 }
 
 const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 	accounts,
 	onOpenAccounts,
+	compact = false,
 }) => {
-	const hasOverflow = accounts.length > 4;
-	const displayAccounts = accounts.slice(0, hasOverflow ? 3 : 4);
+	const displayLimit = compact ? 3 : accounts.length > 4 ? 3 : 4;
+	const hasOverflow = accounts.length > displayLimit;
+	const displayAccounts = accounts.slice(0, displayLimit);
 	const remainingCount = Math.max(0, accounts.length - displayAccounts.length);
 	const totalBalance = calculateNetWorth(accounts).netWorth;
 
 	return (
 		<section
 			aria-label="Account balances"
-			className="overflow-hidden rounded-lg border bg-card"
+			className="overflow-hidden rounded-lg border bg-card shadow-sm"
 		>
-			<div className="flex items-center justify-between gap-3 border-b px-3 py-2">
+			<div className={`flex items-start justify-between gap-3 border-b bg-muted/20 ${compact ? 'p-3' : 'p-4'}`}>
 				<div className="min-w-0">
 					<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 						Accounts
 					</p>
-					<p className="truncate text-xs text-muted-foreground">
+					<p className={`mt-1 font-semibold tracking-tight ${compact ? 'text-xl' : 'text-2xl'}`}>
+						{formatCurrency(totalBalance)}
+					</p>
+					<p className="mt-1 truncate text-xs text-muted-foreground">
 						{accounts.length > 0
-							? `${accounts.length} linked - net ${formatCurrency(totalBalance)}`
+							? `${accounts.length} linked account${accounts.length === 1 ? '' : 's'}`
 							: 'No accounts linked yet'}
 					</p>
 				</div>
@@ -48,7 +54,7 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 			</div>
 
 			<div
-				className="grid gap-px bg-border"
+				className={`grid ${compact ? 'gap-2 p-2' : 'gap-3 p-3'}`}
 				style={{
 					gridTemplateColumns:
 						'repeat(auto-fit, minmax(min(100%, 18rem), 1fr))',
@@ -58,7 +64,7 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 					<button
 						type="button"
 						onClick={onOpenAccounts}
-						className="flex min-h-16 items-center gap-3 bg-card p-3 text-left transition-colors hover:bg-muted/60"
+						className={`flex items-center gap-3 rounded-md border bg-background text-left transition-colors hover:bg-muted/60 ${compact ? 'min-h-16 p-2.5' : 'min-h-24 p-3'}`}
 					>
 						<span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
 							<FiPlus className="h-4 w-4" />
@@ -84,10 +90,10 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 									key={account.id ?? account.name}
 									type="button"
 									onClick={onOpenAccounts}
-									className="group relative flex min-h-16 min-w-0 items-center justify-between gap-3 bg-card p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+									className={`group relative flex min-w-0 items-center justify-between gap-3 overflow-hidden rounded-md border bg-background text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${compact ? 'min-h-16 p-2.5' : 'min-h-24 p-3'}`}
 								>
 									<span
-										className="absolute inset-y-2 left-0 w-1 rounded-r-full"
+										className="absolute inset-y-3 left-0 w-1 rounded-r-full"
 										style={{ backgroundColor: account.color ?? '#6366f1' }}
 									/>
 									<span className="ml-2 flex min-w-0 flex-1 items-center gap-2">
@@ -124,7 +130,7 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 							<button
 								type="button"
 								onClick={onOpenAccounts}
-								className="flex min-h-16 min-w-0 items-center justify-between gap-3 bg-card p-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+								className={`flex min-w-0 items-center justify-between gap-3 rounded-md border bg-background text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${compact ? 'min-h-16 p-2.5' : 'min-h-24 p-3'}`}
 							>
 								<span className="min-w-0">
 									<span className="block text-sm font-medium">

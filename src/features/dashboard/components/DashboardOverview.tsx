@@ -9,7 +9,6 @@ import { Transaction } from '@/types';
 import { formatCurrency } from '@/utils/formatCurrency';
 import AccountBalanceStrip from '@/features/dashboard/components/AccountBalanceStrip';
 import MonthlyDigest from '@/features/dashboard/components/MonthlyDigest';
-import QuickTransactionPanel from '@/features/dashboard/components/QuickTransactionPanel';
 import RecentTransactionsPanel from '@/features/dashboard/components/RecentTransactionsPanel';
 import { calculateDashboardSummary } from '@/features/dashboard/utils/dashboardSummary';
 import {
@@ -19,7 +18,6 @@ import {
 } from '@/features/dashboard/utils/digestPeriod';
 
 interface DashboardOverviewProps {
-	onCreateAccount: () => void;
 	onOpenAccounts: () => void;
 	onOpenHistory: () => void;
 	onOpenSettings: () => void;
@@ -27,7 +25,6 @@ interface DashboardOverviewProps {
 }
 
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({
-	onCreateAccount,
 	onOpenAccounts,
 	onOpenHistory,
 	onOpenSettings,
@@ -54,11 +51,16 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
 	return (
 		<div className="flex h-full min-h-0 flex-col bg-background">
-			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 md:px-6 lg:px-8 xl:overflow-hidden">
-				<header className="mb-4 flex flex-shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:px-5 lg:px-6 xl:overflow-hidden xl:px-6">
+				<header className="mb-3 flex flex-shrink-0 flex-col gap-3 border-b pb-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-						<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+						<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+							CashFlow overview
+						</p>
+						<h1 className="mt-1 text-2xl font-semibold tracking-tight">
+							Dashboard
+						</h1>
+						<div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
 							<span>Net worth {formatCurrency(summary.netWorth)}</span>
 							<span className={netWorthTone}>
 								{summary.saved >= 0 ? '+' : ''}
@@ -97,30 +99,31 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 					</div>
 				</header>
 
-				<div className="flex min-h-0 flex-1 flex-col gap-4">
+				<div className="grid flex-1 gap-3 xl:min-h-0 xl:grid-rows-[auto_minmax(0,1fr)]">
 					<MonthlyDigest
 						summary={summary}
 						period={digestPeriod}
 						onPeriodChange={handleDigestPeriodChange}
+						compact
 					/>
 
-					<div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.95fr)_minmax(320px,0.9fr)]">
+					<div className="grid gap-3 xl:min-h-0 xl:grid-cols-[minmax(280px,0.78fr)_minmax(360px,1fr)_minmax(320px,0.85fr)]">
+						<AccountBalanceStrip
+							accounts={accounts}
+							onOpenAccounts={onOpenAccounts}
+							compact
+						/>
 						<RecentTransactionsPanel
 							transactions={transactions}
 							accounts={accounts}
 							getCategoryPathLabel={getCategoryPathLabel}
 							onSelect={onSelectTransaction}
 							onOpenHistory={onOpenHistory}
+							compact
 						/>
-						<QuickTransactionPanel onCreateAccount={onCreateAccount} />
-						<AIChatbot variant="docked" />
-					</div>
-
-					<div className="flex-shrink-0">
-						<AccountBalanceStrip
-							accounts={accounts}
-							onOpenAccounts={onOpenAccounts}
-						/>
+						<div className="min-h-[28rem] xl:min-h-0">
+							<AIChatbot variant="docked" forceDocked />
+						</div>
 					</div>
 				</div>
 			</div>

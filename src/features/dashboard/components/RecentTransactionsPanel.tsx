@@ -17,6 +17,7 @@ interface RecentTransactionsPanelProps {
 	getCategoryPathLabel: (category: string, subcategory?: string) => string;
 	onSelect: (transaction: Transaction) => void;
 	onOpenHistory: () => void;
+	compact?: boolean;
 }
 
 const getTransactionIcon = (transaction: Transaction) => {
@@ -33,6 +34,7 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 	getCategoryPathLabel,
 	onSelect,
 	onOpenHistory,
+	compact = false,
 }) => {
 	const accountColorMap = useMemo(() => {
 		const map = new Map<string, string>();
@@ -50,20 +52,25 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 					const rightDate = parseDbDate(right.date ?? right.createdAt);
 					return rightDate.getTime() - leftDate.getTime();
 				})
-				.slice(0, 6),
-		[transactions]
+				.slice(0, compact ? 5 : 6),
+		[compact, transactions]
 	);
 
 	return (
-		<section className="flex h-full min-h-[22rem] flex-col rounded-lg border bg-card p-4 xl:min-h-0">
-			<div className="mb-4 flex flex-shrink-0 items-center justify-between gap-3">
-				<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-					Recent
-				</p>
+		<section className="flex h-full min-h-0 flex-col rounded-lg border bg-card p-3 shadow-sm">
+			<div className="mb-2 flex flex-shrink-0 items-start justify-between gap-3">
+				<div>
+					<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+						Recent
+					</p>
+					<h2 className="mt-1 text-lg font-semibold tracking-tight">
+						Latest transactions
+					</h2>
+				</div>
 				<button
 					type="button"
 					onClick={onOpenHistory}
-					className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+					className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 				>
 					View all
 				</button>
@@ -80,7 +87,7 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 					</p>
 				</div>
 			) : (
-				<div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+				<div className="min-h-0 flex-1 divide-y overflow-y-auto">
 					{recentTransactions.map((transaction) => {
 						const Icon = getTransactionIcon(transaction);
 						const isPositive = transaction.type === 'income';
@@ -99,11 +106,11 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 								key={transaction.id ?? `${transaction.title}-${date.toISOString()}`}
 								type="button"
 								onClick={() => onSelect(transaction)}
-								className="group flex w-full items-center gap-3 rounded-md border border-transparent px-2 py-3 text-left transition-colors hover:border-border hover:bg-muted/60"
+								className={`group flex w-full items-center gap-3 px-1 text-left transition-colors hover:bg-muted/50 sm:px-2 ${compact ? 'py-2' : 'py-3'}`}
 							>
 								<span
-									className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
-									style={{ boxShadow: `inset 3px 0 0 ${color}` }}
+									className={`${compact ? 'h-9 w-9' : 'h-10 w-10'} flex flex-shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground`}
+									style={{ borderLeftColor: color, borderLeftWidth: 4 }}
 								>
 									<Icon className="h-4 w-4" />
 								</span>
@@ -125,9 +132,14 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 										})}
 									</span>
 								</span>
-								<span className={`text-sm font-semibold ${amountTone}`}>
-									{amountPrefix}
-									{formatCurrency(transaction.amount)}
+								<span className="min-w-[6rem] text-right">
+									<span className={`block text-sm font-semibold tabular-nums ${amountTone}`}>
+										{amountPrefix}
+										{formatCurrency(transaction.amount)}
+									</span>
+									<span className="text-xs text-muted-foreground">
+										{transaction.type}
+									</span>
 								</span>
 							</button>
 						);
