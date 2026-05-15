@@ -50,7 +50,8 @@ describe('AccountBalanceStrip', () => {
 			screen.getByRole('region', { name: /account balances/i })
 		).toBeInTheDocument();
 		expect(screen.getByText('Accounts')).toBeInTheDocument();
-		expect(screen.getByText(/5 linked - net/i)).toBeInTheDocument();
+		expect(screen.getByText('5 linked accounts')).toBeInTheDocument();
+		expect(screen.getByText(/R.*4.*752/)).toBeInTheDocument();
 		expect(screen.getByText('FNB Cheque')).toBeInTheDocument();
 		expect(screen.getByText('FNB - Debit')).toBeInTheDocument();
 		expect(screen.getByText('2 more accounts')).toBeInTheDocument();
@@ -85,7 +86,8 @@ describe('AccountBalanceStrip', () => {
 
 		expect(screen.getByText('Available')).toBeInTheDocument();
 		expect(screen.queryByText('Owing')).not.toBeInTheDocument();
-		expect(screen.getByText(/1 linked - net/i)).toHaveTextContent(/net R/);
+		expect(screen.getByText('1 linked account')).toBeInTheDocument();
+		expect(screen.getAllByText(/R.*3.*500/).length).toBeGreaterThan(0);
 	});
 
 	it('renders an empty state that opens account creation', async () => {

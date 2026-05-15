@@ -182,10 +182,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 			<aside
 				aria-hidden={collapsed}
-				className={`fixed left-0 top-0 z-40 h-screen-safe w-64 border-r bg-card transition-transform duration-300 ease-in-out md:relative md:z-auto md:transition-all ${
+				className={`fixed left-0 top-0 z-40 h-screen-safe w-72 border-r bg-card transition-transform duration-300 ease-in-out md:relative md:z-auto md:transition-all ${
 					collapsed
 						? '-translate-x-full md:translate-x-0 md:w-0'
-						: 'translate-x-0 md:w-64'
+						: 'translate-x-0 md:w-72'
 				}`}
 			>
 				<div
@@ -194,7 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 					}`}
 				>
 					{/* Header */}
-					<div className="flex items-center justify-between border-b p-3 md:p-4">
+					<div className="flex items-center justify-between border-b bg-muted/20 p-4">
 						<div className="flex items-center gap-2 flex-1">
 							<img
 								src={logo}
@@ -206,7 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 									CashFlow
 								</h3>
 								{accounts.length > 0 && (
-									<p className="text-xs text-muted-foreground truncate">
+									<p className="mt-0.5 text-xs text-muted-foreground truncate">
 										{formatCurrency(availableBalance)}
 									</p>
 								)}
@@ -239,7 +239,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 					{/* Navigation */}
 					{!collapsed && (
 						<>
-							<div className="border-b p-2">
+							<div className="border-b p-3">
 								<p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
 									App map
 								</p>
@@ -255,7 +255,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 												onClick={() => handleViewClick(id)}
 												className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
 													isActive
-														? 'bg-accent text-accent-foreground'
+														? 'bg-primary text-primary-foreground shadow-sm'
 														: 'text-muted-foreground hover:bg-muted hover:text-foreground'
 												}`}
 											>
@@ -267,7 +267,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 								</div>
 							</div>
 
-							<div className="border-b p-2">
+							<div className="border-b p-3">
 								<button
 									type="button"
 									onClick={() => setTransactionsExpanded((current) => !current)}
@@ -292,27 +292,27 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 							{/* Search */}
 							{transactionsExpanded && (
-								<div className="border-b p-2">
-								<div className="relative">
-									<FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-									<Input
-										type="text"
-										placeholder="Search transactions..."
-										value={searchTerm}
-										onChange={(e) => setSearchTerm(e.target.value)}
-										className="pl-9 pr-9 text-sm"
-									/>
-									{searchTerm && (
-										<button
-											onClick={() => setSearchTerm('')}
-											className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-											aria-label="Clear search"
-										>
-											<FiX className="h-4 w-4" />
-										</button>
-									)}
+								<div className="border-b p-3">
+									<div className="relative">
+										<FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+										<Input
+											type="text"
+											placeholder="Search transactions..."
+											value={searchTerm}
+											onChange={(e) => setSearchTerm(e.target.value)}
+											className="pl-9 pr-9 text-sm"
+										/>
+										{searchTerm && (
+											<button
+												onClick={() => setSearchTerm('')}
+												className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+												aria-label="Clear search"
+											>
+												<FiX className="h-4 w-4" />
+											</button>
+										)}
+									</div>
 								</div>
-							</div>
 							)}
 						</>
 					)}
@@ -328,10 +328,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 								<div className="space-y-4">
 									{Object.entries(groupedTransactions).map(([date, txs]) => (
 										<div key={date} className="space-y-1">
-											<div className="sticky top-0 z-10 bg-card px-2 py-1 text-xs font-semibold text-muted-foreground bg-opacity-95 backdrop-blur-sm border-b">
+											<div className="sticky top-0 z-10 bg-card/95 px-2 py-1 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
 												{date}
 											</div>
-											<div className="space-y-2 pt-1">
+											<div className="space-y-1 pt-1">
 												{txs.map((tx) => {
 													const acctColor =
 														accountColorMap[tx.accountId] ?? '#6366f1';
@@ -352,8 +352,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 															tabIndex={0}
 															className={`group flex cursor-pointer items-center justify-between rounded-lg border p-2 md:p-3 transition-colors ${
 																selectedId === tx.id
-																	? 'border-primary bg-accent'
-																	: 'border-border bg-background hover:bg-muted'
+																	? 'border-primary bg-primary/10'
+																	: 'border-transparent bg-background hover:border-border hover:bg-muted'
 															}`}
 														>
 															<div className="flex items-center gap-2 flex-1 min-w-0">
@@ -426,10 +426,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 					{/* New Transaction Button */}
 					{!collapsed && (
-						<div className="border-t p-2">
+						<div className="border-t p-3">
 							<Button
 								onClick={handleCreateTransaction}
-								className="w-full text-sm md:text-base h-9 md:h-10"
+								className="h-10 w-full text-sm md:text-base"
 							>
 								<FiPlus className="mr-2 h-4 w-4" />
 								{hasNoAccounts ? 'Add First Account' : 'New Transaction'}
@@ -438,7 +438,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 					)}
 
 					{/* User Section */}
-					<div className="border-t p-2">
+					<div className="border-t bg-muted/20 p-3">
 						{currentUser ? (
 							<button
 								onClick={() => {

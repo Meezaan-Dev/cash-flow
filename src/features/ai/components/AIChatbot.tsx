@@ -26,9 +26,13 @@ const createMessage = (
 
 interface AIChatbotProps {
 	variant?: 'floating' | 'docked';
+	forceDocked?: boolean;
 }
 
-const AIChatbot: React.FC<AIChatbotProps> = ({ variant = 'floating' }) => {
+const AIChatbot: React.FC<AIChatbotProps> = ({
+	variant = 'floating',
+	forceDocked = false,
+}) => {
 	const { currentUser } = useAuth();
 	const { askQuestion } = useAIChatController();
 
@@ -280,7 +284,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ variant = 'floating' }) => {
 	);
 
 	if (variant === 'docked') {
-		if (!isDockedMobile) {
+		if (forceDocked || !isDockedMobile) {
 			return renderPanel({ docked: true });
 		}
 

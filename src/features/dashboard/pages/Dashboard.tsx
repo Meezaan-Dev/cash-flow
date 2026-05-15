@@ -222,7 +222,6 @@ const Dashboard: React.FC = () => {
 			default:
 				return (
 					<DashboardOverview
-						onCreateAccount={handleCreateAccount}
 						onOpenAccounts={() => setActiveView('accounts')}
 						onOpenHistory={handleOpenHistory}
 						onOpenSettings={() => handleOpenSettings('general')}
