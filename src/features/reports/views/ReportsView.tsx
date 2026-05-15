@@ -14,7 +14,7 @@ import { FiChevronLeft, FiChevronRight, FiSettings, FiX } from 'react-icons/fi';
 import { useTransactionsContext } from '@/features/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/features/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/features/categories/context/CategoriesContext';
-import { DateRange, MonthlyCategorySummary, Transaction } from '@/types';
+import { MonthlyCategorySummary, Transaction } from '@/types';
 import {
 	getCurrentMonthDateRange,
 	getMonthlyAccountSummaries,
@@ -24,12 +24,19 @@ import {
 	getNetWorth,
 	getPreviousMonthDateRange,
 } from '@/features/reports/controllers/ReportsController';
+import {
+	clampDigestDay,
+	DEFAULT_CUSTOM_DASHBOARD_DIGEST_PERIOD,
+	DashboardDigestCustomPeriod,
+	getDashboardDigestDateRange,
+} from '@/features/dashboard/utils/digestPeriod';
 import { filterTransactionsByDateRangeObject } from '@/features/filters/utils/dateRangeFilter';
 import { compareTransactionsByDateDesc } from '@/utils/date';
 import { formatCurrency } from '@/utils/formatCurrency';
-import DateRangeFilter from '@/features/filters/components/DateRangeFilter';
 import { useFilterPreferences } from '@/features/filters/context/FilterPreferencesContext';
 import { Button } from '@/components/app/ui/button';
+import { Input } from '@/components/app/ui/input';
+import { Label } from '@/components/app/ui/label';
 import {
 	Select,
 	SelectContent,
@@ -43,7 +50,7 @@ interface ReportsViewProps {
 }
 
 type ReportMode = 'expense' | 'income' | 'net';
-type PeriodMode = 'month' | 'custom';
+type PeriodMode = 'month' | 'customCycle';
 
 const getInitialSelectedMonth = () => {
 	const today = new Date();
@@ -68,8 +75,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 
 	const [periodMode, setPeriodMode] = useState<PeriodMode>('month');
 	const [selectedMonth, setSelectedMonth] = useState<Date>(getInitialSelectedMonth);
-	const [customDateRange, setCustomDateRange] = useState<DateRange>(() =>
-		getCurrentMonthDateRange()
+	const [customCycle, setCustomCycle] = useState<DashboardDigestCustomPeriod>(
+		() => DEFAULT_CUSTOM_DASHBOARD_DIGEST_PERIOD
 	);
 	const [reportMode, setReportMode] = useState<ReportMode>('expense');
 	const [selectedAccountId, setSelectedAccountId] = useState('all');
@@ -77,7 +84,14 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 	const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
 
 	const activeDateRange = useMemo(() => {
-		if (periodMode === 'custom') return customDateRange;
+		if (periodMode === 'customCycle') {
+			const referenceDate = new Date(
+				selectedMonth.getFullYear(),
+				selectedMonth.getMonth(),
+				1
+			);
+			return getDashboardDigestDateRange(customCycle, referenceDate);
+		}
 		const today = new Date();
 		if (
 			selectedMonth.getFullYear() === today.getFullYear() &&
@@ -86,7 +100,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 			return getCurrentMonthDateRange(today);
 		}
 		return getMonthDateRange(selectedMonth.getFullYear(), selectedMonth.getMonth());
-	}, [customDateRange, periodMode, selectedMonth]);
+	}, [customCycle, periodMode, selectedMonth]);
 
 	const previousDateRange = useMemo(
 		() => getPreviousMonthDateRange(activeDateRange),
@@ -208,7 +222,6 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 		setSelectedMonth(
 			(current) => new Date(current.getFullYear(), current.getMonth() + offset, 1)
 		);
-		setPeriodMode('month');
 		setSelectedCategory(null);
 		setSelectedSubcategory(null);
 	};
@@ -218,9 +231,17 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 		setSelectedCategory(null);
 		setSelectedSubcategory(null);
 	};
-	const handleCustomDateRangeChange = (range: DateRange) => {
-		setCustomDateRange(range);
-		setPeriodMode('custom');
+	const handleCustomCycleDayChange = (field: 'startDay' | 'endDay', value: string) => {
+		setCustomCycle((current) => ({
+			...current,
+			[field]: clampDigestDay(Number(value)),
+		}));
+		setPeriodMode('customCycle');
+		setSelectedCategory(null);
+		setSelectedSubcategory(null);
+	};
+	const openCustomCycle = () => {
+		setPeriodMode('customCycle');
 		setSelectedCategory(null);
 		setSelectedSubcategory(null);
 	};
@@ -252,11 +273,10 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 									key={mode}
 									type="button"
 									onClick={() => setReportMode(mode)}
-									className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
-										reportMode === mode
-											? 'bg-primary text-primary-foreground'
-											: 'text-muted-foreground hover:text-foreground'
-									}`}
+									className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${reportMode === mode
+										? 'bg-primary text-primary-foreground'
+										: 'text-muted-foreground hover:text-foreground'
+										}`}
 								>
 									{mode}
 								</button>
@@ -272,7 +292,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 								<FiChevronLeft className="h-4 w-4" />
 							</Button>
 							<div className="min-w-[210px] rounded-lg border bg-background px-4 py-2 text-sm font-semibold">
-								{periodMode === 'month' ? getMonthLabel(selectedMonth) : 'Custom period'}
+								{periodMode === 'month' ? getMonthLabel(selectedMonth) : 'Custom cycle'}
 							</div>
 							<Button type="button" variant="outline" size="icon" onClick={() => moveMonth(1)}>
 								<FiChevronRight className="h-4 w-4" />
@@ -282,10 +302,10 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 							</Button>
 							<Button
 								type="button"
-								variant={periodMode === 'custom' ? 'default' : 'outline'}
-								onClick={() => setPeriodMode('custom')}
+								variant={periodMode === 'customCycle' ? 'default' : 'outline'}
+								onClick={openCustomCycle}
 							>
-								Custom range
+								Custom cycle
 							</Button>
 							<Select
 								value={selectedAccountId}
@@ -308,12 +328,41 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 								</SelectContent>
 							</Select>
 						</div>
-						{periodMode === 'custom' && (
-							<DateRangeFilter
-								dateRange={customDateRange}
-								onDateRangeChange={handleCustomDateRangeChange}
-								onClear={() => handleCustomDateRangeChange(getCurrentMonthDateRange())}
-							/>
+						{periodMode === 'customCycle' && (
+							<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+								<div className="flex-1 sm:flex-initial">
+									<Label htmlFor="reports-start-day" className="mb-2 block text-xs md:text-sm font-medium">
+										Start day
+									</Label>
+									<Input
+										id="reports-start-day"
+										type="number"
+										min={1}
+										max={31}
+										value={customCycle.startDay}
+										onChange={(event) =>
+											handleCustomCycleDayChange('startDay', event.target.value)
+										}
+										className="h-10 w-full sm:w-28"
+									/>
+								</div>
+								<div className="flex-1 sm:flex-initial">
+									<Label htmlFor="reports-end-day" className="mb-2 block text-xs md:text-sm font-medium">
+										End day
+									</Label>
+									<Input
+										id="reports-end-day"
+										type="number"
+										min={1}
+										max={31}
+										value={customCycle.endDay}
+										onChange={(event) =>
+											handleCustomCycleDayChange('endDay', event.target.value)
+										}
+										className="h-10 w-full sm:w-28"
+									/>
+								</div>
+							</div>
 						)}
 						<div className="text-xs text-muted-foreground">
 							Showing {activeDateRange.startDate} to {activeDateRange.endDate}
@@ -364,9 +413,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 							<p className="mt-1 truncate text-xl font-bold">
 								{biggestSubcategory
 									? getSubcategoryDisplayLabel(
-											biggestSubcategory.category,
-											biggestSubcategory.subcategory
-										)
+										biggestSubcategory.category,
+										biggestSubcategory.subcategory
+									)
 									: 'None yet'}
 							</p>
 							<p className="text-sm text-muted-foreground">
@@ -376,11 +425,10 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 						<div className="rounded-xl border bg-card p-4">
 							<p className="text-xs text-muted-foreground">Net position</p>
 							<p
-								className={`mt-1 text-xl font-bold ${
-									netPosition >= 0
-										? 'text-green-600 dark:text-green-400'
-										: 'text-red-600 dark:text-red-400'
-								}`}
+								className={`mt-1 text-xl font-bold ${netPosition >= 0
+									? 'text-green-600 dark:text-green-400'
+									: 'text-red-600 dark:text-red-400'
+									}`}
 							>
 								{formatCurrency(netPosition)}
 							</p>
@@ -425,9 +473,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 										return (
 											<div
 												key={category.category}
-												className={`rounded-xl border p-3 transition-colors ${
-													isSelected ? 'border-primary bg-muted/50' : 'bg-background'
-												}`}
+												className={`rounded-xl border p-3 transition-colors ${isSelected ? 'border-primary bg-muted/50' : 'bg-background'
+													}`}
 											>
 												<button
 													type="button"
@@ -486,9 +533,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 																			current === subcategoryKey ? null : subcategoryKey
 																		)
 																	}
-																	className={`grid w-full gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center ${
-																		isSubSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
-																	}`}
+																	className={`grid w-full gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center ${isSubSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+																		}`}
 																>
 																	<span className="truncate">
 																		{getSubcategoryDisplayLabel(
@@ -600,11 +646,10 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 													<div>
 														<p className="text-xs text-muted-foreground">Net</p>
 														<p
-															className={`font-semibold ${
-																account.net >= 0
-																	? 'text-green-600 dark:text-green-400'
-																	: 'text-red-600 dark:text-red-400'
-															}`}
+															className={`font-semibold ${account.net >= 0
+																? 'text-green-600 dark:text-green-400'
+																: 'text-red-600 dark:text-red-400'
+																}`}
 														>
 															{formatCurrency(account.net)}
 														</p>
@@ -692,11 +737,10 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 								<div>
 									<p className="mb-1 text-xs text-muted-foreground">Net Worth</p>
 									<p
-										className={`text-xl font-bold ${
-											netWorth.netWorth >= 0
-												? 'text-green-600 dark:text-green-400'
-												: 'text-red-600 dark:text-red-400'
-										}`}
+										className={`text-xl font-bold ${netWorth.netWorth >= 0
+											? 'text-green-600 dark:text-green-400'
+											: 'text-red-600 dark:text-red-400'
+											}`}
 									>
 										{formatCurrency(netWorth.netWorth)}
 									</p>
