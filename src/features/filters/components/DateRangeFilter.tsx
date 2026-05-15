@@ -16,12 +16,14 @@ interface DateRangeFilterProps {
 	dateRange: DateRange;
 	onDateRangeChange: (range: DateRange) => void;
 	onClear: () => void;
+	showCustomInputs?: boolean;
 }
 
 const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 	dateRange,
 	onDateRangeChange,
 	onClear,
+	showCustomInputs = false,
 }) => {
 	const [isCustomRange, setIsCustomRange] = useState(false);
 
@@ -134,6 +136,8 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 	const isRangeActive = dateRange.startDate && dateRange.endDate;
 	const activePreset = detectActivePreset();
 
+	const shouldShowCustomInputs = isCustomRange || showCustomInputs;
+
 	return (
 		<div className="space-y-3">
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
@@ -152,7 +156,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 					</Select>
 				</div>
 
-				{isCustomRange && (
+				{shouldShowCustomInputs && (
 					<div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
 						<div className="flex-1 sm:flex-initial">
 							<Label
