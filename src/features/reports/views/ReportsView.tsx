@@ -88,7 +88,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 			const referenceDate = new Date(
 				selectedMonth.getFullYear(),
 				selectedMonth.getMonth(),
-				15
+				1
 			);
 			return getDashboardDigestDateRange(customCycle, referenceDate);
 		}
