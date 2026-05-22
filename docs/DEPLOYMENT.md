@@ -1,5 +1,19 @@
 # Firebase Cloud Functions API Deployment Guide
 
+## SPA Deployment
+
+Production is same-domain with one SPA build.
+
+- `npm run build` emits root `dist/`.
+- `vercel.json` rewrites SPA paths back to `/`, so `/dashboard/*` and `/mobisite` can be loaded directly.
+- Firestore rules are deployed separately when needed:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+## Cloud Functions API
+
 This guide provides step-by-step instructions for deploying the Firebase Cloud Functions API and configuring the React app to use it.
 
 ## Prerequisites

@@ -218,6 +218,22 @@ TransactionForm Quick Fill selector --> recurringTransactions.find(id)
   --> user adjusts remaining fields (account, date, description) and submits as a normal transaction
 ```
 
+### Recurring Due-Today Drafts
+
+- Recurring expense templates with `expectedDate === today.getDate()` appear on the dashboard as confirmable drafts.
+- Income templates and templates without `expectedDate` are ignored for due-today drafts.
+- Confirming a draft creates a normal expense transaction through `addTransaction`.
+- Confirmed transactions include `recurringTransactionId` and `recurringOccurrenceDate` as `YYYY-MM-DD`.
+- A draft is hidden when a transaction already exists with the same recurring id and occurrence date.
+- There is no separate draft collection.
+
+### Main Account Preference
+
+- The main account preference is stored locally in `localStorage` via `packages/shared/src/accounts/mainAccountPreference.ts`.
+- Settings lets the user change it at any time.
+- Desktop transaction creation and mobisite transaction creation default to that account when it exists.
+- Forms still allow choosing a different account per transaction.
+
 ---
 
 ## 5. Textual Flow Diagram

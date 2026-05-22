@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, HelpCircle } from 'lucide-react';
 
 const faqs = [
 	{
@@ -43,67 +42,48 @@ const FAQ: React.FC = () => {
 	return (
 		<section
 			id="faq"
-			className="relative bg-gray-950 px-4 py-24 sm:px-6 lg:px-8"
+			className="border-t border-white/[0.06] bg-black px-4 py-14 sm:px-6 lg:px-8"
 		>
-			<div className="max-w-3xl mx-auto">
-				<motion.div
-					className="text-center mb-16"
-					initial={{ opacity: 0, y: 30 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.6 }}
-				>
-					<span className="mb-4 inline-block rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-400">
+			<div className="mx-auto max-w-xl">
+				<div className="text-center">
+					<div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 px-3 py-1 text-xs font-medium text-blue-300">
+						<HelpCircle className="h-3.5 w-3.5" />
 						FAQ
-					</span>
-					<h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
-						Frequently Asked Questions
+					</div>
+					<h2 className="mb-3 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+						Frequently asked questions
 					</h2>
-					<p className="text-lg text-gray-400">
+					<p className="text-sm text-gray-500">
 						Everything you need to know before getting started.
 					</p>
-				</motion.div>
+				</div>
 
-				<div className="space-y-3">
+				<div className="mt-7">
 					{faqs.map((faq, i) => (
-						<motion.div
-							key={i}
-							initial={{ opacity: 0, y: 20 }}
-							whileInView={{ opacity: 1, y: 0 }}
-							viewport={{ once: true }}
-							transition={{ duration: 0.4, delay: i * 0.07 }}
-							className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900/50"
+						<div
+							key={faq.question}
+							className="border-b border-white/[0.06] py-4"
 						>
 							<button
 								onClick={() => toggle(i)}
 								aria-expanded={openIndex === i}
-								className="flex w-full items-center justify-between px-6 py-5 text-left font-semibold text-white transition-colors duration-200 hover:bg-gray-800/40"
+								className="flex w-full items-center justify-between gap-4 text-left text-sm font-medium text-gray-300 transition-colors hover:text-white"
 							>
 								<span>{faq.question}</span>
 								<ChevronDown
-									size={20}
-									className={`flex-shrink-0 ml-4 text-blue-400 transition-transform duration-300 ${
+									size={16}
+									className={`flex-shrink-0 text-blue-400 transition-transform duration-200 ${
 										openIndex === i ? 'rotate-180' : ''
 									}`}
 								/>
 							</button>
 
-							<AnimatePresence initial={false}>
-								{openIndex === i && (
-									<motion.div
-										key="content"
-										initial={{ height: 0, opacity: 0 }}
-										animate={{ height: 'auto', opacity: 1 }}
-										exit={{ height: 0, opacity: 0 }}
-										transition={{ duration: 0.3, ease: 'easeInOut' }}
-									>
-										<p className="px-6 pb-5 text-gray-400 leading-relaxed">
-											{faq.answer}
-										</p>
-									</motion.div>
-								)}
-							</AnimatePresence>
-						</motion.div>
+							{openIndex === i ? (
+								<p className="mt-3 text-sm leading-relaxed text-gray-600">
+									{faq.answer}
+								</p>
+							) : null}
+						</div>
 					))}
 				</div>
 			</div>

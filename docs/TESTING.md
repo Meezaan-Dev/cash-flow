@@ -33,6 +33,18 @@ npm run test:watch
 npm run test:coverage
 ```
 
+## Validation Checklist
+
+Before shipping route, transaction, account, recurring, or mobisite changes, run:
+
+```bash
+npm test -- --runInBand
+npm run lint
+npm run build
+```
+
+Known current lint output may include existing Fast Refresh warnings for files that export both components and helpers.
+
 ## Current Automated Coverage
 
 - `useAuth` authentication state and login/register behavior

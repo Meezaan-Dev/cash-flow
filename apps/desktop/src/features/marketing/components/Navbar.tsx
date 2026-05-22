@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ChevronDown, LogIn, UserPlus } from 'lucide-react';
-import logo from '@/assets/images/logos/cflow-transparent-light.png';
 
 interface NavbarProps {
 	onAuthClick: (mode: 'login' | 'register') => void;
@@ -9,9 +8,7 @@ interface NavbarProps {
 const navLinks = [
 	{ label: 'Features', href: '#features' },
 	{ label: 'How it helps', href: '#how-it-helps' },
-	{ label: 'Reports', href: '#reports' },
 	{ label: 'FAQ', href: '#faq' },
-	{ label: 'Developer', href: '#developer' },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
@@ -66,18 +63,20 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 
 	return (
 		<nav
-			className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-				scrolled ? 'py-4' : 'py-6'
+			className={`fixed left-0 right-0 top-0 z-50 border-b border-white/[0.06] bg-black/90 backdrop-blur-xl transition-all duration-300 ${
+				scrolled ? 'py-2' : 'py-3'
 			}`}
 		>
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div className="relative rounded-xl border border-gray-800 bg-gray-900/90 backdrop-blur-xl transition-all duration-500">
-					<div className="px-6 lg:px-8">
-						<div className="flex items-center justify-between h-16">
+			<div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+				<div className="relative">
+					<div>
+						<div className="flex h-12 items-center justify-between">
 							{/* Logo */}
 							<div className="flex-shrink-0">
 								<a href="#home" className="flex items-center">
-									<img className="w-24" src={logo} alt="CashFlow Logo" />
+									<span className="text-base font-bold tracking-tight text-white">
+										CashFlow
+									</span>
 								</a>
 							</div>
 
@@ -87,7 +86,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 									<a
 										key={link.label}
 										href={link.href}
-										className="rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/70 hover:text-white"
+										className="rounded-md px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-white/[0.04] hover:text-gray-200"
 									>
 										{link.label}
 									</a>
@@ -101,23 +100,23 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 										onClick={() => setAuthDropdownOpen(!authDropdownOpen)}
 										aria-expanded={authDropdownOpen}
 										aria-haspopup="true"
-										className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+										className="flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-500"
 									>
 										Get Started
 										<ChevronDown
-											size={16}
+											size={14}
 											className={`transition-transform duration-200 ${authDropdownOpen ? 'rotate-180' : ''}`}
 										/>
 									</button>
 
 									{authDropdownOpen && (
-										<div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg border border-gray-700 bg-gray-900 shadow-2xl">
+										<div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg border border-white/10 bg-[#080808] shadow-2xl">
 											<button
 												onClick={() => {
 													onAuthClick('login');
 													setAuthDropdownOpen(false);
 												}}
-												className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-all duration-200"
+												className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-white"
 											>
 													<LogIn size={16} className="text-blue-400" />
 												Login / Demo
@@ -127,7 +126,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 													onAuthClick('register');
 													setAuthDropdownOpen(false);
 												}}
-												className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-all duration-200"
+												className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-white"
 											>
 												<UserPlus size={16} className="text-blue-400" />
 												Register
@@ -139,7 +138,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 
 							{/* Mobile Menu Button */}
 							<button
-								className="rounded-lg p-2.5 transition-colors hover:bg-gray-800/70 md:hidden"
+								className="rounded-md p-2 transition-colors hover:bg-white/[0.04] md:hidden"
 								aria-label="Toggle navigation menu"
 								aria-expanded={mobileMenuOpen}
 								onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -157,14 +156,14 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 					{mobileMenuOpen && (
 						<div
 							ref={menuRef}
-							className="md:hidden border-t border-gray-800 backdrop-blur-xl"
+							className="border-t border-white/[0.06] md:hidden"
 						>
 							<div className="px-6 py-4 space-y-2">
 								{navLinks.map((link) => (
 									<a
 										key={link.label}
 										href={link.href}
-										className="block rounded-lg px-4 py-3 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/70"
+										className="block rounded-md px-4 py-3 text-sm font-medium text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-white"
 										onClick={() => setMobileMenuOpen(false)}
 									>
 										{link.label}
@@ -176,7 +175,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 											onAuthClick('login');
 											setMobileMenuOpen(false);
 										}}
-										className="flex w-full items-center gap-2.5 rounded-lg px-4 py-3 text-left text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/70"
+										className="flex w-full items-center gap-2.5 rounded-md px-4 py-3 text-left text-sm font-medium text-gray-400 transition-colors hover:bg-white/[0.04] hover:text-white"
 									>
 										<LogIn size={16} className="text-blue-400" />
 										Login / Demo
@@ -186,7 +185,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 											onAuthClick('register');
 											setMobileMenuOpen(false);
 										}}
-										className="flex w-full items-center gap-2.5 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+										className="flex w-full items-center gap-2.5 rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-500"
 									>
 										<UserPlus size={16} />
 										Register

@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { CheckCircle2 } from 'lucide-react';
 
 const steps = [
@@ -36,58 +35,51 @@ const ProblemSolution: React.FC = () => {
 	return (
 		<section
 			id="how-it-helps"
-			className="relative bg-gray-950 px-4 py-24 sm:px-6 lg:px-8"
+			className="border-t border-white/[0.06] bg-black px-4 py-14 sm:px-6 lg:px-8"
 		>
 			<div className="mx-auto max-w-6xl">
-				<motion.div
-					className="mx-auto mb-14 max-w-3xl text-center"
-					initial={{ opacity: 0, y: 24 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.6 }}
-				>
-					<p className="mb-3 text-sm font-semibold uppercase tracking-wider text-blue-400">
+				<div className="mx-auto max-w-xl text-center">
+					<div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 px-3 py-1 text-xs font-medium text-blue-300">
 						How it helps
-					</p>
-					<h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
-						Simple steps from scattered spending to clear decisions
+					</div>
+					<h2 className="mb-3 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+						From scattered spending
+						<br />
+						to clear decisions
 					</h2>
-					<p className="text-base leading-relaxed text-gray-400 md:text-lg">
-						CashFlow is designed for normal money management: quick updates,
+					<p className="text-sm leading-relaxed text-gray-500">
+						Designed for normal money management: quick updates,
 						clear views, and fewer surprises at the end of the month.
 					</p>
-				</motion.div>
+				</div>
 
-				<motion.div
-					className="grid gap-4 md:grid-cols-3"
-					initial={{ opacity: 0, y: 32 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true }}
-					transition={{ duration: 0.6, delay: 0.1 }}
-				>
+				<div className="mt-7 grid gap-3 md:grid-cols-3">
 					{steps.map((item, i) => (
 						<div
 							key={item.title}
-							className="rounded-xl border border-gray-800 bg-gray-900/50 p-6"
+							className="rounded-xl border border-white/[0.08] bg-[#080808] p-5"
 						>
-							<div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-sm font-bold text-blue-400">
+							<div className="mb-3 flex h-7 w-7 items-center justify-center rounded-md border border-blue-500/30 bg-blue-950/40 text-xs font-bold text-blue-300">
 								{i + 1}
 							</div>
-							<h3 className="mb-2 text-lg font-semibold text-white">
+							<h3 className="mb-1.5 text-sm font-semibold text-gray-200">
 								{item.title}
 							</h3>
-							<p className="text-sm leading-relaxed text-gray-400">{item.body}</p>
+							<p className="text-xs leading-relaxed text-gray-600">{item.body}</p>
 						</div>
 					))}
-				</motion.div>
+				</div>
 
-				<div className="mt-6 grid gap-3 md:grid-cols-3">
+				<div className="mt-3 grid gap-3 md:grid-cols-3">
 					{benefits.map((item) => (
-						<div key={item.title} className="flex gap-3 rounded-lg p-3">
-							<CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-400" />
+						<div
+							key={item.title}
+							className="flex gap-3 rounded-lg border border-white/[0.06] bg-[#060606] p-3"
+						>
+							<CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-400" />
 							<div>
-								<p className="font-medium text-white">{item.title}</p>
-								<p className="mt-1 text-sm leading-relaxed text-gray-400">
+								<p className="text-xs font-semibold text-gray-300">{item.title}</p>
+								<p className="mt-1 text-xs leading-relaxed text-gray-600">
 									{item.body}
 								</p>
 							</div>
