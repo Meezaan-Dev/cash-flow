@@ -5,7 +5,6 @@ import Hero from '@/features/marketing/components/Hero';
 import Features from '@/features/marketing/components/Features';
 import ProblemSolution from '@/features/marketing/components/ProblemSolution';
 import FAQ from '@/features/marketing/components/FAQ';
-import Contact from '@/features/marketing/components/Contact';
 import Footer from '@/features/marketing/components/Footer';
 
 const Home: React.FC = () => {
@@ -26,13 +25,12 @@ const Home: React.FC = () => {
 	};
 
 	return (
-		<div className="min-h-screen bg-gray-950">
+		<div className="min-h-screen overflow-x-hidden bg-black">
 			<Navbar onAuthClick={handleAuthClick} />
 			<Hero onAuthClick={handleAuthClick} />
 			<Features />
 			<ProblemSolution />
 			<FAQ />
-			<Contact />
 			<Footer />
 
 			{/* Auth Modals */}
