@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Cash Flow is a personal finance tracker for simple, private use. It is meant to be clear enough to share with friends and family, and easy enough to pick back up after a few months away from the code.
+Cash Flow is a personal finance tracker for simple, private use. It runs on one server with `/dashboard` for desktop management and `/mobisite` for mobile-first transaction capture.
 
 ## Core MVP
 
@@ -36,10 +36,10 @@ Supporting features:
 
 The app now follows a feature-based structure:
 
-- `src/features/<domain>/`: keeps each domain's pages, views, hooks, models, controllers, and contexts together.
-- `src/components/app/ui/`: shared UI primitives used across features.
-- `src/services/`: Firebase and API integrations.
-- `src/utils/`, `src/themes/`, `src/types/`: cross-feature utilities, theme tokens, and shared types.
+- `apps/desktop/src/features/<domain>/`: host app, desktop dashboard route, pages, views, hooks, models, controllers, and contexts.
+- `apps/mobisite/src/`: small mobile app mounted inside the host router at `/mobisite`.
+- `packages/shared/src/`: Firebase, shared types, models, hooks, and date/currency/category utilities used across app shells.
+- `packages/ui/src/`: shared UI package placeholder for reusable primitives as they are extracted.
 
 Firebase data is scoped under `users/{userId}/` subcollections for accounts, transactions, budgets, categories, and recurring transaction templates.
 

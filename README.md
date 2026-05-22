@@ -1,6 +1,6 @@
 ## Project Overview - Cash Flow
 
-**Cash Flow** is a multi-account personal finance web application. It lets users track income, expenses, and transfers across multiple bank and cash accounts, set spending budgets, view reports, and reconcile balances — all in real-time via Firebase.
+**Cash Flow** is a multi-account personal finance web application. It runs as one SPA with two focused routes: `/dashboard` for desktop admin and `/mobisite` for mobile-first transaction capture.
 
 ## Start Here
 
@@ -67,7 +67,7 @@ Supporting features:
 
 ### Environment Variables
 
-Create a `.env.local` file in the project root with the Firebase config values used in [src/services/firebase.ts](src/services/firebase.ts):
+Create a `.env.local` file in the project root with the Firebase config values used by [packages/shared/src/services/firebase.ts](packages/shared/src/services/firebase.ts):
 
 - VITE_FIREBASE_API_KEY
 - VITE_FIREBASE_AUTH_DOMAIN
@@ -80,8 +80,9 @@ Create a `.env.local` file in the project root with the Firebase config values u
 ### Install & Run
 
 1. Install dependencies: `npm install`
-2. Start dev server: `npm run dev`
-3. Run tests: `npm test`
+2. Start the single dev server: `npm run dev`
+3. Open desktop admin at `/dashboard` or mobile capture at `/mobisite`
+4. Run tests: `npm test`
 
 ### Deploy Firestore Rules
 
@@ -93,7 +94,8 @@ firebase deploy --only firestore:rules
 
 ### Useful Scripts
 
-- `npm run build`
+- `npm run build` (builds the single SPA into `dist/`)
+- `npm run build:desktop`
 - `npm run lint`
 - `npm run test:watch`
 - `npm run test:coverage`
@@ -101,24 +103,12 @@ firebase deploy --only firestore:rules
 ## Project Structure
 
 ```
-src/
-├── features/
-│   ├── accounts/          # Account pages, views, model, controller, hook, context
-│   ├── auth/              # Auth modal, route guard, auth hook
-│   ├── budgets/           # Budget views, model, controller, hook, context
-│   ├── categories/        # Category constants, utils, controller, hook, context
-│   ├── dashboard/         # Dashboard page plus sidebar/settings shell components
-│   ├── filters/           # Date range filter component + filter prefs context/utils
-│   ├── marketing/         # Home page and website sections
-│   ├── recurring/         # Recurring views, model, controller, hook
-│   ├── reports/           # Reports view/controller and chart component
-│   ├── theme/             # Theme context + dropdown/hook
-│   └── transactions/      # Transaction views, model, controller, hook, import/export
-├── components/app/ui/     # Shared UI primitives (button, dialog, input, etc.)
-├── services/              # Firebase init + API client
-├── utils/                 # Shared generic utilities (date, currency, test utils)
-├── themes/                # Theme token objects
-└── types/                 # Shared TypeScript interfaces
+apps/
+├── desktop/               # Single host app and desktop admin route at /dashboard
+└── mobisite/              # Mobile-first capture experience mounted at /mobisite
+packages/
+├── shared/                # Firebase, shared types, models, hooks, utilities
+└── ui/                    # Reserved shared UI package
 ```
 
 ## Architecture & Data Flow

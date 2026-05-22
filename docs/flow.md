@@ -141,7 +141,7 @@ ThemeProvider
 | `RecurringTransactionsView` | `views/RecurringTransactions/` | Full-page recurring list with frequency/category/type filters, total summary card, add/edit/delete |
 | `RecurringTransactionsList` | `views/RecurringTransactions/` | Compact recurring list used in embedded/Settings contexts |
 | `RecurringTransactionForm` | `views/RecurringTransactions/` | Create/edit form with income/expense type toggle, category, frequency, description |
-| `AccountDetail` | `pages/` | Route `/accounts/:accountId` — per-account history |
+| `AccountDetail` | `pages/` | Route `/dashboard/accounts/:accountId` — per-account history |
 | `Dashboard` | `pages/` | Main app shell, view routing |
 
 ---
