@@ -41,6 +41,8 @@ describe('Mobisite App', () => {
 
 		expect(await screen.findByRole('button', { name: 'Add' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
+		expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+		expect(screen.queryByText('Accounts')).not.toBeInTheDocument();
 		expect(screen.queryByText('Budgets')).not.toBeInTheDocument();
 		expect(screen.queryByText('Reports')).not.toBeInTheDocument();
 		expect(screen.queryByText('Recurring')).not.toBeInTheDocument();

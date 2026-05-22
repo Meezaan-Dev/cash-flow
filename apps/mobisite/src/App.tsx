@@ -55,7 +55,7 @@ const AuthPanel = () => {
 	};
 
 	return (
-		<main className="min-h-screen-safe bg-background px-4 py-6">
+		<main className="min-h-screen-safe bg-background py-6 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:px-4">
 			<div className="mx-auto flex min-h-[calc(var(--vh-screen)-3rem)] w-full max-w-sm flex-col justify-center">
 				<div className="mb-8">
 					<p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -190,7 +190,7 @@ const AddTransactionView = () => {
 
 	if (!accountsLoading && accounts.length === 0) {
 		return (
-			<section className="p-4">
+			<section className="py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
 				<div className="rounded-lg border border-dashed p-5">
 					<h2 className="text-lg font-semibold">No accounts yet</h2>
 					<p className="mt-2 text-sm text-muted-foreground">
@@ -208,7 +208,7 @@ const AddTransactionView = () => {
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="space-y-4 p-4">
+		<form onSubmit={handleSubmit} className="space-y-4 py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
 			{error && (
 				<div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
 					{error}
@@ -342,7 +342,7 @@ const TransactionListView = () => {
 	}, [transactions]);
 
 	return (
-		<section className="space-y-5 p-4">
+		<section className="space-y-5 py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
 			{transactions.length === 0 && (
 				<div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
 					Add your first transaction and it will show up here.
@@ -387,8 +387,8 @@ const MobileApp = ({ user }: { user: User }) => {
 	const [tab, setTab] = useState<MobileTab>('add');
 
 	return (
-		<div className="flex min-h-screen-safe flex-col bg-background text-foreground">
-			<header className="sticky top-0 z-20 border-b bg-background/95 px-4 py-3 backdrop-blur">
+		<div className="flex min-h-screen-safe flex-col overflow-x-hidden bg-background text-foreground">
+			<header className="sticky top-0 z-20 border-b bg-background/95 py-3 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] backdrop-blur md:px-4">
 				<div className="flex items-center justify-between gap-3">
 					<div className="min-w-0">
 						<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -411,7 +411,7 @@ const MobileApp = ({ user }: { user: User }) => {
 			<div className="flex-1">
 				{tab === 'add' ? <AddTransactionView /> : <TransactionListView />}
 			</div>
-			<nav className="sticky bottom-0 z-30 border-t bg-background/95 px-4 pb-3 pt-2 backdrop-blur">
+			<nav className="sticky bottom-0 z-30 border-t bg-background/95 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] pt-2 backdrop-blur md:px-4 md:pb-3">
 				<div className="mx-auto grid max-w-sm grid-cols-2 gap-2">
 					<button
 						type="button"

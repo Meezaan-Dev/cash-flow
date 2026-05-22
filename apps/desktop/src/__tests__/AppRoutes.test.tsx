@@ -2,6 +2,21 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 
 let mockInitialPath = '/';
+let mockAuthUser: unknown = { uid: 'user-1', email: 'test@example.com' };
+
+const setMobileViewport = (isMobile: boolean) => {
+	Object.defineProperty(window, 'matchMedia', {
+		writable: true,
+		value: jest.fn().mockImplementation((query: string) => ({
+			matches: query === '(max-width: 767px)' ? isMobile : false,
+			media: query,
+			onchange: null,
+			addEventListener: jest.fn(),
+			removeEventListener: jest.fn(),
+			dispatchEvent: jest.fn(),
+		})),
+	});
+};
 
 jest.mock('react-router-dom', () => {
 	const ReactForRouter = jest.requireActual('react') as typeof React;
@@ -44,9 +59,25 @@ jest.mock('@/features/budgets/context/BudgetsContext', () => ({
 	BudgetsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('@/features/auth/components/ProtectedRoute', () => ({
+jest.mock('@/services/firebase', () => ({
+	auth: {},
+}));
+
+jest.mock('firebase/auth', () => ({
+	onAuthStateChanged: (_auth: unknown, callback: (user: unknown) => void) => {
+		callback(mockAuthUser);
+		return jest.fn();
+	},
+}));
+
+jest.mock('@/features/marketing/pages/Home', () => ({
 	__esModule: true,
-	default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+	default: () => <div>Marketing home</div>,
+}));
+
+jest.mock('@/features/ai/components/AIChatbot', () => ({
+	__esModule: true,
+	default: () => <div>AI assistant</div>,
 }));
 
 jest.mock('@/features/dashboard/pages/Dashboard', () => ({
@@ -76,6 +107,11 @@ describe('App routing', () => {
 		App = (await import('../App')).default;
 	});
 
+	beforeEach(() => {
+		mockAuthUser = { uid: 'user-1', email: 'test@example.com' };
+		setMobileViewport(false);
+	});
+
 	it('redirects root to the desktop dashboard route', async () => {
 		mockInitialPath = '/';
 
@@ -84,12 +120,44 @@ describe('App routing', () => {
 		expect(await screen.findByText('Desktop dashboard')).toBeInTheDocument();
 	});
 
+	it('redirects authenticated mobile root to mobisite', async () => {
+		mockInitialPath = '/';
+		setMobileViewport(true);
+
+		render(<App />);
+
+		expect(await screen.findByTestId('mobisite-frame')).toBeInTheDocument();
+		expect(screen.queryByText('Desktop dashboard')).not.toBeInTheDocument();
+	});
+
 	it('renders the desktop shell at /dashboard', () => {
 		mockInitialPath = '/dashboard';
 
 		render(<App />);
 
 		expect(screen.getByText('Desktop dashboard')).toBeInTheDocument();
+	});
+
+	it('redirects authenticated mobile dashboard routes to mobisite', async () => {
+		mockInitialPath = '/dashboard/reports';
+		setMobileViewport(true);
+
+		render(<App />);
+
+		expect(await screen.findByTestId('mobisite-frame')).toBeInTheDocument();
+		expect(screen.queryByText('Desktop dashboard')).not.toBeInTheDocument();
+	});
+
+	it('shows the homepage for unauthenticated mobile dashboard routes', async () => {
+		mockInitialPath = '/dashboard';
+		mockAuthUser = null;
+		setMobileViewport(true);
+
+		render(<App />);
+
+		expect(await screen.findByText('Marketing home')).toBeInTheDocument();
+		expect(screen.queryByText('Desktop dashboard')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('mobisite-frame')).not.toBeInTheDocument();
 	});
 
 	it('renders the mobisite route in its own frame', () => {
