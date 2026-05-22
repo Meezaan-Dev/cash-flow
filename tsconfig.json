@@ -2,16 +2,20 @@
 	"files": [],
 	"references": [
 		{
-			"path": "./tsconfig.app.json"
+			"path": "./apps/desktop/tsconfig.app.json"
 		},
 		{
-			"path": "./tsconfig.node.json"
+			"path": "./apps/desktop/tsconfig.node.json"
 		}
 	],
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./apps/desktop/src/*"],
+			"@cash-flow/shared": ["./packages/shared/src/index.ts"],
+			"@cash-flow/shared/*": ["./packages/shared/src/*"],
+			"@cash-flow/ui": ["./packages/ui/src/index.ts"],
+			"@cash-flow/ui/*": ["./packages/ui/src/*"]
 		}
 	}
 }
