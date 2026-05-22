@@ -1,20 +1,52 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/services/firebase';
 import AIChatbot from '@/features/ai/components/AIChatbot';
 import Home from '@/features/marketing/pages/Home';
 
+const MOBILE_DASHBOARD_QUERY = '(max-width: 767px)';
+
 interface ProtectedRouteProps {
 	children: ReactNode;
 }
+
+const getIsMobileDashboardViewport = () => {
+	if (typeof window === 'undefined' || !window.matchMedia) return false;
+	return window.matchMedia(MOBILE_DASHBOARD_QUERY).matches;
+};
+
+const useIsMobileDashboardViewport = () => {
+	const [isMobileViewport, setIsMobileViewport] = useState(getIsMobileDashboardViewport);
+
+	useEffect(() => {
+		if (typeof window === 'undefined' || !window.matchMedia) return;
+
+		const mediaQuery = window.matchMedia(MOBILE_DASHBOARD_QUERY);
+		const handleChange = (event: MediaQueryListEvent) => {
+			setIsMobileViewport(event.matches);
+		};
+
+		setIsMobileViewport(mediaQuery.matches);
+		mediaQuery.addEventListener('change', handleChange);
+
+		return () => {
+			mediaQuery.removeEventListener('change', handleChange);
+		};
+	}, []);
+
+	return isMobileViewport;
+};
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 	const location = useLocation();
 	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);
+	const isMobileViewport = useIsMobileDashboardViewport();
+	const isDashboardRoute =
+		location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/');
 	const shouldRenderFloatingAssistant =
-		location.pathname.startsWith('/dashboard') && location.pathname !== '/dashboard';
+		isDashboardRoute && location.pathname !== '/dashboard';
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -57,6 +89,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
 	if (!user) {
 		return <Home />;
+	}
+
+	if (isMobileViewport && (location.pathname === '/' || isDashboardRoute)) {
+		return <Navigate to="/mobisite" replace />;
 	}
 
 	return (
