@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiRefreshCw } from 'react-icons/fi';
 import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
 import { useTransactionsContext } from '@/features/transactions/context/TransactionsContext';
@@ -47,9 +47,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	const [description, setDescription] = useState('');
 	const [date, setDate] = useState<string>('');
 	const [error, setError] = useState('');
+	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [selectedRecurringId, setSelectedRecurringId] = useState<string | null>(
 		initialRecurringTransaction?.id || null
 	);
+	const submitInFlightRef = useRef(false);
 
 	const availableCategories = React.useMemo(
 		() => mergeCategoryOptions(categoryOptions, category ? [category] : []),
@@ -183,6 +185,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+		if (submitInFlightRef.current) return;
+
 		setError('');
 		if (type === 'transfer' && !transferAccountId) return;
 		const categoryForSubmit =
@@ -198,6 +202,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 			setError('Please select a category.');
 			return;
 		}
+
+		submitInFlightRef.current = true;
+		setIsSubmitting(true);
+
 		try {
 			if (transaction && transaction.id) {
 				const data: Partial<Transaction> = {
@@ -239,6 +247,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 		} catch (error) {
 			console.error('Failed to submit transaction:', error);
 			setError(error instanceof Error ? error.message : 'Failed to submit transaction.');
+		} finally {
+			submitInFlightRef.current = false;
+			setIsSubmitting(false);
 		}
 	};
 
@@ -288,7 +299,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					</div>
 				)}
 
-				<form onSubmit={handleSubmit} className="space-y-6">
+				<form onSubmit={handleSubmit} className="space-y-6" aria-busy={isSubmitting}>
 					{error && (
 						<div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
 							{error}
@@ -305,6 +316,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 									type="button"
 									variant={type === t ? 'default' : 'outline'}
 									onClick={() => handleTypeChange(t)}
+									disabled={isSubmitting}
 									className="h-14 rounded-xl capitalize"
 								>
 									{t}
@@ -319,7 +331,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 							<Label htmlFor="transaction-account" className="text-sm font-medium">
 								{type === 'transfer' ? 'From Account' : 'Account'} *
 							</Label>
-							<Select value={accountId} onValueChange={setAccountId}>
+							<Select value={accountId} onValueChange={setAccountId} disabled={isSubmitting}>
 								<SelectTrigger id="transaction-account">
 									<SelectValue placeholder="Select account" />
 								</SelectTrigger>
@@ -346,7 +358,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 							<Label htmlFor="transaction-transfer-account" className="text-sm font-medium">
 								To Account *
 							</Label>
-							<Select value={transferAccountId} onValueChange={setTransferAccountId}>
+							<Select
+								value={transferAccountId}
+								onValueChange={setTransferAccountId}
+								disabled={isSubmitting}
+							>
 								<SelectTrigger id="transaction-transfer-account">
 									<SelectValue placeholder="Select destination account" />
 								</SelectTrigger>
@@ -378,6 +394,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 								value={title}
 								onChange={(e) => setTitle(e.target.value)}
 								placeholder="Title"
+								disabled={isSubmitting}
 								required
 							/>
 						</div>
@@ -393,6 +410,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 								placeholder="Amount"
 								min="0.01"
 								step="0.01"
+								disabled={isSubmitting}
 								required
 							/>
 						</div>
@@ -405,7 +423,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 								<Label htmlFor="transaction-category" className="text-sm font-medium">
 									Category *
 								</Label>
-								<Select value={category} onValueChange={handleCategoryChange}>
+								<Select
+									value={category}
+									onValueChange={handleCategoryChange}
+									disabled={isSubmitting}
+								>
 									<SelectTrigger id="transaction-category">
 										<SelectValue placeholder="Select category" />
 									</SelectTrigger>
@@ -432,6 +454,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 								type="date"
 								value={date}
 								onChange={(e) => setDate(e.target.value)}
+								disabled={isSubmitting}
 							/>
 						</div>
 					</div>
@@ -446,6 +469,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 								onValueChange={(value) =>
 									setSubcategory(value === '__none__' ? '' : value)
 								}
+								disabled={isSubmitting}
 							>
 								<SelectTrigger id="transaction-subcategory">
 									<SelectValue placeholder="Select subcategory" />
@@ -475,15 +499,26 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 							onChange={(e) => setDescription(e.target.value)}
 							placeholder="Optional notes"
 							rows={3}
+							disabled={isSubmitting}
 						/>
 					</div>
 
 					{/* Actions */}
 					<div className="flex gap-3 pt-4">
-						<Button type="submit" className="flex-1 h-12" disabled={type === 'transfer' && !transferAccountId}>
-							{transaction ? 'Update Transaction' : 'Add Transaction'}
+						<Button
+							type="submit"
+							className="flex-1 h-12"
+							disabled={isSubmitting || (type === 'transfer' && !transferAccountId)}
+						>
+							{isSubmitting
+								? transaction
+									? 'Updating...'
+									: 'Adding...'
+								: transaction
+									? 'Update Transaction'
+									: 'Add Transaction'}
 						</Button>
-						<Button type="button" variant="outline" onClick={onClose}>
+						<Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
 							Cancel
 						</Button>
 					</div>

@@ -90,13 +90,8 @@ export const useTransactions = () => {
 		if (!user) throw new Error('User not authenticated');
 		if (!data.category.trim()) throw new Error('Category is required.');
 
-		const accountRef = doc(db, 'users', user.uid, 'accounts', data.accountId);
-		const accountSnap = await getDoc(accountRef);
-		if (!accountSnap.exists()) {
-			throw new Error('Account not found.');
-		}
-
 		const batch = writeBatch(db);
+		const accountRef = doc(db, 'users', user.uid, 'accounts', data.accountId);
 
 		const txCol = collection(db, 'users', user.uid, 'transactions');
 		const txRef = doc(txCol);
@@ -128,14 +123,6 @@ export const useTransactions = () => {
 
 		const fromRef = doc(db, 'users', user.uid, 'accounts', data.fromAccountId);
 		const toRef = doc(db, 'users', user.uid, 'accounts', data.toAccountId);
-		const [fromSnap, toSnap] = await Promise.all([
-			getDoc(fromRef),
-			getDoc(toRef),
-		]);
-		if (!fromSnap.exists() || !toSnap.exists()) {
-			throw new Error('Account not found.');
-		}
-
 		const batch = writeBatch(db);
 		const txCol = collection(db, 'users', user.uid, 'transactions');
 		const now = Timestamp.now();
