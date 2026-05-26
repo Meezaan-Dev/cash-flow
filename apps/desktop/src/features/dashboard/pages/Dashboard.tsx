@@ -157,6 +157,7 @@ const Dashboard: React.FC = () => {
 		} else {
 			setSelectedTx(null);
 			setSelectedTransactionId(null);
+			setActiveView('dashboard');
 			navigate('/dashboard');
 		}
 	};
@@ -195,6 +196,7 @@ const Dashboard: React.FC = () => {
 	const handleCloseForm = () => {
 		setSelectedTx(null);
 		setSelectedTransactionId(null);
+		setActiveView('dashboard');
 		navigate('/dashboard');
 	};
 
