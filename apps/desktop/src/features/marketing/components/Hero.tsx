@@ -38,9 +38,9 @@ const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
 		>
 			<div className="pointer-events-none absolute left-1/2 top-10 h-80 w-[min(44rem,90vw)] -translate-x-1/2 rounded-full bg-blue-500/10 blur-3xl" />
 
-			<div className="relative mx-auto max-w-7xl">
+			<div className="relative mx-auto max-w-[82rem]">
 				<motion.div
-					className="mx-auto max-w-5xl"
+					className="mx-auto max-w-6xl"
 					initial={{ opacity: 0, y: 28 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.65, ease: 'easeOut' }}
@@ -49,9 +49,7 @@ const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
 						Simple money tracking
 					</div>
 					<h1 className="text-4xl font-extrabold leading-[1.04] text-white sm:text-6xl lg:text-7xl">
-						See your money
-						<br />
-						clearly.
+						See your money clearly.
 					</h1>
 					<p className="mt-4 text-lg font-semibold text-blue-500">
 						The personal finance workspace
@@ -80,7 +78,7 @@ const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
 				</motion.div>
 
 				<motion.div
-					className="mx-auto mt-12 w-full max-w-[22.5rem] overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#080808] p-4 text-left shadow-2xl shadow-blue-950/20 sm:max-w-4xl sm:p-5"
+					className="mx-auto mt-12 w-full max-w-[24rem] overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#080808] p-4 text-left shadow-2xl shadow-blue-950/20 sm:max-w-5xl sm:p-5"
 					initial={{ opacity: 0, y: 36 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.7, delay: 0.12, ease: 'easeOut' }}
@@ -116,9 +114,8 @@ const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
 										{item.name}
 									</span>
 									<span
-										className={`ml-3 flex-shrink-0 text-xs font-semibold ${
-											item.negative ? 'text-red-400' : 'text-white'
-										}`}
+										className={`ml-3 flex-shrink-0 text-xs font-semibold ${item.negative ? 'text-red-400' : 'text-white'
+											}`}
 									>
 										{item.amount}
 									</span>
@@ -132,9 +129,8 @@ const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
 								{bars.map((bar, index) => (
 									<div
 										key={`${bar.height}-${index}`}
-										className={`flex-1 rounded-t-sm ${
-											bar.highlight ? 'bg-blue-600' : 'bg-white/10'
-										}`}
+										className={`flex-1 rounded-t-sm ${bar.highlight ? 'bg-blue-600' : 'bg-white/10'
+											}`}
 										style={{ height: bar.height }}
 									/>
 								))}

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/app/ui/textarea';
 
 const SUGGESTED_PROMPTS = [
 	'How much did I spend on food this month?',
-	'How many times did I eat KFC?',
+	'What is debit order total for this month?',
 	'Which account am I spending the most from?',
 ];
 
