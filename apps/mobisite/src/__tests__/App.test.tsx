@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import App from '../App';
 
 jest.mock('firebase/auth', () => ({
@@ -30,12 +31,27 @@ jest.mock('@cash-flow/shared', () => ({
 		setMainAccountId: jest.fn(),
 	}),
 	useTransactions: () => ({
-		transactions: [],
+		transactions: [
+			{
+				id: 'txn-1',
+				title: 'Coffee',
+				type: 'expense',
+				amount: 35,
+				category: 'food',
+				subcategory: undefined,
+				date: new Date(2026, 4, 22),
+				createdAt: new Date(2026, 4, 22),
+			},
+		],
 		addTransaction: jest.fn(),
 	}),
 }));
 
 describe('Mobisite App', () => {
+	beforeEach(() => {
+		window.sessionStorage.clear();
+	});
+
 	it('exposes only the mobile add/list navigation', async () => {
 		render(<App />);
 
@@ -47,5 +63,31 @@ describe('Mobisite App', () => {
 		expect(screen.queryByText('Reports')).not.toBeInTheDocument();
 		expect(screen.queryByText('Recurring')).not.toBeInTheDocument();
 		expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+	});
+
+	it('keeps the mobile shell navigation visible while switching tabs', async () => {
+		const user = userEvent.setup();
+
+		render(<App />);
+
+		expect(await screen.findByTestId('mobisite-shell')).toBeInTheDocument();
+		expect(screen.getByTestId('mobisite-content')).toBeInTheDocument();
+		expect(screen.getByTestId('mobisite-nav')).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: 'List' }));
+
+		expect(screen.getByTestId('mobisite-nav')).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'Transactions' })).toBeInTheDocument();
+		expect(screen.getByText('Coffee')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: 'Add' }));
+
+		expect(screen.getByTestId('mobisite-nav')).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeInTheDocument();
+		expect(screen.getByLabelText('Title')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Add transaction' })).toBeInTheDocument();
 	});
 });
