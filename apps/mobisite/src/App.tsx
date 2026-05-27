@@ -22,6 +22,8 @@ import {
 type MobileTab = 'add' | 'list';
 type MobileTransactionType = 'income' | 'expense';
 
+const MOBILE_TAB_STORAGE_KEY = 'cashflow-mobisite-tab';
+
 const formatDateKey = (transaction: Transaction) =>
 	getTransactionDateOrEpoch(transaction.date, transaction.createdAt).toLocaleDateString('en-ZA', {
 		day: 'numeric',
@@ -208,117 +210,119 @@ const AddTransactionView = () => {
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="space-y-4 py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
-			{error && (
-				<div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-					{error}
+		<div className="py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
+			<form onSubmit={handleSubmit} className="mx-auto max-w-sm space-y-4">
+				{error && (
+					<div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+						{error}
+					</div>
+				)}
+				<div className="grid grid-cols-2 gap-2">
+					{(['expense', 'income'] as const).map((item) => (
+						<button
+							key={item}
+							type="button"
+							onClick={() => setType(item)}
+							className={`flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-semibold ${
+								type === item ? 'border-primary bg-primary text-primary-foreground' : 'bg-card'
+							}`}
+						>
+							{item === 'expense' ? (
+								<ArrowDownCircle className="h-4 w-4" />
+							) : (
+								<ArrowUpCircle className="h-4 w-4" />
+							)}
+							{item}
+						</button>
+					))}
 				</div>
-			)}
-			<div className="grid grid-cols-2 gap-2">
-				{(['expense', 'income'] as const).map((item) => (
-					<button
-						key={item}
-						type="button"
-						onClick={() => setType(item)}
-						className={`flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-semibold ${
-							type === item ? 'border-primary bg-primary text-primary-foreground' : 'bg-card'
-						}`}
-					>
-						{item === 'expense' ? (
-							<ArrowDownCircle className="h-4 w-4" />
-						) : (
-							<ArrowUpCircle className="h-4 w-4" />
-						)}
-						{item}
-					</button>
-				))}
-			</div>
-			<label className="block space-y-1.5 text-sm font-medium">
-				<span>Title</span>
-				<input
-					value={title}
-					onChange={(event) => setTitle(event.target.value)}
-					className="h-12 w-full rounded-md border bg-background px-3"
-					required
-				/>
-			</label>
-			<label className="block space-y-1.5 text-sm font-medium">
-				<span>Amount</span>
-				<input
-					type="number"
-					min="0.01"
-					step="0.01"
-					value={amount}
-					onChange={(event) => setAmount(event.target.value)}
-					className="h-12 w-full rounded-md border bg-background px-3"
-					required
-				/>
-			</label>
-			<label className="block space-y-1.5 text-sm font-medium">
-				<span>Account</span>
-				<select
-					value={accountId}
-					onChange={(event) => setAccountId(event.target.value)}
-					className="h-12 w-full rounded-md border bg-background px-3"
-				>
-					{accounts.map((account) => (
-						<option key={account.id} value={account.id}>
-							{account.name} - {formatCurrency(account.balance)}
-						</option>
-					))}
-				</select>
-			</label>
-			<label className="block space-y-1.5 text-sm font-medium">
-				<span>Category</span>
-				<select
-					value={category}
-					onChange={(event) => {
-						setCategory(event.target.value);
-						setSubcategory('');
-					}}
-					className="h-12 w-full rounded-md border bg-background px-3"
-				>
-					{availableCategories.map((item) => (
-						<option key={item.value} value={item.value}>
-							{item.label}
-						</option>
-					))}
-				</select>
-			</label>
-			{availableSubcategories.length > 0 && (
 				<label className="block space-y-1.5 text-sm font-medium">
-					<span>Subcategory</span>
+					<span>Title</span>
+					<input
+						value={title}
+						onChange={(event) => setTitle(event.target.value)}
+						className="h-12 w-full rounded-md border bg-background px-3"
+						required
+					/>
+				</label>
+				<label className="block space-y-1.5 text-sm font-medium">
+					<span>Amount</span>
+					<input
+						type="number"
+						min="0.01"
+						step="0.01"
+						value={amount}
+						onChange={(event) => setAmount(event.target.value)}
+						className="h-12 w-full rounded-md border bg-background px-3"
+						required
+					/>
+				</label>
+				<label className="block space-y-1.5 text-sm font-medium">
+					<span>Account</span>
 					<select
-						value={subcategory}
-						onChange={(event) => setSubcategory(event.target.value)}
+						value={accountId}
+						onChange={(event) => setAccountId(event.target.value)}
 						className="h-12 w-full rounded-md border bg-background px-3"
 					>
-						<option value="">No subcategory</option>
-						{availableSubcategories.map((item) => (
+						{accounts.map((account) => (
+							<option key={account.id} value={account.id}>
+								{account.name} - {formatCurrency(account.balance)}
+							</option>
+						))}
+					</select>
+				</label>
+				<label className="block space-y-1.5 text-sm font-medium">
+					<span>Category</span>
+					<select
+						value={category}
+						onChange={(event) => {
+							setCategory(event.target.value);
+							setSubcategory('');
+						}}
+						className="h-12 w-full rounded-md border bg-background px-3"
+					>
+						{availableCategories.map((item) => (
 							<option key={item.value} value={item.value}>
 								{item.label}
 							</option>
 						))}
 					</select>
 				</label>
-			)}
-			<label className="block space-y-1.5 text-sm font-medium">
-				<span>Date</span>
-				<input
-					type="date"
-					value={date}
-					onChange={(event) => setDate(event.target.value)}
-					className="h-12 w-full rounded-md border bg-background px-3"
-				/>
-			</label>
-			<button
-				type="submit"
-				disabled={saving}
-				className="h-12 w-full rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-			>
-				{saving ? 'Saving...' : 'Add transaction'}
-			</button>
-		</form>
+				{availableSubcategories.length > 0 && (
+					<label className="block space-y-1.5 text-sm font-medium">
+						<span>Subcategory</span>
+						<select
+							value={subcategory}
+							onChange={(event) => setSubcategory(event.target.value)}
+							className="h-12 w-full rounded-md border bg-background px-3"
+						>
+							<option value="">No subcategory</option>
+							{availableSubcategories.map((item) => (
+								<option key={item.value} value={item.value}>
+									{item.label}
+								</option>
+							))}
+						</select>
+					</label>
+				)}
+				<label className="block space-y-1.5 text-sm font-medium">
+					<span>Date</span>
+					<input
+						type="date"
+						value={date}
+						onChange={(event) => setDate(event.target.value)}
+						className="h-12 w-full rounded-md border bg-background px-3"
+					/>
+				</label>
+				<button
+					type="submit"
+					disabled={saving}
+					className="h-12 w-full rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+				>
+					{saving ? 'Saving...' : 'Add transaction'}
+				</button>
+			</form>
+		</div>
 	);
 };
 
@@ -342,82 +346,94 @@ const TransactionListView = () => {
 	}, [transactions]);
 
 	return (
-		<section className="space-y-5 py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
-			{transactions.length === 0 && (
-				<div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
-					Add your first transaction and it will show up here.
-				</div>
-			)}
-			{Object.entries(grouped).map(([date, items]) => (
-				<div key={date} className="space-y-2">
-					<h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-						{date}
-					</h2>
-					<div className="divide-y rounded-lg border bg-card">
-						{items.map((transaction) => (
-							<div key={transaction.id} className="flex items-center justify-between gap-3 p-3">
-								<div className="min-w-0">
-									<p className="truncate text-sm font-semibold">{transaction.title}</p>
-									<p className="truncate text-xs text-muted-foreground">
-										{getCategoryPathLabel(transaction.category, transaction.subcategory)}
+		<section className="py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
+			<div className="mx-auto max-w-sm space-y-5">
+				{transactions.length === 0 && (
+					<div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
+						Add your first transaction and it will show up here.
+					</div>
+				)}
+				{Object.entries(grouped).map(([date, items]) => (
+					<div key={date} className="space-y-2">
+						<h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+							{date}
+						</h2>
+						<div className="divide-y rounded-lg border bg-card">
+							{items.map((transaction) => (
+								<div key={transaction.id} className="flex items-center justify-between gap-3 p-3">
+									<div className="min-w-0">
+										<p className="truncate text-sm font-semibold">{transaction.title}</p>
+										<p className="truncate text-xs text-muted-foreground">
+											{getCategoryPathLabel(transaction.category, transaction.subcategory)}
+										</p>
+									</div>
+									<p
+										className={`shrink-0 text-sm font-semibold ${
+											transaction.type === 'income'
+												? 'text-green-600 dark:text-green-400'
+												: transaction.type === 'expense'
+													? 'text-red-600 dark:text-red-400'
+													: 'text-blue-600 dark:text-blue-400'
+										}`}
+									>
+										{transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
+										{formatCurrency(transaction.amount)}
 									</p>
 								</div>
-								<p
-									className={`shrink-0 text-sm font-semibold ${
-										transaction.type === 'income'
-											? 'text-green-600 dark:text-green-400'
-											: transaction.type === 'expense'
-												? 'text-red-600 dark:text-red-400'
-												: 'text-blue-600 dark:text-blue-400'
-									}`}
-								>
-									{transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
-									{formatCurrency(transaction.amount)}
-								</p>
-							</div>
-						))}
+							))}
+						</div>
 					</div>
-				</div>
-			))}
+				))}
+			</div>
 		</section>
 	);
 };
 
 const MobileApp = ({ user }: { user: User }) => {
-	const [tab, setTab] = useState<MobileTab>('add');
+	const [tab, setTab] = useState<MobileTab>(() => {
+		if (typeof window === 'undefined') return 'add';
+		const savedTab = window.sessionStorage.getItem(MOBILE_TAB_STORAGE_KEY);
+		return savedTab === 'list' ? 'list' : 'add';
+	});
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		window.sessionStorage.setItem(MOBILE_TAB_STORAGE_KEY, tab);
+	}, [tab]);
 
 	return (
-		<div className="flex min-h-screen-safe flex-col overflow-x-hidden bg-background text-foreground">
-			<header className="sticky top-0 z-20 border-b bg-background/95 py-3 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] backdrop-blur md:px-4">
-				<div className="flex items-center justify-between gap-3">
+		<div
+			className="flex min-h-screen-safe flex-col overflow-hidden bg-background text-foreground"
+			data-testid="mobisite-shell"
+		>
+			<header className="shrink-0 border-b border-border/80 bg-background/95 pt-[calc(0.875rem+env(safe-area-inset-top))] pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur md:px-4">
+				<div className="mx-auto flex w-full max-w-sm items-center justify-between gap-3">
 					<div className="min-w-0">
-						<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+						<p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
 							CashFlow mobile
 						</p>
-						<h1 className="truncate text-lg font-semibold">
+						<h1 className="mt-1 truncate text-lg font-semibold tracking-tight">
 							{tab === 'add' ? 'Add transaction' : 'Transactions'}
 						</h1>
 					</div>
 					<button
 						type="button"
 						onClick={() => void signOut(auth)}
-						className="inline-flex h-10 w-10 items-center justify-center rounded-full border"
+						className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-card/80 shadow-sm"
 						aria-label={`Sign out ${user.email ?? ''}`}
 					>
 						<LogOut className="h-4 w-4" />
 					</button>
 				</div>
-			</header>
-			<div className="flex-1">
-				{tab === 'add' ? <AddTransactionView /> : <TransactionListView />}
-			</div>
-			<nav className="sticky bottom-0 z-30 border-t bg-background/95 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] pt-2 backdrop-blur md:px-4 md:pb-3">
-				<div className="mx-auto grid max-w-sm grid-cols-2 gap-2">
+				<nav className="mx-auto mt-4 grid w-full max-w-sm grid-cols-2 gap-2 pb-3" data-testid="mobisite-nav">
 					<button
 						type="button"
 						onClick={() => setTab('add')}
-						className={`flex h-12 items-center justify-center gap-2 rounded-md text-sm font-semibold ${
-							tab === 'add' ? 'bg-primary text-primary-foreground' : 'border bg-card'
+						aria-pressed={tab === 'add'}
+						className={`flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
+							tab === 'add'
+								? 'border-primary bg-primary text-primary-foreground shadow-sm'
+								: 'border-border/80 bg-card text-foreground'
 						}`}
 					>
 						<PlusCircle className="h-4 w-4" />
@@ -426,15 +442,24 @@ const MobileApp = ({ user }: { user: User }) => {
 					<button
 						type="button"
 						onClick={() => setTab('list')}
-						className={`flex h-12 items-center justify-center gap-2 rounded-md text-sm font-semibold ${
-							tab === 'list' ? 'bg-primary text-primary-foreground' : 'border bg-card'
+						aria-pressed={tab === 'list'}
+						className={`flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
+							tab === 'list'
+								? 'border-primary bg-primary text-primary-foreground shadow-sm'
+								: 'border-border/80 bg-card text-foreground'
 						}`}
 					>
 						<List className="h-4 w-4" />
 						List
 					</button>
-				</div>
-			</nav>
+				</nav>
+			</header>
+			<div
+				className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+				data-testid="mobisite-content"
+			>
+				{tab === 'add' ? <AddTransactionView /> : <TransactionListView />}
+			</div>
 		</div>
 	);
 };
