@@ -1,14 +1,14 @@
 import { BrowserRouter as Router, Navigate, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from '@/features/theme/context/ThemeContext';
-import { TransactionsProvider } from '@/features/transactions/context/TransactionsContext';
-import { AccountsProvider } from '@/features/accounts/context/AccountsContext';
-import { BudgetsProvider } from '@/features/budgets/context/BudgetsContext';
-import { CategoriesProvider } from '@/features/categories/context/CategoriesContext';
-import { FilterPreferencesProvider } from '@/features/filters/context/FilterPreferencesContext';
-import ProtectedRoute from '@/features/auth/components/ProtectedRoute';
-import Dashboard from '@/features/dashboard/pages/Dashboard';
-import AccountDetailPage from '@/features/accounts/pages/AccountDetail';
-import MobisiteFrame from '@/features/mobisite/pages/MobisiteFrame';
+import { ThemeProvider } from '@/app/theme/context/ThemeContext';
+import { TransactionsProvider } from '@/domains/transactions/context/TransactionsContext';
+import { AccountsProvider } from '@/domains/accounts/context/AccountsContext';
+import { BudgetsProvider } from '@/domains/budgets/context/BudgetsContext';
+import { CategoriesProvider } from '@/domains/categories/context/CategoriesContext';
+import { FilterPreferencesProvider } from '@/shared/filters/context/FilterPreferencesContext';
+import ProtectedRoute from '@/app/routes/ProtectedRoute';
+import Dashboard from '@/pages/dashboard/Dashboard';
+import AccountDetailPage from '@/pages/accounts/AccountDetail';
+import MobisiteFrame from '@/pages/mobisite/MobisiteFrame';
 
 function App() {
 	return (
