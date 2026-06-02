@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider } from '@/features/theme/context/ThemeContext';
+import { ThemeProvider } from '@/app/theme/context/ThemeContext';
 
 // Mock user data for authentication tests
 export const mockUser = {

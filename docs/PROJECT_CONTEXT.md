@@ -46,9 +46,12 @@ Core capabilities include Firebase auth, multi-account management for debit/cred
 
 ## Architecture Map
 
-The app now follows a feature-based structure:
+The app now follows an app-flow structure with domain logic separated from pages and shared app services:
 
-- `apps/desktop/src/features/<domain>/`: host app, desktop dashboard route, pages, views, hooks, models, controllers, and contexts.
+- `apps/desktop/src/app/`: host app shell concerns such as routes and theme wiring.
+- `apps/desktop/src/pages/`: route-level screens and page-specific dashboard, account, marketing, and mobisite components.
+- `apps/desktop/src/domains/`: desktop domain logic, views, hooks, models, controllers, and contexts for accounts, transactions, budgets, categories, recurring transactions, reports, auth, and AI.
+- `apps/desktop/src/shared/`: app-local shared logic such as filters that are reused across multiple pages.
 - `apps/mobisite/src/`: small mobile app mounted inside the host router at `/mobisite`.
 - `packages/shared/src/`: Firebase, shared types, models, hooks, and date/currency/category utilities used across app shells.
 - `packages/ui/src/`: shared UI package placeholder for reusable primitives as they are extracted.
@@ -62,7 +65,7 @@ There is only one deployed SPA. `apps/mobisite` is internal separation, not a se
 - Accounts come before transactions in the user flow.
 - Transaction writes that change balances must stay atomic with Firestore `writeBatch` and `increment()`.
 - Transfers are represented as two linked transaction records and two account balance updates.
-- Keep data normalization in models and Firebase behavior in hooks.
+- Keep data normalization in domain models and Firebase behavior in domain hooks.
 - Use shared types from `src/types/` instead of redefining domain shapes in UI components.
 - Keep the UI friendly and direct; do not turn the app into a marketing surface.
 - Keep `/mobisite` intentionally small: add income/expense and view list only.

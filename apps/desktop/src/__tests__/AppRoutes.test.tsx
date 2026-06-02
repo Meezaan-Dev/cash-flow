@@ -33,29 +33,29 @@ jest.mock('react-router-dom', () => {
 	};
 });
 
-jest.mock('@/features/theme/context/ThemeContext', () => ({
+jest.mock('@/app/theme/context/ThemeContext', () => ({
 	ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('@/features/filters/context/FilterPreferencesContext', () => ({
+jest.mock('@/shared/filters/context/FilterPreferencesContext', () => ({
 	FilterPreferencesProvider: ({ children }: { children: React.ReactNode }) => (
 		<>{children}</>
 	),
 }));
 
-jest.mock('@/features/categories/context/CategoriesContext', () => ({
+jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 	CategoriesProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('@/features/transactions/context/TransactionsContext', () => ({
+jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 	TransactionsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('@/features/accounts/context/AccountsContext', () => ({
+jest.mock('@/domains/accounts/context/AccountsContext', () => ({
 	AccountsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('@/features/budgets/context/BudgetsContext', () => ({
+jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 	BudgetsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
@@ -70,27 +70,27 @@ jest.mock('firebase/auth', () => ({
 	},
 }));
 
-jest.mock('@/features/marketing/pages/Home', () => ({
+jest.mock('@/pages/marketing/Home', () => ({
 	__esModule: true,
 	default: () => <div>Marketing home</div>,
 }));
 
-jest.mock('@/features/ai/components/AIChatbot', () => ({
+jest.mock('@/domains/ai/components/AIChatbot', () => ({
 	__esModule: true,
 	default: () => <div>AI assistant</div>,
 }));
 
-jest.mock('@/features/dashboard/pages/Dashboard', () => ({
+jest.mock('@/pages/dashboard/Dashboard', () => ({
 	__esModule: true,
 	default: () => <div>Desktop dashboard</div>,
 }));
 
-jest.mock('@/features/accounts/pages/AccountDetail', () => ({
+jest.mock('@/pages/accounts/AccountDetail', () => ({
 	__esModule: true,
 	default: () => <div>Account detail</div>,
 }));
 
-jest.mock('@/features/mobisite/pages/MobisiteFrame', () => ({
+jest.mock('@/pages/mobisite/MobisiteFrame', () => ({
 	__esModule: true,
 	default: () => (
 		<div data-testid="mobisite-frame">
