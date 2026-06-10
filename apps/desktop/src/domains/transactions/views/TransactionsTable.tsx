@@ -5,6 +5,15 @@ import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import DateRangeFilter from '@/shared/filters/components/DateRangeFilter';
 import { filterTransactionsByDateRangeObject } from '@/shared/filters/utils/dateRangeFilter';
+import Currency from '@/components/marketing/Currency';
+import SectionHeader from '@/components/marketing/SectionHeader';
+import {
+	cardSurface,
+	frostedPanel,
+	pageBg,
+	selectedRow,
+} from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { DateRange, Transaction } from '@/types';
 import { compareTransactionsByDateDesc, getTransactionDateOrEpoch } from '@/utils/date';
@@ -259,29 +268,27 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 				: `Amount (Total Expense: ${formatCurrency(totals.totalExpense)})`;
 
 	return (
-		<div className="flex flex-col gap-6 p-4 md:p-6">
-			{/* Prompt-style Header */}
-			<div className="flex flex-col gap-1">
-				<h2 className="text-xl font-semibold tracking-tight">Transaction history</h2>
-				<p className="text-sm text-muted-foreground">
-					Search, filter, and review your activity.
-				</p>
-			</div>
+		<div className={cn('flex flex-col gap-6 p-4 md:p-6', pageBg, 'min-h-screen')}>
+			<SectionHeader
+				title="Transaction history"
+				subtitle="Search, filter, and review your activity."
+				compact
+			/>
 
 			{/* Control Bar */}
 			{allFiltersHidden ? (
-				<div className="flex items-center gap-2 rounded-2xl border border-dashed p-3 text-sm text-muted-foreground">
+				<div className="flex items-center gap-2 rounded-2xl border border-dashed border-gray-200 p-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
 					<FiSettings className="h-4 w-4 shrink-0" />
 					<span>All filters are hidden.</span>
 					<button
-						className="ml-1 underline underline-offset-2 hover:text-foreground"
+						className="ml-1 underline underline-offset-2 hover:text-gray-900 dark:hover:text-gray-50"
 						onClick={() => onOpenSettings?.()}
 					>
 						Manage in Settings
 					</button>
 				</div>
 			) : (
-				<div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-3">
+				<div className={cn('flex flex-wrap items-center gap-2 rounded-2xl p-3', frostedPanel)}>
 					{tablePrefs.search && (
 						<Input
 							placeholder="Search transactions…"
@@ -385,7 +392,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
 			{selectedCount > 0 && (
 				<div
-					className="flex flex-wrap items-center gap-3 rounded-2xl border bg-muted/40 p-3"
+					className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-blue-50/50 p-3 dark:border-gray-800 dark:bg-blue-950/30"
 					onClick={(event) => event.stopPropagation()}
 				>
 					<div className="text-sm font-medium">
@@ -409,6 +416,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 					</Select>
 					<Button
 						type="button"
+						variant="marketing"
 						onClick={handleApplyBulkCategory}
 						disabled={!selectedBulkCategory || isBulkSaving}
 					>
@@ -426,13 +434,13 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 			)}
 
 			{/* Table Surface */}
-			<div className="rounded-2xl border bg-card">
+			<div className={cardSurface}>
 				<div
 					className="relative max-h-[calc(var(--vh-screen)-220px)] overflow-auto"
 					onScroll={handleScroll}
 				>
 					<Table>
-						<TableHeader className="sticky top-0 z-10 bg-card/80 backdrop-blur">
+						<TableHeader className="sticky top-0 z-10 bg-white/80 backdrop-blur dark:bg-gray-900/80">
 							<TableRow className="hover:bg-transparent">
 								<TableHead className="w-12">
 									<input
@@ -463,8 +471,12 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 								<TableRow
 									key={tx.id}
 									onClick={() => onSelect(tx)}
-									className={`cursor-pointer transition-colors ${tx.id === selectedId ? 'bg-muted' : 'hover:bg-muted/40'
-										}`}
+									className={cn(
+										'cursor-pointer transition-colors',
+										tx.id === selectedId
+											? selectedRow
+											: 'hover:bg-gray-50/80 dark:hover:bg-gray-800/30'
+									)}
 								>
 									<TableCell>
 										<input
@@ -481,21 +493,20 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 									</TableCell>
 									<TableCell>
 										<div className="font-medium">{tx.title}</div>
-										<div className="text-xs text-muted-foreground">
+										<div className="text-xs text-gray-500 dark:text-gray-400">
 											{tx.type}
 										</div>
 									</TableCell>
 
-									<TableCell
-										className={`text-right font-medium ${tx.type === 'income'
-											? 'text-green-600 dark:text-green-400'
-											: 'text-red-600 dark:text-red-400'
-											}`}
-									>
-										{formatCurrency(tx.amount)}
+									<TableCell className="text-right">
+										<Currency
+											amount={tx.amount}
+											tone={tx.type === 'income' ? 'income' : 'expense'}
+											className="text-sm"
+										/>
 									</TableCell>
 
-									<TableCell className="text-right text-sm text-muted-foreground">
+									<TableCell className="text-right text-sm text-gray-500 dark:text-gray-400">
 										{(() => {
 											return getTransactionDateOrEpoch(
 												tx.date,
@@ -544,7 +555,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 													? 'No transactions yet'
 													: 'Nothing to show'}
 											</div>
-											<div className="text-sm text-muted-foreground">
+											<div className="text-sm text-gray-500 dark:text-gray-400">
 												{transactions.length === 0
 													? hasNoAccounts
 														? 'Create an account first, then transactions will appear here.'

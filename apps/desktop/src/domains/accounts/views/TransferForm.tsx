@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { FiArrowRight } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
-import { formatCurrency } from '@/utils/formatCurrency';
+import Currency from '@/components/marketing/Currency';
+import { cardSurfaceInner, modalShell, pageBg } from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import { Textarea } from '@/components/app/ui/textarea';
@@ -72,11 +74,11 @@ const TransferForm: React.FC<TransferFormProps> = ({ onClose }) => {
 	};
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background p-4">
-			<div className="w-full max-w-lg rounded-2xl border bg-card p-8 shadow-xl">
+		<div className={cn('flex min-h-screen items-center justify-center p-4', pageBg)}>
+			<div className={cn('w-full max-w-lg p-8', modalShell)}>
 				<div className="mb-8 border-b pb-6">
 					<h2 className="text-3xl font-bold tracking-tight">Transfer Money</h2>
-					<p className="mt-1.5 text-sm text-muted-foreground">
+					<p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
 						Move funds between your accounts
 					</p>
 				</div>
@@ -89,26 +91,28 @@ const TransferForm: React.FC<TransferFormProps> = ({ onClose }) => {
 
 				{/* Live transfer summary */}
 				{fromAccount && toAccount && Number(amount) > 0 && (
-					<div className="mb-6 rounded-xl border bg-muted/40 p-4">
+					<div className="mb-6 rounded-xl border border-gray-100 bg-gray-50/60 p-4 dark:border-gray-800 dark:bg-gray-800/40">
 						<div className="flex items-center justify-between gap-3 text-sm">
-							<div className="flex-1 rounded-lg border bg-background p-3 text-center">
-								<p className="text-xs text-muted-foreground mb-1">From</p>
-								<p className="font-semibold truncate">{fromAccount.name}</p>
-								<p className="text-xs text-muted-foreground mt-1">
-									{formatCurrency(fromAccount.balance - Number(amount))}
-								</p>
+							<div className={cn('flex-1 p-3 text-center', cardSurfaceInner)}>
+								<p className="mb-1 text-xs text-gray-500 dark:text-gray-400">From</p>
+								<p className="truncate font-semibold">{fromAccount.name}</p>
+								<Currency
+									amount={fromAccount.balance - Number(amount)}
+									className="mt-1 text-xs"
+								/>
 							</div>
-							<FiArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-							<div className="flex-1 rounded-lg border bg-background p-3 text-center">
-								<p className="text-xs text-muted-foreground mb-1">To</p>
-								<p className="font-semibold truncate">{toAccount.name}</p>
-								<p className="text-xs text-muted-foreground mt-1">
-									{formatCurrency(toAccount.balance + Number(amount))}
-								</p>
+							<FiArrowRight className="h-5 w-5 flex-shrink-0 text-gray-400" />
+							<div className={cn('flex-1 p-3 text-center', cardSurfaceInner)}>
+								<p className="mb-1 text-xs text-gray-500 dark:text-gray-400">To</p>
+								<p className="truncate font-semibold">{toAccount.name}</p>
+								<Currency
+									amount={toAccount.balance + Number(amount)}
+									className="mt-1 text-xs"
+								/>
 							</div>
 						</div>
-						<p className="mt-3 text-center text-sm font-medium text-primary">
-							Transferring {formatCurrency(Number(amount))}
+						<p className="mt-3 text-center text-sm font-medium text-blue-600 dark:text-blue-400">
+							Transferring <Currency amount={Number(amount)} className="text-sm" />
 						</p>
 					</div>
 				)}
@@ -222,7 +226,7 @@ const TransferForm: React.FC<TransferFormProps> = ({ onClose }) => {
 
 					{/* Actions */}
 					<div className="flex gap-3 pt-2">
-						<Button type="submit" className="flex-1 h-12" disabled={loading}>
+						<Button type="submit" variant="marketing" className="h-12 flex-1" disabled={loading}>
 							{loading ? 'Transferring...' : 'Complete Transfer'}
 						</Button>
 						<Button type="button" variant="outline" onClick={onClose}>

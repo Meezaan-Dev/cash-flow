@@ -5,6 +5,8 @@ import { useAIChatController } from '@/domains/ai/controllers/AIChatController';
 import { AIChatMessage } from '@/types';
 import { Button } from '@/components/app/ui/button';
 import { Textarea } from '@/components/app/ui/textarea';
+import { cardSurface, sectionLabel } from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 
 const SUGGESTED_PROMPTS = [
 	'How much did I spend on food this month?',
@@ -151,7 +153,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({
 		<div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
 			{messages.length === 0 ? (
 				<div className="space-y-2">
-					<p className="text-xs font-medium text-muted-foreground">Try asking:</p>
+					<p className={sectionLabel}>Try asking</p>
 					<div className="flex flex-wrap gap-2">
 						{SUGGESTED_PROMPTS.map((prompt) => (
 							<Button
@@ -183,13 +185,14 @@ const AIChatbot: React.FC<AIChatbotProps> = ({
 						}`}
 					>
 						<div
-							className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+							className={cn(
+								'max-w-[85%] rounded-2xl px-3 py-2 text-sm',
 								message.role === 'user'
-									? 'bg-primary text-primary-foreground'
+									? 'bg-blue-600 text-white'
 									: message.isError
-										? 'border border-destructive/30 bg-destructive/10 text-destructive'
-										: 'bg-muted text-foreground'
-							}`}
+										? 'border border-red-300 bg-red-50 text-red-600 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400'
+										: 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50'
+							)}
 						>
 							{message.content}
 						</div>
@@ -199,7 +202,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({
 
 			{isLoading && (
 				<div className="flex justify-start">
-					<div className="rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground">
+					<div className="rounded-2xl bg-gray-100 px-3 py-2 text-sm text-gray-500 dark:bg-gray-800 dark:text-gray-400">
 						AI is thinking...
 					</div>
 				</div>
@@ -208,7 +211,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({
 	);
 
 	const renderComposer = () => (
-		<div className="border-t p-3">
+		<div className="border-t border-gray-100 p-3 dark:border-gray-800">
 			<div className="flex items-end gap-2">
 				<Textarea
 					ref={inputRef}
@@ -241,16 +244,18 @@ const AIChatbot: React.FC<AIChatbotProps> = ({
 	const renderPanel = (options?: { onClose?: () => void; docked?: boolean }) => (
 		<section
 			aria-label="AI assistant"
-			className={`flex flex-col overflow-hidden border bg-card ${
+			className={cn(
+				'flex flex-col overflow-hidden shadow-2xl',
+				cardSurface,
 				options?.docked
-					? 'h-full min-h-0 rounded-lg'
-					: 'h-[min(32rem,calc(var(--vh-screen)-6rem))] w-[calc(100vw-2rem)] max-w-md rounded-2xl shadow-2xl'
-			}`}
+					? 'h-full min-h-0'
+					: 'h-[min(32rem,calc(var(--vh-screen)-6rem))] w-[calc(100vw-2rem)] max-w-md'
+			)}
 		>
-			<div className="flex items-center justify-between border-b px-4 py-3">
+			<div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
 				<div>
-					<h2 className="text-sm font-semibold">AI Assistant</h2>
-					<p className="text-xs text-muted-foreground">
+					<h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">AI Assistant</h2>
+					<p className="text-xs text-gray-500 dark:text-gray-400">
 						Ask about your spending, accounts, and budgets
 					</p>
 				</div>
@@ -297,8 +302,9 @@ const AIChatbot: React.FC<AIChatbotProps> = ({
 				)}
 				<Button
 					type="button"
+					variant="marketing"
 					size="icon"
-					className="h-12 w-12 rounded-full shadow-xl"
+					className="h-12 w-12 shadow-xl"
 					onClick={() => setIsOpen((prev) => !prev)}
 					aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
 				>

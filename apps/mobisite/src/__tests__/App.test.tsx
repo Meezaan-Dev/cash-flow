@@ -52,12 +52,14 @@ describe('Mobisite App', () => {
 		window.sessionStorage.clear();
 	});
 
-	it('exposes only the mobile add/list navigation', async () => {
+	it('starts on the home dashboard with add and list options', async () => {
 		render(<App />);
 
-		expect(await screen.findByRole('button', { name: 'Add' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
-		expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+		expect(await screen.findByTestId('mobisite-home')).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /add transaction/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /view transactions/i })).toBeInTheDocument();
+		expect(screen.queryByTestId('mobisite-nav')).not.toBeInTheDocument();
 		expect(screen.queryByText('Accounts')).not.toBeInTheDocument();
 		expect(screen.queryByText('Budgets')).not.toBeInTheDocument();
 		expect(screen.queryByText('Reports')).not.toBeInTheDocument();
@@ -65,15 +67,18 @@ describe('Mobisite App', () => {
 		expect(screen.queryByText('Settings')).not.toBeInTheDocument();
 	});
 
-	it('keeps the mobile shell navigation visible while switching tabs', async () => {
+	it('shows top nav after selecting a view and keeps it while switching', async () => {
 		const user = userEvent.setup();
 
 		render(<App />);
 
-		expect(await screen.findByTestId('mobisite-shell')).toBeInTheDocument();
-		expect(screen.getByTestId('mobisite-content')).toBeInTheDocument();
+		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
+
 		expect(screen.getByTestId('mobisite-nav')).toBeInTheDocument();
 		expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeInTheDocument();
+		expect(screen.getByLabelText('Title')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
 
 		await user.click(screen.getByRole('button', { name: 'List' }));
 
@@ -88,6 +93,15 @@ describe('Mobisite App', () => {
 		expect(screen.getByTestId('mobisite-nav')).toBeInTheDocument();
 		expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeInTheDocument();
 		expect(screen.getByLabelText('Title')).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Add transaction' })).toBeInTheDocument();
+	});
+
+	it('restores the last selected view on reload', async () => {
+		window.sessionStorage.setItem('cashflow-mobisite-view', 'list');
+
+		render(<App />);
+
+		expect(await screen.findByTestId('mobisite-nav')).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'Transactions' })).toBeInTheDocument();
+		expect(screen.getByText('Coffee')).toBeInTheDocument();
 	});
 });

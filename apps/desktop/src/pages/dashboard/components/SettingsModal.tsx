@@ -31,6 +31,8 @@ import { useTransactionsContext } from '@/domains/transactions/context/Transacti
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useFilterPreferences, FilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
+import { modalShell, navItemActive, navItemInactive } from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 
 interface SettingsModalProps {
@@ -281,7 +283,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	return (
 		<>
 			<Dialog open={open} onOpenChange={onClose}>
-				<DialogContent className="sm:max-w-3xl max-h-modal overflow-hidden flex flex-col">
+				<DialogContent className={cn('sm:max-w-3xl max-h-modal overflow-hidden flex flex-col', modalShell)}>
 					<DialogHeader>
 						<DialogTitle>Settings</DialogTitle>
 						<DialogDescription>Manage your app preferences and data</DialogDescription>
@@ -292,17 +294,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 							<div
 								role="tablist"
 								aria-label="Settings sections"
-								className="flex gap-1 rounded-lg border p-1 sm:flex-col"
+								className="flex gap-1 rounded-2xl border border-gray-200 bg-gray-50/40 p-1 dark:border-gray-800 dark:bg-gray-800/20 sm:flex-col"
 							>
 								<button
 									role="tab"
 									aria-selected={activeTab === 'general'}
 									aria-controls="settings-tab-general"
 									onClick={() => setActiveTab('general')}
-									className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${activeTab === 'general'
-										? 'bg-accent text-accent-foreground'
-										: 'text-muted-foreground hover:bg-muted'
-										}`}
+									className={cn(
+										'flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors sm:flex-none sm:justify-start',
+										activeTab === 'general' ? navItemActive : navItemInactive
+									)}
 								>
 									<FiSettings className="h-4 w-4" />
 									General
@@ -312,10 +314,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 									aria-selected={activeTab === 'data'}
 									aria-controls="settings-tab-data"
 									onClick={() => setActiveTab('data')}
-									className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${activeTab === 'data'
-										? 'bg-accent text-accent-foreground'
-										: 'text-muted-foreground hover:bg-muted'
-										}`}
+									className={cn(
+										'flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors sm:flex-none sm:justify-start',
+										activeTab === 'data' ? navItemActive : navItemInactive
+									)}
 								>
 									<FiDatabase className="h-4 w-4" />
 									Data
@@ -325,10 +327,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 									aria-selected={activeTab === 'categories'}
 									aria-controls="settings-tab-categories"
 									onClick={() => setActiveTab('categories')}
-									className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${activeTab === 'categories'
-										? 'bg-accent text-accent-foreground'
-										: 'text-muted-foreground hover:bg-muted'
-										}`}
+									className={cn(
+										'flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors sm:flex-none sm:justify-start',
+										activeTab === 'categories' ? navItemActive : navItemInactive
+									)}
 								>
 									<FiTag className="h-4 w-4" />
 									Categories
@@ -338,10 +340,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 									aria-selected={activeTab === 'filters'}
 									aria-controls="settings-tab-filters"
 									onClick={() => setActiveTab('filters')}
-									className={`flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${activeTab === 'filters'
-										? 'bg-accent text-accent-foreground'
-										: 'text-muted-foreground hover:bg-muted'
-										}`}
+									className={cn(
+										'flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors sm:flex-none sm:justify-start',
+										activeTab === 'filters' ? navItemActive : navItemInactive
+									)}
 								>
 									<FiFilter className="h-4 w-4" />
 									Filters
@@ -353,10 +355,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 							{activeTab === 'general' && (
 								<div className="space-y-4" id="settings-tab-general" role="tabpanel">
 									<div>
-										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
 											General
 										</h3>
-										<div className="space-y-4 rounded-lg border p-4 sm:p-5">
+										<div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
 											<div className="flex items-center justify-between">
 												<Label
 													htmlFor="dark-mode"
@@ -399,7 +401,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 														))
 													)}
 												</select>
-												<p className="text-xs text-muted-foreground">
+												<p className="text-xs text-gray-500 dark:text-gray-400">
 													Used as the default account in desktop and mobisite
 													transaction capture. You can still pick another account
 													per transaction.
@@ -413,11 +415,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 							{activeTab === 'data' && (
 								<div className="space-y-4" id="settings-tab-data" role="tabpanel">
 									<div>
-										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
 											Data
 										</h3>
-										<div className="space-y-4 rounded-lg border p-4 sm:p-5">
-											<p className="text-sm text-muted-foreground">
+										<div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
+											<p className="text-sm text-gray-500 dark:text-gray-400">
 												Import transactions from CSV/JSON. Duplicates are
 												automatically skipped.
 											</p>
@@ -462,7 +464,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 													Export JSON
 												</Button>
 											</div>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-sm text-gray-500 dark:text-gray-400">
 												Delete all transactions from your account. This
 												action cannot be undone.
 											</p>
@@ -481,16 +483,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 							{activeTab === 'filters' && (
 								<div className="space-y-6" id="settings-tab-filters" role="tabpanel">
-									<p className="text-sm text-muted-foreground">
+									<p className="text-sm text-gray-500 dark:text-gray-400">
 										Choose which filters to show in each section. Hidden filters can always be re-enabled here.
 									</p>
 
 									{/* Recurring Transactions */}
 									<div>
-										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
 											Recurring Transactions
 										</h3>
-										<div className="space-y-3 rounded-lg border p-4 sm:p-5">
+										<div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
 											{(
 												[
 													['frequency', 'Frequency filter'],
@@ -518,10 +520,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 									{/* Transaction History (table) */}
 									<div>
-										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
 											Transaction History
 										</h3>
-										<div className="space-y-3 rounded-lg border p-4 sm:p-5">
+										<div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
 											{(
 												[
 													['search', 'Search bar'],
@@ -549,10 +551,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 									{/* Transaction List */}
 									<div>
-										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
 											Transaction List
 										</h3>
-										<div className="space-y-3 rounded-lg border p-4 sm:p-5">
+										<div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
 											<div className="flex items-center justify-between">
 												<Label htmlFor="tl-search" className="cursor-pointer">
 													Search bar
@@ -570,10 +572,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 									{/* Reports */}
 									<div>
-										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+										<h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
 											Reports
 										</h3>
-										<div className="space-y-3 rounded-lg border p-4 sm:p-5">
+										<div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
 											{(
 												[
 													['dateRange', 'Date range filter'],
@@ -605,12 +607,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 							{activeTab === 'categories' && (
 								<div className="space-y-4" id="settings-tab-categories" role="tabpanel">
-									<p className="text-sm text-muted-foreground">
+									<p className="text-sm text-gray-500 dark:text-gray-400">
 										Manage the categories used by transactions, recurring transactions,
 										budgets, and category filters. Changes save immediately.
 									</p>
 
-									<div className="space-y-4 rounded-lg border p-4 sm:p-5">
+									<div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
 										<div className="flex flex-col gap-2 sm:flex-row">
 											<Input
 												value={newCategoryLabel}
@@ -635,7 +637,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 										)}
 
 										{categoriesLoading ? (
-											<p className="text-sm text-muted-foreground">
+											<p className="text-sm text-gray-500 dark:text-gray-400">
 												Loading categories...
 											</p>
 										) : (
@@ -688,7 +690,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 																			className="min-w-0 flex-1 text-left"
 																		>
 																			<p className="font-medium">{category.label}</p>
-																			<p className="text-xs text-muted-foreground">
+																			<p className="text-xs text-gray-500 dark:text-gray-400">
 																				{category.value}
 																				{` • ${category.subcategories.length} ${
 																					category.subcategories.length === 1
@@ -757,7 +759,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 															{isExpanded && (
 															<div className="mt-3 space-y-2 border-t pt-3">
-																<p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+																<p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
 																	Subcategories
 																</p>
 																{category.subcategories.length > 0 ? (
@@ -785,7 +787,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 																							<p className="text-sm font-medium">
 																								{subcategory.label}
 																							</p>
-																							<p className="text-xs text-muted-foreground">
+																							<p className="text-xs text-gray-500 dark:text-gray-400">
 																								{subcategory.value}
 																							</p>
 																						</div>
@@ -857,7 +859,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 																		})}
 																	</div>
 																) : (
-																	<p className="text-sm text-muted-foreground">
+																	<p className="text-sm text-gray-500 dark:text-gray-400">
 																		No subcategories yet.
 																	</p>
 																)}

@@ -32,6 +32,17 @@ import {
 } from '@/pages/dashboard/utils/digestPeriod';
 import { filterTransactionsByDateRangeObject } from '@/shared/filters/utils/dateRangeFilter';
 import { compareTransactionsByDateDesc } from '@/utils/date';
+import Currency from '@/components/marketing/Currency';
+import SectionHeader from '@/components/marketing/SectionHeader';
+import {
+	cardSurface,
+	cardSurfaceInner,
+	cardSurfaceMuted,
+	pageBg,
+	progressTrack,
+	sectionLabel,
+} from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
 import { Button } from '@/components/app/ui/button';
@@ -255,43 +266,40 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 			: null;
 
 	return (
-		<div className="flex min-h-screen flex-col bg-background">
+		<div className={cn('flex min-h-screen flex-col', pageBg)}>
 			<div className="flex-1 overflow-y-auto p-4 md:p-8">
-				<div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-					<div>
-						<h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-							Monthly Reports
-						</h1>
-						<p className="mt-1 text-sm text-muted-foreground">
-							A month-first view with visible amounts, category decisions, and account review.
-						</p>
-					</div>
-					<div className="flex flex-wrap items-center gap-2">
-						<div className="inline-flex rounded-lg border bg-card p-1">
+				<SectionHeader
+					title="Monthly Reports"
+					subtitle="A month-first view with visible amounts, category decisions, and account review."
+					actions={
+						<div className="inline-flex rounded-full border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
 							{(['expense', 'income', 'net'] as ReportMode[]).map((mode) => (
 								<button
 									key={mode}
 									type="button"
 									onClick={() => setReportMode(mode)}
-									className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${reportMode === mode
-										? 'bg-primary text-primary-foreground'
-										: 'text-muted-foreground hover:text-foreground'
-										}`}
+									className={cn(
+										'rounded-full px-3 py-1.5 text-sm font-medium capitalize transition-colors',
+										reportMode === mode
+											? 'bg-blue-600 text-white shadow-sm'
+											: 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'
+									)}
 								>
 									{mode}
 								</button>
 							))}
 						</div>
-					</div>
-				</div>
+					}
+					className="mb-6"
+				/>
 
 				{reportPrefs.dateRange && (
-					<div className="mb-6 space-y-3 rounded-xl border bg-card p-4">
+					<div className={cn('mb-6 space-y-3 p-4', cardSurface)}>
 						<div className="flex flex-wrap items-center gap-2">
 							<Button type="button" variant="outline" size="icon" onClick={() => moveMonth(-1)}>
 								<FiChevronLeft className="h-4 w-4" />
 							</Button>
-							<div className="min-w-[210px] rounded-lg border bg-background px-4 py-2 text-sm font-semibold">
+							<div className="min-w-[210px] rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold dark:border-gray-800 dark:bg-gray-900">
 								{periodMode === 'month' ? getMonthLabel(selectedMonth) : 'Custom cycle'}
 							</div>
 							<Button type="button" variant="outline" size="icon" onClick={() => moveMonth(1)}>
@@ -302,7 +310,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 							</Button>
 							<Button
 								type="button"
-								variant={periodMode === 'customCycle' ? 'default' : 'outline'}
+								variant={periodMode === 'customCycle' ? 'marketing' : 'outline'}
 								onClick={openCustomCycle}
 							>
 								Custom cycle
@@ -371,11 +379,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 				)}
 
 				{!hasVisibleReportSections && (
-					<div className="flex items-center gap-2 rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
+					<div className="flex items-center gap-2 rounded-2xl border border-dashed border-gray-200 p-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
 						<FiSettings className="h-4 w-4 shrink-0" />
 						<span>Reports are hidden.</span>
 						<button
-							className="ml-1 underline underline-offset-2 hover:text-foreground"
+							className="ml-1 underline underline-offset-2 hover:text-gray-900 dark:hover:text-gray-50"
 							onClick={() => onOpenSettings?.()}
 						>
 							Manage in Settings
@@ -385,12 +393,10 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 
 				{reportPrefs.summaryCards && (
 					<div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-						<div className="rounded-xl border bg-card p-4">
-							<p className="text-xs text-muted-foreground">Monthly expenses</p>
-							<p className="mt-1 text-xl font-bold text-red-600 dark:text-red-400">
-								{formatCurrency(totalExpense)}
-							</p>
-							<p className="text-sm text-muted-foreground">
+						<div className={cn('p-4', cardSurfaceMuted)}>
+							<p className={sectionLabel}>Monthly expenses</p>
+							<Currency amount={totalExpense} tone="expense" className="mt-1 text-xl" />
+							<p className="text-sm text-gray-500 dark:text-gray-400">
 								{
 									filteredTransactions.filter(
 										(transaction) => transaction.type === 'expense'
@@ -399,18 +405,22 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 								transactions
 							</p>
 						</div>
-						<div className="rounded-xl border bg-card p-4">
-							<p className="text-xs text-muted-foreground">Biggest category</p>
-							<p className="mt-1 truncate text-xl font-bold">
+						<div className={cn('p-4', cardSurfaceMuted)}>
+							<p className={sectionLabel}>Biggest category</p>
+							<p className="mt-1 truncate text-xl font-semibold text-gray-900 dark:text-gray-50">
 								{biggestCategory ? getCategoryLabel(biggestCategory.category) : 'None yet'}
 							</p>
-							<p className="text-sm text-muted-foreground">
-								{biggestCategory ? formatCurrency(biggestCategory.amount) : 'No expenses'}
+							<p className="text-sm text-gray-500 dark:text-gray-400">
+								{biggestCategory ? (
+									<Currency amount={biggestCategory.amount} className="text-sm" />
+								) : (
+									'No expenses'
+								)}
 							</p>
 						</div>
-						<div className="rounded-xl border bg-card p-4">
-							<p className="text-xs text-muted-foreground">Biggest subcategory</p>
-							<p className="mt-1 truncate text-xl font-bold">
+						<div className={cn('p-4', cardSurfaceMuted)}>
+							<p className={sectionLabel}>Biggest subcategory</p>
+							<p className="mt-1 truncate text-xl font-semibold text-gray-900 dark:text-gray-50">
 								{biggestSubcategory
 									? getSubcategoryDisplayLabel(
 										biggestSubcategory.category,
@@ -418,22 +428,23 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 									)
 									: 'None yet'}
 							</p>
-							<p className="text-sm text-muted-foreground">
-								{biggestSubcategory ? formatCurrency(biggestSubcategory.amount) : 'No subcategories'}
+							<p className="text-sm text-gray-500 dark:text-gray-400">
+								{biggestSubcategory ? (
+									<Currency amount={biggestSubcategory.amount} className="text-sm" />
+								) : (
+									'No subcategories'
+								)}
 							</p>
 						</div>
-						<div className="rounded-xl border bg-card p-4">
-							<p className="text-xs text-muted-foreground">Net position</p>
-							<p
-								className={`mt-1 text-xl font-bold ${netPosition >= 0
-									? 'text-green-600 dark:text-green-400'
-									: 'text-red-600 dark:text-red-400'
-									}`}
-							>
-								{formatCurrency(netPosition)}
-							</p>
-							<p className="text-sm text-muted-foreground">
-								Income {formatCurrency(totalIncome)}
+						<div className={cn('p-4', cardSurfaceMuted)}>
+							<p className={sectionLabel}>Net position</p>
+							<Currency
+								amount={netPosition}
+								tone={netPosition >= 0 ? 'balance-positive' : 'balance-negative'}
+								className="mt-1 text-xl"
+							/>
+							<p className="text-sm text-gray-500 dark:text-gray-400">
+								Income <Currency amount={totalIncome} tone="income" className="text-sm" />
 							</p>
 						</div>
 					</div>
@@ -441,11 +452,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 
 				<div className="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
 					{reportPrefs.categoryBreakdown && (
-						<div className="rounded-2xl border bg-card p-5">
+						<div className={cn('p-5', cardSurface)}>
 							<div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
 								<div>
 									<h2 className="text-base font-semibold">Monthly category breakdown</h2>
-									<p className="text-sm text-muted-foreground">
+									<p className="text-sm text-gray-500 dark:text-gray-400">
 										Amounts are visible first. Select a category to inspect the month.
 									</p>
 								</div>
@@ -473,8 +484,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 										return (
 											<div
 												key={category.category}
-												className={`rounded-xl border p-3 transition-colors ${isSelected ? 'border-primary bg-muted/50' : 'bg-background'
-													}`}
+												className={cn(
+													'rounded-xl border p-3 transition-colors',
+													isSelected
+														? 'border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/50'
+														: cardSurfaceInner
+												)}
 											>
 												<button
 													type="button"
@@ -492,7 +507,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 																	{getCategoryLabel(category.category)}
 																</span>
 															</div>
-															<div className="mt-2 h-2 rounded-full bg-muted">
+															<div className={cn('mt-2 h-2 rounded-full', progressTrack)}>
 																<div
 																	className="h-2 rounded-full"
 																	style={{
@@ -502,14 +517,14 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 																/>
 															</div>
 														</div>
-														<div className="text-sm text-muted-foreground">
+														<div className="text-sm text-gray-500 dark:text-gray-400">
 															{category.percentage.toFixed(0)}%
 														</div>
-														<div className="text-sm text-muted-foreground">
+														<div className="text-sm text-gray-500 dark:text-gray-400">
 															{category.transactionCount} tx
 														</div>
 														<div className="text-right">
-															<div className="font-bold">{formatCurrency(category.amount)}</div>
+															<Currency amount={category.amount} className="text-base" />
 															<div className={`text-xs ${deltaTone}`}>
 																{category.deltaAmount === 0
 																	? 'No change'
@@ -533,8 +548,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 																			current === subcategoryKey ? null : subcategoryKey
 																		)
 																	}
-																	className={`grid w-full gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center ${isSubSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
-																		}`}
+																	className={cn(
+																		'grid w-full gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center',
+																		isSubSelected
+																			? 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+																			: 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+																	)}
 																>
 																	<span className="truncate">
 																		{getSubcategoryDisplayLabel(
@@ -542,15 +561,13 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 																			subcategory.subcategory
 																		)}
 																	</span>
-																	<span className="text-muted-foreground">
+																	<span className="text-gray-500 dark:text-gray-400">
 																		{subcategory.percentage.toFixed(0)}%
 																	</span>
-																	<span className="text-muted-foreground">
+																	<span className="text-gray-500 dark:text-gray-400">
 																		{subcategory.transactionCount} tx
 																	</span>
-																	<span className="font-semibold">
-																		{formatCurrency(subcategory.amount)}
-																	</span>
+																	<Currency amount={subcategory.amount} className="text-sm" />
 																</button>
 															);
 														})}
@@ -561,7 +578,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 									})}
 								</div>
 							) : (
-								<div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+								<div className="flex h-40 items-center justify-center text-sm text-gray-500 dark:text-gray-400">
 									No expense data for this period
 								</div>
 							)}
@@ -570,7 +587,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 
 					<div className="space-y-6">
 						{reportPrefs.subcategoryBreakdown && (
-							<div className="rounded-2xl border bg-card p-5">
+							<div className={cn('p-5', cardSurface)}>
 								<h2 className="text-base font-semibold">
 									{selectedSubcategoryLabel ??
 										(selectedCategory
@@ -588,24 +605,26 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 											{focusedTransactions.map((transaction) => (
 												<div
 													key={transaction.id}
-													className="rounded-lg border bg-background px-3 py-2 text-sm"
+													className={cn('rounded-xl px-3 py-2 text-sm', cardSurfaceInner)}
 												>
 													<div className="flex items-center justify-between gap-3">
 														<div className="min-w-0">
 															<div className="truncate font-medium">{transaction.title}</div>
-															<div className="text-xs text-muted-foreground">
+															<div className="text-xs text-gray-500 dark:text-gray-400">
 																{formatDate(transaction)} · {accountNameMap[transaction.accountId] ?? 'Unknown account'}
 															</div>
 														</div>
-														<div className="shrink-0 font-semibold text-red-600 dark:text-red-400">
-															{formatCurrency(transaction.amount)}
-														</div>
+														<Currency
+															amount={transaction.amount}
+															tone="expense"
+															className="shrink-0 text-sm"
+														/>
 													</div>
 												</div>
 											))}
 										</div>
 									) : (
-										<div className="flex h-28 items-center justify-center text-center text-sm text-muted-foreground">
+										<div className="flex h-28 items-center justify-center text-center text-sm text-gray-500 dark:text-gray-400">
 											No focused transactions yet.
 										</div>
 									)}
@@ -614,52 +633,45 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 						)}
 
 						{reportPrefs.accountActivity && (
-							<div className="rounded-2xl border bg-card p-5">
+							<div className={cn('p-5', cardSurface)}>
 								<h2 className="mb-4 text-base font-semibold">Monthly account review</h2>
 								{accountSummaries.length > 0 ? (
 									<div className="space-y-3">
 										{accountSummaries.map((account) => (
-											<div key={account.accountId} className="rounded-xl border bg-background p-3">
+											<div key={account.accountId} className={cn('rounded-xl p-3', cardSurfaceInner)}>
 												<div className="mb-3 flex items-center gap-2">
 													<span
 														className="h-2.5 w-2.5 rounded-full"
 														style={{ backgroundColor: account.color }}
 													/>
 													<span className="font-semibold">{account.accountName}</span>
-													<span className="ml-auto text-xs text-muted-foreground">
+													<span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
 														{account.transactionCount} tx
 													</span>
 												</div>
 												<div className="grid grid-cols-3 gap-2 text-sm">
 													<div>
-														<p className="text-xs text-muted-foreground">Income</p>
-														<p className="font-semibold text-green-600 dark:text-green-400">
-															{formatCurrency(account.income)}
-														</p>
+														<p className={sectionLabel}>Income</p>
+														<Currency amount={account.income} tone="income" className="text-sm" />
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">Expense</p>
-														<p className="font-semibold text-red-600 dark:text-red-400">
-															{formatCurrency(account.expense)}
-														</p>
+														<p className={sectionLabel}>Expense</p>
+														<Currency amount={account.expense} tone="expense" className="text-sm" />
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">Net</p>
-														<p
-															className={`font-semibold ${account.net >= 0
-																? 'text-green-600 dark:text-green-400'
-																: 'text-red-600 dark:text-red-400'
-																}`}
-														>
-															{formatCurrency(account.net)}
-														</p>
+														<p className={sectionLabel}>Net</p>
+														<Currency
+															amount={account.net}
+															tone={account.net >= 0 ? 'balance-positive' : 'balance-negative'}
+															className="text-sm"
+														/>
 													</div>
 												</div>
 											</div>
 										))}
 									</div>
 								) : (
-									<div className="flex h-28 items-center justify-center text-sm text-muted-foreground">
+									<div className="flex h-28 items-center justify-center text-sm text-gray-500 dark:text-gray-400">
 										No account activity for this period
 									</div>
 								)}
@@ -670,7 +682,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 
 				<div className="grid gap-6 xl:grid-cols-2">
 					{reportPrefs.incomeExpenseTrend && (
-						<div className="rounded-2xl border bg-card p-5">
+						<div className={cn('p-5', cardSurface)}>
 							<div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 								<h2 className="text-base font-semibold">6-Month Money Movement</h2>
 								<p className="text-sm text-muted-foreground">
@@ -686,12 +698,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 									<AreaChart data={monthlyTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
 										<defs>
 											<linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-												<stop offset="5%" stopColor="#22c55e" stopOpacity={0.25} />
-												<stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+												<stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+												<stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
 											</linearGradient>
 											<linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
-												<stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
-												<stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+												<stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+												<stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
 											</linearGradient>
 										</defs>
 										<CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -700,18 +712,18 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 										<Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
 										<Legend />
 										{reportMode !== 'expense' && (
-											<Area type="monotone" dataKey="income" name="Income" stroke="#22c55e" fill="url(#incomeGrad)" strokeWidth={2} />
+											<Area type="monotone" dataKey="income" name="Income" stroke="#3b82f6" fill="url(#incomeGrad)" strokeWidth={2} />
 										)}
 										{reportMode !== 'income' && (
-											<Area type="monotone" dataKey="expense" name="Expenses" stroke="#ef4444" fill="url(#expenseGrad)" strokeWidth={2} />
+											<Area type="monotone" dataKey="expense" name="Expenses" stroke="#6366f1" fill="url(#expenseGrad)" strokeWidth={2} />
 										)}
 										{reportMode === 'net' && (
-											<Line type="monotone" dataKey="net" name="Net" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+											<Line type="monotone" dataKey="net" name="Net" stroke="#2563eb" strokeWidth={2} dot={false} />
 										)}
 									</AreaChart>
 								</ResponsiveContainer>
 							) : (
-								<div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+								<div className="flex h-40 items-center justify-center text-sm text-gray-500 dark:text-gray-400">
 									No transaction data available
 								</div>
 							)}
@@ -719,31 +731,24 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 					)}
 
 					{reportPrefs.netWorth && accounts.length > 0 && (
-						<div className="rounded-2xl border bg-card p-5">
+						<div className={cn('p-5', cardSurface)}>
 							<h2 className="mb-4 text-base font-semibold">Net Worth Breakdown</h2>
 							<div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
 								<div>
-									<p className="mb-1 text-xs text-muted-foreground">Assets</p>
-									<p className="text-xl font-bold text-green-600 dark:text-green-400">
-										{formatCurrency(netWorth.assets)}
-									</p>
+									<p className={cn(sectionLabel, 'mb-1')}>Assets</p>
+									<Currency amount={netWorth.assets} tone="balance-positive" className="text-xl" />
 								</div>
 								<div>
-									<p className="mb-1 text-xs text-muted-foreground">Liabilities</p>
-									<p className="text-xl font-bold text-red-600 dark:text-red-400">
-										{formatCurrency(netWorth.liabilities)}
-									</p>
+									<p className={cn(sectionLabel, 'mb-1')}>Liabilities</p>
+									<Currency amount={netWorth.liabilities} tone="balance-negative" className="text-xl" />
 								</div>
 								<div>
-									<p className="mb-1 text-xs text-muted-foreground">Net Worth</p>
-									<p
-										className={`text-xl font-bold ${netWorth.netWorth >= 0
-											? 'text-green-600 dark:text-green-400'
-											: 'text-red-600 dark:text-red-400'
-											}`}
-									>
-										{formatCurrency(netWorth.netWorth)}
-									</p>
+									<p className={cn(sectionLabel, 'mb-1')}>Net Worth</p>
+									<Currency
+										amount={netWorth.netWorth}
+										tone={netWorth.netWorth >= 0 ? 'balance-positive' : 'balance-negative'}
+										className="text-xl"
+									/>
 								</div>
 							</div>
 						</div>

@@ -11,6 +11,8 @@ Unauthenticated users see the landing page. Authenticated users on mobile-sized 
 
 If you are returning to the project after time away, start with [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md). It is the quick re-entry guide for purpose, architecture boundaries, and important rules.
 
+AI agents should read [AGENTS.md](AGENTS.md) for git branch/PR conventions and [.cursor/skills/git-workflow/SKILL.md](.cursor/skills/git-workflow/SKILL.md) before creating branches or pull requests.
+
 Useful docs:
 
 - [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md) - app purpose, MVP boundaries, architecture map, and product shape.

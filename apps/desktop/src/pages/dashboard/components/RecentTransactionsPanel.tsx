@@ -1,16 +1,17 @@
 import React, { useMemo } from 'react';
-import {
-	FiArrowDown,
-	FiArrowUp,
-	FiCreditCard,
-	FiDollarSign,
-	FiHome,
-	FiShoppingCart,
-} from 'react-icons/fi';
+import { FiDollarSign } from 'react-icons/fi';
+import Currency from '@/components/marketing/Currency';
 import { Account, Transaction } from '@/types';
+import {
+	cardSurface,
+	currencyBase,
+	currencyExpense,
+	rowDivider,
+	sectionLabel,
+} from '@/styles/marketingStyles';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { cn } from '@/lib/utils';
 import { parseDbDate } from '@/utils/date';
-import { formatCurrency } from '@/utils/formatCurrency';
 
 interface RecentTransactionsPanelProps {
 	transactions: Transaction[];
@@ -21,30 +22,13 @@ interface RecentTransactionsPanelProps {
 	compact?: boolean;
 }
 
-const getTransactionIcon = (transaction: Transaction) => {
-	if (transaction.type === 'income') return FiArrowUp;
-	if (transaction.type === 'transfer') return FiCreditCard;
-	if (transaction.category === 'food') return FiShoppingCart;
-	if (transaction.category === 'personal') return FiHome;
-	return FiArrowDown;
-};
-
 const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 	transactions,
-	accounts,
 	getCategoryPathLabel,
 	onSelect,
 	onOpenHistory,
 	compact = false,
 }) => {
-	const accountColorMap = useMemo(() => {
-		const map = new Map<string, string>();
-		accounts.forEach((account) => {
-			if (account.id) map.set(account.id, account.color ?? '#6366f1');
-		});
-		return map;
-	}, [accounts]);
-
 	const recentTransactions = useMemo(
 		() =>
 			[...transactions]
@@ -56,24 +40,20 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 				.slice(0, compact ? 5 : 6),
 		[compact, transactions]
 	);
-	const rowPadding = compact ? 'py-2' : 'py-3';
-	const iconSize = compact ? 'h-9 w-9' : 'h-10 w-10';
 
 	return (
-		<section className="flex h-full min-h-0 flex-col rounded-lg border bg-card p-3 shadow-sm">
-			<div className="mb-2 flex flex-shrink-0 items-start justify-between gap-3">
+		<section className={cn('flex h-full min-h-0 flex-col p-5', cardSurface)}>
+			<div className="mb-4 flex flex-shrink-0 items-start justify-between gap-3">
 				<div>
-					<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-						Recent
-					</p>
-					<h2 className="mt-1 text-lg font-semibold tracking-tight">
+					<p className={sectionLabel}>Recent</p>
+					<h2 className="mt-1 text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
 						Latest transactions
 					</h2>
 				</div>
 				<button
 					type="button"
 					onClick={onOpenHistory}
-					className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+					className="rounded-full px-3 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-50"
 				>
 					View all
 				</button>
@@ -81,28 +61,20 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 
 			{recentTransactions.length === 0 ? (
 				<div className="flex flex-1 flex-col items-center justify-center text-center">
-					<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-						<FiDollarSign className="h-5 w-5 text-primary" />
+					<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950">
+						<FiDollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
 					</div>
-					<p className="font-medium">No transactions yet</p>
-					<p className="mt-1 max-w-xs text-sm text-muted-foreground">
+					<p className="font-medium text-gray-900 dark:text-gray-50">No transactions yet</p>
+					<p className="mt-1 max-w-xs text-sm text-gray-500 dark:text-gray-400">
 						Add your first transaction and this feed will start filling in.
 					</p>
 				</div>
 			) : (
-				<div className="min-h-0 flex-1 divide-y overflow-y-auto">
-					{recentTransactions.map((transaction) => {
-						const Icon = getTransactionIcon(transaction);
+				<div className="min-h-0 flex-1 overflow-y-auto">
+					{recentTransactions.map((transaction, index) => {
 						const isPositive = transaction.type === 'income';
 						const isTransfer = transaction.type === 'transfer';
-						const amountPrefix = isPositive ? '+' : isTransfer ? '' : '-';
-						const amountTone = isPositive
-							? 'text-green-600 dark:text-green-400'
-							: isTransfer
-								? 'text-muted-foreground'
-								: 'text-red-600 dark:text-red-400';
 						const date = parseDbDate(transaction.date ?? transaction.createdAt);
-						const color = accountColorMap.get(transaction.accountId) ?? '#6366f1';
 
 						return (
 							<button
@@ -110,48 +82,47 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 								type="button"
 								onClick={() => onSelect(transaction)}
 								className={cn(
-									'group flex w-full items-center gap-3 px-1 text-left transition-colors hover:bg-muted/50 sm:px-2',
-									rowPadding
+									'group flex w-full items-center justify-between py-2.5 text-left transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/30',
+									index < recentTransactions.length - 1 && rowDivider
 								)}
 							>
-								<span
-									className={cn(
-										'flex flex-shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground',
-										iconSize
-									)}
-									style={{ borderLeftColor: color, borderLeftWidth: 4 }}
-								>
-									<Icon className="h-4 w-4" />
-								</span>
-								<span className="min-w-0 flex-1">
-									<span className="block truncate text-sm font-medium">
+								<div className="min-w-0">
+									<p className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
 										{transaction.title}
-									</span>
-									<span className="block truncate text-xs text-muted-foreground">
-										{isTransfer
-											? 'Transfer'
-											: getCategoryPathLabel(
-													transaction.category,
-													transaction.subcategory
-												)}{' '}
-										-{' '}
+									</p>
+									<p className="text-xs text-gray-400 dark:text-gray-500">
 										{date.toLocaleDateString('en-ZA', {
 											day: 'numeric',
 											month: 'short',
 										})}
-									</span>
-								</span>
-								<span className="min-w-[6rem] text-right">
+										{!isTransfer &&
+											` · ${getCategoryPathLabel(transaction.category, transaction.subcategory)}`}
+										{isTransfer && ' · Transfer'}
+									</p>
+								</div>
+								{isPositive ? (
+									<Currency
+										amount={transaction.amount}
+										tone="income"
+										className="ml-3 flex-shrink-0 text-sm"
+										showSign
+									/>
+								) : isTransfer ? (
+									<Currency
+										amount={transaction.amount}
+										className="ml-3 flex-shrink-0 text-sm"
+									/>
+								) : (
 									<span
-										className={cn('block text-sm font-semibold tabular-nums', amountTone)}
+										className={cn(
+											currencyBase,
+											currencyExpense,
+											'ml-3 flex-shrink-0 text-sm'
+										)}
 									>
-										{amountPrefix}
-										{formatCurrency(transaction.amount)}
+										-{formatCurrency(transaction.amount).replace(/^-/, '')}
 									</span>
-									<span className="text-xs text-muted-foreground">
-										{transaction.type}
-									</span>
-								</span>
+								)}
 							</button>
 						);
 					})}

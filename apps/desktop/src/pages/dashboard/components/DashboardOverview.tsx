@@ -6,10 +6,13 @@ import AIChatbot from '@/domains/ai/components/AIChatbot';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
+import Currency from '@/components/marketing/Currency';
+import MotionReveal from '@/components/marketing/MotionReveal';
+import SectionHeader from '@/components/marketing/SectionHeader';
+import MarketingCard from '@/components/marketing/MarketingCard';
 import { Button } from '@/components/app/ui/button';
 import { useToast } from '@/components/app/ui/use-toast';
 import { Transaction } from '@/types';
-import { formatCurrency } from '@/utils/formatCurrency';
 import AccountBalanceStrip from '@/pages/dashboard/components/AccountBalanceStrip';
 import MonthlyDigest from '@/pages/dashboard/components/MonthlyDigest';
 import RecentTransactionsPanel from '@/pages/dashboard/components/RecentTransactionsPanel';
@@ -19,6 +22,8 @@ import {
 	loadDashboardDigestPeriod,
 	saveDashboardDigestPeriod,
 } from '@/pages/dashboard/utils/digestPeriod';
+import { outlinePill, pageBg, radialWash } from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 
 interface DashboardOverviewProps {
 	onOpenAccounts: () => void;
@@ -58,10 +63,6 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 		const mainAccount = accounts.find((account) => account.id === mainAccountId);
 		return mainAccount?.id ?? accounts[0]?.id;
 	}, [accounts, mainAccountId]);
-	const netWorthTone =
-		summary.saved >= 0
-			? 'text-green-600 dark:text-green-400'
-			: 'text-red-600 dark:text-red-400';
 
 	const handleConfirmRecurringDraft = async (
 		draft: (typeof dueRecurringDrafts)[number]
@@ -108,136 +109,161 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 		}
 	};
 
-	return (
-		<div className="flex h-full min-h-0 flex-col bg-background">
-			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:px-5 lg:px-6 xl:overflow-hidden xl:px-6">
-				<header className="mb-3 flex flex-shrink-0 flex-col gap-3 border-b pb-3 sm:flex-row sm:items-start sm:justify-between">
-					<div>
-						<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-							CashFlow overview
-						</p>
-						<h1 className="mt-1 text-2xl font-semibold tracking-tight">
-							Dashboard
-						</h1>
-						<div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-							<span>Net worth {formatCurrency(summary.netWorth)}</span>
-							<span className={netWorthTone}>
-								{summary.saved >= 0 ? '+' : ''}
-								{formatCurrency(summary.saved)} this period
-							</span>
-						</div>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button
-							type="button"
-							variant="outline"
-							size="icon"
-							onClick={onOpenHistory}
-							aria-label="Search transactions"
-						>
-							<FiSearch className="h-4 w-4" />
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							size="icon"
-							onClick={onOpenSettings}
-							aria-label="Open dashboard settings"
-						>
-							<FiSettings className="h-4 w-4" />
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							size="icon"
-							onClick={onOpenAccounts}
-							aria-label="View accounts"
-						>
-							<FiEye className="h-4 w-4" />
-						</Button>
-					</div>
-				</header>
+	const headerActions = (
+		<>
+			<Button
+				type="button"
+				variant="outline"
+				size="icon"
+				className={cn('h-9 w-9', outlinePill)}
+				onClick={onOpenHistory}
+				aria-label="Search transactions"
+			>
+				<FiSearch className="h-4 w-4" />
+			</Button>
+			<Button
+				type="button"
+				variant="outline"
+				size="icon"
+				className={cn('h-9 w-9', outlinePill)}
+				onClick={onOpenSettings}
+				aria-label="Open dashboard settings"
+			>
+				<FiSettings className="h-4 w-4" />
+			</Button>
+			<Button
+				type="button"
+				variant="outline"
+				size="icon"
+				className={cn('h-9 w-9', outlinePill)}
+				onClick={onOpenAccounts}
+				aria-label="View accounts"
+			>
+				<FiEye className="h-4 w-4" />
+			</Button>
+		</>
+	);
 
-				<div className="grid flex-1 gap-3 xl:min-h-0 xl:grid-rows-[auto_minmax(0,1fr)]">
-					<MonthlyDigest
-						summary={summary}
-						period={digestPeriod}
-						onPeriodChange={handleDigestPeriodChange}
+	return (
+		<div className={cn('relative flex h-full min-h-0 flex-col', pageBg)}>
+			<div className={radialWash} aria-hidden />
+			<div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:px-5 lg:px-6 xl:overflow-hidden xl:px-6">
+				<MotionReveal className="mb-4 flex-shrink-0 border-b border-gray-200 pb-4 dark:border-gray-800">
+					<SectionHeader
+						badge="CashFlow overview"
+						title="Dashboard"
 						compact
+						subtitle={
+							<span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+								<span>
+									Net worth{' '}
+									<Currency amount={summary.netWorth} className="text-sm" />
+								</span>
+								<Currency
+									amount={summary.saved}
+									tone={summary.saved >= 0 ? 'balance-positive' : 'balance-negative'}
+									className="text-sm"
+									showSign
+								/>
+								<span className="text-gray-500 dark:text-gray-400">this period</span>
+							</span>
+						}
+						actions={headerActions}
 					/>
+				</MotionReveal>
+
+				<div className="flex min-h-0 flex-1 flex-col gap-3">
+					<MotionReveal delay={0.06} className="shrink-0">
+						<MonthlyDigest
+							summary={summary}
+							period={digestPeriod}
+							onPeriodChange={handleDigestPeriodChange}
+							compact
+						/>
+					</MotionReveal>
 
 					{dueRecurringDrafts.length > 0 && (
-						<section className="rounded-lg border bg-card p-3">
-							<div className="mb-3 flex items-center justify-between gap-3">
-								<div>
-									<h2 className="flex items-center gap-2 text-sm font-semibold">
-										<FiRefreshCw className="h-4 w-4 text-primary" />
-										Due today
-									</h2>
-									<p className="text-xs text-muted-foreground">
-										Confirm recurring expenses that should become transactions.
-									</p>
-								</div>
-							</div>
-							<div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-								{dueRecurringDrafts.map((draft) => {
-									const recurringTransaction = draft.recurringTransaction;
-									const account = accounts.find(
-										(item) => item.id === recurringTransaction.accountId
-									);
-									return (
-										<div
-											key={recurringTransaction.id}
-											className="flex items-center justify-between gap-3 rounded-md border bg-background p-3"
-										>
-											<div className="min-w-0">
-												<p className="truncate text-sm font-semibold">
-													{recurringTransaction.title}
-												</p>
-												<p className="truncate text-xs text-muted-foreground">
-													{getCategoryPathLabel(
-														recurringTransaction.category,
-														recurringTransaction.subcategory
-													)}
-													{account ? ` • ${account.name}` : ''}
-												</p>
-												<p className="mt-1 text-sm font-semibold text-red-600 dark:text-red-400">
-													{formatCurrency(recurringTransaction.amount)}
-												</p>
-											</div>
-											<Button
-												type="button"
-												size="sm"
-												onClick={() => handleConfirmRecurringDraft(draft)}
-												disabled={confirmingDraftId === recurringTransaction.id}
+						<MotionReveal delay={0.12} className="relative z-10 shrink-0">
+							<MarketingCard
+								header={
+									<div>
+										<h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
+											<FiRefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+											Due today
+										</h2>
+										<p className="text-xs text-gray-500 dark:text-gray-400">
+											Confirm recurring expenses that should become transactions.
+										</p>
+									</div>
+								}
+							>
+								<div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+									{dueRecurringDrafts.map((draft) => {
+										const recurringTransaction = draft.recurringTransaction;
+										const account = accounts.find(
+											(item) => item.id === recurringTransaction.accountId
+										);
+										return (
+											<div
+												key={recurringTransaction.id}
+												className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-800/40"
 											>
-												<FiCheck className="mr-2 h-4 w-4" />
-												Confirm
-											</Button>
-										</div>
-									);
-								})}
-							</div>
-						</section>
+												<div className="min-w-0">
+													<p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">
+														{recurringTransaction.title}
+													</p>
+													<p className="truncate text-xs text-gray-500 dark:text-gray-400">
+														{getCategoryPathLabel(
+															recurringTransaction.category,
+															recurringTransaction.subcategory
+														)}
+														{account ? ` • ${account.name}` : ''}
+													</p>
+													<Currency
+														amount={recurringTransaction.amount}
+														tone="balance-negative"
+														className="mt-1 text-sm"
+													/>
+												</div>
+												<Button
+													type="button"
+													variant="marketing"
+													size="sm"
+													onClick={() => handleConfirmRecurringDraft(draft)}
+													disabled={confirmingDraftId === recurringTransaction.id}
+												>
+													<FiCheck className="mr-2 h-4 w-4" />
+													Confirm
+												</Button>
+											</div>
+										);
+									})}
+								</div>
+							</MarketingCard>
+						</MotionReveal>
 					)}
 
-					<div className="grid gap-3 xl:min-h-0 xl:grid-cols-[minmax(280px,0.78fr)_minmax(360px,1fr)_minmax(320px,0.85fr)]">
-						<AccountBalanceStrip
-							accounts={accounts}
-							onOpenAccounts={onOpenAccounts}
-							compact
-						/>
-						<RecentTransactionsPanel
-							transactions={transactions}
-							accounts={accounts}
-							getCategoryPathLabel={getCategoryPathLabel}
-							onSelect={onSelectTransaction}
-							onOpenHistory={onOpenHistory}
-							compact
-						/>
-						<div className="min-h-[28rem] xl:min-h-0">
+					<div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(280px,0.78fr)_minmax(360px,1fr)_minmax(320px,0.85fr)]">
+						<MotionReveal delay={0.18}>
+							<AccountBalanceStrip
+								accounts={accounts}
+								onOpenAccounts={onOpenAccounts}
+								compact
+							/>
+						</MotionReveal>
+						<MotionReveal delay={0.24}>
+							<RecentTransactionsPanel
+								transactions={transactions}
+								accounts={accounts}
+								getCategoryPathLabel={getCategoryPathLabel}
+								onSelect={onSelectTransaction}
+								onOpenHistory={onOpenHistory}
+								compact
+							/>
+						</MotionReveal>
+						<MotionReveal delay={0.3} className="min-h-[28rem] xl:min-h-0">
 							<AIChatbot variant="docked" alwaysDocked />
-						</div>
+						</MotionReveal>
 					</div>
 				</div>
 			</div>

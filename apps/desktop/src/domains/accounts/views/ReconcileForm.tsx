@@ -4,6 +4,8 @@ import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { ACCOUNT_TYPE_LABELS } from '@/domains/accounts/models/AccountModel';
+import { modalShell, pageBg } from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
@@ -83,8 +85,8 @@ const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose }) => {
 
 	if (step === 'done') {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background p-4">
-				<div className="w-full max-w-md rounded-2xl border bg-card p-8 shadow-xl text-center">
+			<div className={cn('flex min-h-screen items-center justify-center p-4', pageBg)}>
+				<div className={cn('w-full max-w-md p-8 text-center', modalShell)}>
 					<div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
 						<FiCheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
 					</div>
@@ -116,8 +118,8 @@ const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose }) => {
 	}
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background p-4">
-			<div className="w-full max-w-lg rounded-2xl border bg-card p-8 shadow-xl">
+		<div className={cn('flex min-h-screen items-center justify-center p-4', pageBg)}>
+			<div className={cn('w-full max-w-lg p-8', modalShell)}>
 				<div className="mb-8 border-b pb-6">
 					<h2 className="text-3xl font-bold tracking-tight">Reconcile Account</h2>
 					<p className="mt-1.5 text-sm text-muted-foreground">
