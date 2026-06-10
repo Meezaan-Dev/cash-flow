@@ -12,6 +12,8 @@ import {
 import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { Budget, BudgetProgress, DateRange } from '@/types';
+import { modalShell, pageBg } from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import {
 	filterTransactionsByDateRangeObject,
@@ -32,9 +34,9 @@ import {
 import BudgetForm from './BudgetForm';
 
 const getBarColour = (percent: number): string => {
-	if (percent >= 90) return 'bg-red-500';
-	if (percent >= 70) return 'bg-amber-500';
-	return 'bg-green-500';
+	if (percent >= 90) return 'bg-red-500 dark:bg-red-400';
+	if (percent >= 70) return 'bg-amber-500 dark:bg-amber-400';
+	return 'bg-blue-500 dark:bg-blue-400';
 };
 
 const BudgetsList: React.FC = () => {
@@ -152,9 +154,9 @@ const BudgetsList: React.FC = () => {
 	);
 
 	return (
-		<div className="flex min-h-screen flex-col bg-background">
+		<div className={cn('flex min-h-screen flex-col', pageBg)}>
 			<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-				<DialogContent className="w-[90vw] rounded-lg md:w-full">
+				<DialogContent className={cn('w-[90vw] md:w-full', modalShell)}>
 					<DialogHeader>
 						<DialogTitle>Delete Budget</DialogTitle>
 						<DialogDescription>
@@ -177,7 +179,7 @@ const BudgetsList: React.FC = () => {
 				<div className="mb-6 flex items-center justify-between gap-4">
 					<div>
 						<h1 className="text-2xl font-bold tracking-tight md:text-3xl">Budgets</h1>
-						<p className="mt-1 text-sm text-muted-foreground">
+						<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 							Plan draft budgets with live spend, then publish them when the period
 							is ready.
 						</p>
@@ -188,9 +190,9 @@ const BudgetsList: React.FC = () => {
 					</Button>
 				</div>
 
-				<div className="mb-6 rounded-xl border bg-card p-4">
+				<div className="mb-6 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-4">
 					<div className="mb-3 flex items-center gap-2">
-						<FiCalendar className="h-4 w-4 text-muted-foreground" />
+						<FiCalendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
 						<p className="text-sm font-medium">Published Budget Period Override</p>
 					</div>
 					<DateRangeFilter
@@ -201,7 +203,7 @@ const BudgetsList: React.FC = () => {
 							setActionError('');
 						}}
 					/>
-					<p className="mt-3 text-xs text-muted-foreground">
+					<p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
 						Published budgets use their published period by default. Choose a range
 						here only when you need to update a published budget comparison period.
 					</p>
@@ -219,29 +221,29 @@ const BudgetsList: React.FC = () => {
 
 				{startedBudgets.length > 0 ? (
 					<div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-						<div className="rounded-xl border bg-card p-5">
-							<p className="text-sm text-muted-foreground">Planned Total</p>
+						<div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-5">
+							<p className="text-sm text-gray-500 dark:text-gray-400">Planned Total</p>
 							<p className="mt-1 text-xl font-bold">{formatCurrency(totalPlanned)}</p>
 						</div>
-						<div className="rounded-xl border bg-card p-5">
-							<p className="text-sm text-muted-foreground">Actual Total</p>
+						<div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-5">
+							<p className="text-sm text-gray-500 dark:text-gray-400">Actual Total</p>
 							<p className="mt-1 text-xl font-bold">{formatCurrency(totalActual)}</p>
 						</div>
-						<div className="rounded-xl border bg-card p-5">
-							<p className="text-sm text-muted-foreground">Remaining</p>
+						<div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-5">
+							<p className="text-sm text-gray-500 dark:text-gray-400">Remaining</p>
 							<p className="mt-1 text-xl font-bold text-green-600 dark:text-green-400">
 								{formatCurrency(totalRemaining)}
 							</p>
 						</div>
-						<div className="rounded-xl border bg-card p-5">
-							<p className="text-sm text-muted-foreground">Over Budget</p>
+						<div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 p-5">
+							<p className="text-sm text-gray-500 dark:text-gray-400">Over Budget</p>
 							<p className="mt-1 text-xl font-bold text-red-600 dark:text-red-400">
 								{formatCurrency(totalOverBudget)}
 							</p>
 						</div>
 					</div>
 				) : budgets.length > 0 ? (
-					<div className="mb-8 rounded-xl border border-dashed bg-card px-4 py-5 text-sm text-muted-foreground">
+					<div className="mb-8 rounded-xl border border-dashed bg-card px-4 py-5 text-sm text-gray-500 dark:text-gray-400">
 						No published budgets have an active comparison period yet. Drafts will
 						become active automatically when published.
 					</div>
@@ -249,11 +251,11 @@ const BudgetsList: React.FC = () => {
 
 				{budgets.length === 0 ? (
 					<div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center">
-						<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+						<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950">
 							<FiPlus className="h-6 w-6 text-primary" />
 						</div>
 						<h3 className="text-lg font-semibold">No budgets yet</h3>
-						<p className="mt-1 text-sm text-muted-foreground">
+						<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 							Create a draft budget to plan a custom period by category
 						</p>
 						<Button className="mt-4" onClick={() => setShowForm(true)}>
@@ -306,11 +308,11 @@ const BudgetsList: React.FC = () => {
 										<div className="flex items-center justify-between border-b pb-2">
 											<div>
 												<h2 className="text-lg font-semibold">Draft Budgets</h2>
-												<p className="text-sm text-muted-foreground">
+												<p className="text-sm text-gray-500 dark:text-gray-400">
 													Plan with live calculations before publishing.
 												</p>
 											</div>
-											<span className="text-sm text-muted-foreground">
+											<span className="text-sm text-gray-500 dark:text-gray-400">
 												{draftCount}
 											</span>
 										</div>
@@ -319,28 +321,28 @@ const BudgetsList: React.FC = () => {
 										<div className="flex items-center justify-between border-b pb-2 pt-4">
 											<div>
 												<h2 className="text-lg font-semibold">Published Budgets</h2>
-												<p className="text-sm text-muted-foreground">
+												<p className="text-sm text-gray-500 dark:text-gray-400">
 													Active budget periods and historical comparisons.
 												</p>
 											</div>
-											<span className="text-sm text-muted-foreground">
+											<span className="text-sm text-gray-500 dark:text-gray-400">
 												{publishedCount}
 											</span>
 										</div>
 									)}
-									<div className="group rounded-2xl border bg-card p-5">
+									<div className="group rounded-2xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900 p-5">
 										<div className="mb-4 flex items-start justify-between gap-3">
 											<div className="min-w-0 flex-1">
 												<div className="flex items-center gap-2">
 													<h3 className="truncate font-semibold">{label}</h3>
-													<span className="rounded-full border px-2 py-0.5 text-xs capitalize text-muted-foreground">
+													<span className="rounded-full border px-2 py-0.5 text-xs capitalize text-gray-500 dark:text-gray-400">
 														{isDraft ? 'Draft' : 'Published'}
 													</span>
 													{isOverBudget && (
 														<FiAlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
 													)}
 												</div>
-												<p className="mt-0.5 text-xs text-muted-foreground">
+												<p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
 													{isDraft
 														? 'Live draft calculations for the planned period'
 														: 'Published budget tracking'}
@@ -389,7 +391,7 @@ const BudgetsList: React.FC = () => {
 											<Button
 												variant="ghost"
 												size="icon"
-												className="h-8 w-8 opacity-0 transition-opacity text-muted-foreground group-hover:opacity-100 hover:text-destructive"
+												className="h-8 w-8 opacity-0 transition-opacity text-gray-500 dark:text-gray-400 group-hover:opacity-100 hover:text-destructive"
 												onClick={() => budget.id && handleDeleteClick(budget.id)}
 												aria-label="Delete budget"
 											>
@@ -399,27 +401,27 @@ const BudgetsList: React.FC = () => {
 									</div>
 
 									<div className="mb-4 grid gap-3 md:grid-cols-2">
-										<div className="rounded-xl border bg-muted/20 p-3">
+										<div className="rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/40 p-3">
 											<div className="mb-1 flex items-center gap-2">
 												<FiTarget className="h-4 w-4 text-primary" />
-												<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+												<p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
 													Planned
 												</p>
 											</div>
 											<p className="text-lg font-semibold">
 												{formatCurrency(plannedAmount)}
 											</p>
-											<p className="mt-1 text-sm text-muted-foreground">
+											<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 												{formatDateRange({
 													startDate: plannedStartDate,
 													endDate: plannedEndDate,
 												})}
 											</p>
 										</div>
-										<div className="rounded-xl border bg-muted/20 p-3">
+										<div className="rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/40 p-3">
 											<div className="mb-1 flex items-center gap-2">
 												<FiCalendar className="h-4 w-4 text-primary" />
-												<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+												<p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
 													{isDraft ? 'Live Spend' : 'Actual'}
 												</p>
 											</div>
@@ -428,7 +430,7 @@ const BudgetsList: React.FC = () => {
 													<p className="text-lg font-semibold">
 														{formatCurrency(actualSpent)}
 													</p>
-													<p className="mt-1 text-sm text-muted-foreground">
+													<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 														{formatDateRange({
 															startDate: comparisonStartDate,
 															endDate: comparisonEndDate,
@@ -438,7 +440,7 @@ const BudgetsList: React.FC = () => {
 											) : (
 												<>
 													<p className="text-lg font-semibold">Not started</p>
-													<p className="mt-1 text-sm text-muted-foreground">
+													<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
 														Use the date filter to set a comparison period.
 													</p>
 												</>
@@ -446,7 +448,7 @@ const BudgetsList: React.FC = () => {
 										</div>
 									</div>
 
-									<div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+									<div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
 										<div
 											className={`h-full rounded-full transition-all ${barColour}`}
 											style={{ width: `${Math.min(100, percent)}%` }}
@@ -456,14 +458,14 @@ const BudgetsList: React.FC = () => {
 									{calculating ? (
 										<>
 											<div className="flex items-center justify-between text-sm">
-												<span className="text-muted-foreground">
+												<span className="text-gray-500 dark:text-gray-400">
 													{formatCurrency(actualSpent)} actual spend
 												</span>
 												<span
 													className={`font-medium ${
 														isOverBudget
 															? 'text-red-600 dark:text-red-400'
-															: 'text-muted-foreground'
+															: 'text-gray-500 dark:text-gray-400'
 													}`}
 												>
 													{isOverBudget
@@ -472,7 +474,7 @@ const BudgetsList: React.FC = () => {
 													of {formatCurrency(plannedAmount)}
 												</span>
 											</div>
-											<div className="mt-1 text-right text-xs text-muted-foreground">
+											<div className="mt-1 text-right text-xs text-gray-500 dark:text-gray-400">
 												{percent.toFixed(0)}% used
 											</div>
 											<div className="mt-4 border-t pt-4">
@@ -480,7 +482,7 @@ const BudgetsList: React.FC = () => {
 													<h4 className="text-sm font-semibold">
 														Matching Transactions
 													</h4>
-													<span className="text-xs text-muted-foreground">
+													<span className="text-xs text-gray-500 dark:text-gray-400">
 														{matchingTransactions.length}{' '}
 														{matchingTransactions.length === 1
 															? 'transaction'
@@ -488,7 +490,7 @@ const BudgetsList: React.FC = () => {
 													</span>
 												</div>
 												{matchingTransactions.length === 0 ? (
-													<div className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+													<div className="rounded-lg border border-dashed px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
 														No transactions matched this budget category in the
 														selected period.
 													</div>
@@ -512,7 +514,7 @@ const BudgetsList: React.FC = () => {
 																		<p className="truncate text-sm font-medium">
 																			{transaction.title}
 																		</p>
-																		<p className="text-xs text-muted-foreground">
+																		<p className="text-xs text-gray-500 dark:text-gray-400">
 																			{transactionDate}
 																			{transaction.description
 																				? ` • ${transaction.description}`
@@ -530,7 +532,7 @@ const BudgetsList: React.FC = () => {
 											</div>
 										</>
 									) : (
-										<div className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+										<div className="rounded-lg border border-dashed px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
 											This budget has a planned amount and period, but no active
 											comparison period yet.
 										</div>

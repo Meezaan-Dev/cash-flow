@@ -124,7 +124,7 @@ describe('AIChatbot', () => {
 
 		await user.click(screen.getByRole('button', { name: /clear chat/i }));
 		expect(screen.queryByText('You visited KFC 3 times.')).not.toBeInTheDocument();
-		expect(screen.getByText('Try asking:')).toBeInTheDocument();
+		expect(screen.getByText('Try asking')).toBeInTheDocument();
 	});
 
 	it('disables sending and shows auth-required hint when user is missing', async () => {

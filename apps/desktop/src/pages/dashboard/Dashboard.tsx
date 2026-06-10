@@ -33,6 +33,8 @@ import {
 	exportTransactionsToJson,
 	importTransactionsFromFile,
 } from '@/domains/transactions/utils/transactionImportExport';
+import { frostedPanel, modalShell, pageBg } from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 
 const routeToView = (pathname: string, isMobile: boolean): ViewType => {
 	if (pathname.startsWith('/dashboard/transactions')) return isMobile ? 'list' : 'table';
@@ -291,7 +293,7 @@ const Dashboard: React.FC = () => {
 	};
 
 	return (
-		<div className="flex h-screen-safe flex-col md:flex-row bg-background">
+		<div className={cn('flex h-screen-safe flex-col md:flex-row', pageBg)}>
 			<Toaster />
 			<Sidebar
 				collapsed={!sidebarVisible}
@@ -309,7 +311,7 @@ const Dashboard: React.FC = () => {
 			/>
 
 			<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-				<DialogContent className="w-[90vw] md:w-full rounded-lg">
+				<DialogContent className={cn('w-[90vw] md:w-full', modalShell)}>
 					<DialogHeader>
 						<DialogTitle>Confirm Deletion</DialogTitle>
 						<DialogDescription>
@@ -425,7 +427,10 @@ const Dashboard: React.FC = () => {
 				{!sidebarVisible && (
 					<Button
 						variant="outline"
-						className="absolute left-4 top-4 z-50 shadow-sm"
+						className={cn(
+							'absolute left-4 top-4 z-50 rounded-full shadow-sm',
+							frostedPanel
+						)}
 						onClick={toggleSidebar}
 						aria-label="Open menu"
 					>

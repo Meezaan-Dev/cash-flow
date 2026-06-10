@@ -1,5 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, List, LogOut, PlusCircle } from 'lucide-react';
+import {
+	ArrowDownCircle,
+	ArrowUpCircle,
+	ChevronRight,
+	List,
+	LogOut,
+	PlusCircle,
+} from 'lucide-react';
 import {
 	createUserWithEmailAndPassword,
 	onAuthStateChanged,
@@ -19,10 +26,13 @@ import {
 	useTransactions,
 } from '@cash-flow/shared';
 
-type MobileTab = 'add' | 'list';
+type MobileView = 'home' | 'add' | 'list';
 type MobileTransactionType = 'income' | 'expense';
 
-const MOBILE_TAB_STORAGE_KEY = 'cashflow-mobisite-tab';
+const MOBILE_VIEW_STORAGE_KEY = 'cashflow-mobisite-view';
+
+const isMobileView = (value: string | null): value is Exclude<MobileView, 'home'> =>
+	value === 'add' || value === 'list';
 
 const formatDateKey = (transaction: Transaction) =>
 	getTransactionDateOrEpoch(transaction.date, transaction.createdAt).toLocaleDateString('en-ZA', {
@@ -389,17 +399,63 @@ const TransactionListView = () => {
 	);
 };
 
+const MobileHomeView = ({ onSelect }: { onSelect: (view: Exclude<MobileView, 'home'>) => void }) => (
+	<section
+		className="py-6 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-6"
+		data-testid="mobisite-home"
+	>
+		<div className="mx-auto max-w-sm space-y-3">
+			<p className="text-sm text-muted-foreground">What would you like to do?</p>
+			<button
+				type="button"
+				onClick={() => onSelect('add')}
+				className="flex w-full items-center gap-4 rounded-2xl border border-border/80 bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40"
+			>
+				<span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+					<PlusCircle className="h-6 w-6" />
+				</span>
+				<span className="min-w-0 flex-1">
+					<span className="block text-base font-semibold">Add transaction</span>
+					<span className="mt-0.5 block text-sm text-muted-foreground">
+						Capture income or expenses on the go
+					</span>
+				</span>
+				<ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+			</button>
+			<button
+				type="button"
+				onClick={() => onSelect('list')}
+				className="flex w-full items-center gap-4 rounded-2xl border border-border/80 bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40"
+			>
+				<span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+					<List className="h-6 w-6" />
+				</span>
+				<span className="min-w-0 flex-1">
+					<span className="block text-base font-semibold">View transactions</span>
+					<span className="mt-0.5 block text-sm text-muted-foreground">
+						Browse your recent activity by date
+					</span>
+				</span>
+				<ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+			</button>
+		</div>
+	</section>
+);
+
 const MobileApp = ({ user }: { user: User }) => {
-	const [tab, setTab] = useState<MobileTab>(() => {
-		if (typeof window === 'undefined') return 'add';
-		const savedTab = window.sessionStorage.getItem(MOBILE_TAB_STORAGE_KEY);
-		return savedTab === 'list' ? 'list' : 'add';
+	const [view, setView] = useState<MobileView>(() => {
+		if (typeof window === 'undefined') return 'home';
+		const savedView = window.sessionStorage.getItem(MOBILE_VIEW_STORAGE_KEY);
+		return isMobileView(savedView) ? savedView : 'home';
 	});
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
-		window.sessionStorage.setItem(MOBILE_TAB_STORAGE_KEY, tab);
-	}, [tab]);
+		window.sessionStorage.setItem(MOBILE_VIEW_STORAGE_KEY, view);
+	}, [view]);
+
+	const headerTitle =
+		view === 'home' ? 'Dashboard' : view === 'add' ? 'Add transaction' : 'Transactions';
 
 	return (
 		<div
@@ -412,9 +468,7 @@ const MobileApp = ({ user }: { user: User }) => {
 						<p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
 							CashFlow mobile
 						</p>
-						<h1 className="mt-1 truncate text-lg font-semibold tracking-tight">
-							{tab === 'add' ? 'Add transaction' : 'Transactions'}
-						</h1>
+						<h1 className="mt-1 truncate text-lg font-semibold tracking-tight">{headerTitle}</h1>
 					</div>
 					<button
 						type="button"
@@ -425,40 +479,47 @@ const MobileApp = ({ user }: { user: User }) => {
 						<LogOut className="h-4 w-4" />
 					</button>
 				</div>
-				<nav className="mx-auto mt-4 grid w-full max-w-sm grid-cols-2 gap-2 pb-3" data-testid="mobisite-nav">
-					<button
-						type="button"
-						onClick={() => setTab('add')}
-						aria-pressed={tab === 'add'}
-						className={`flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
-							tab === 'add'
-								? 'border-primary bg-primary text-primary-foreground shadow-sm'
-								: 'border-border/80 bg-card text-foreground'
-						}`}
+				{view !== 'home' && (
+					<nav
+						className="mx-auto mt-4 grid w-full max-w-sm grid-cols-2 gap-2 pb-3"
+						data-testid="mobisite-nav"
 					>
-						<PlusCircle className="h-4 w-4" />
-						Add
-					</button>
-					<button
-						type="button"
-						onClick={() => setTab('list')}
-						aria-pressed={tab === 'list'}
-						className={`flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
-							tab === 'list'
-								? 'border-primary bg-primary text-primary-foreground shadow-sm'
-								: 'border-border/80 bg-card text-foreground'
-						}`}
-					>
-						<List className="h-4 w-4" />
-						List
-					</button>
-				</nav>
+						<button
+							type="button"
+							onClick={() => setView('add')}
+							aria-pressed={view === 'add'}
+							className={`flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
+								view === 'add'
+									? 'border-primary bg-primary text-primary-foreground shadow-sm'
+									: 'border-border/80 bg-card text-foreground'
+							}`}
+						>
+							<PlusCircle className="h-4 w-4" />
+							Add
+						</button>
+						<button
+							type="button"
+							onClick={() => setView('list')}
+							aria-pressed={view === 'list'}
+							className={`flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors ${
+								view === 'list'
+									? 'border-primary bg-primary text-primary-foreground shadow-sm'
+									: 'border-border/80 bg-card text-foreground'
+							}`}
+						>
+							<List className="h-4 w-4" />
+							List
+						</button>
+					</nav>
+				)}
 			</header>
 			<div
 				className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
 				data-testid="mobisite-content"
 			>
-				{tab === 'add' ? <AddTransactionView /> : <TransactionListView />}
+				{view === 'home' && <MobileHomeView onSelect={setView} />}
+				{view === 'add' && <AddTransactionView />}
+				{view === 'list' && <TransactionListView />}
 			</div>
 		</div>
 	);

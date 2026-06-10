@@ -18,6 +18,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/app/ui/select';
+import { modalShell, pageBg } from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
 
@@ -256,14 +258,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	const availableTransferAccounts = accounts.filter((a) => a.id !== accountId);
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background p-4">
-			<div className="w-full max-w-2xl rounded-2xl border bg-card p-8 shadow-xl backdrop-blur-sm">
+		<div className={cn('flex min-h-screen items-center justify-center p-4', pageBg)}>
+			<div className={cn('w-full max-w-2xl p-8 backdrop-blur-sm', modalShell)}>
 				{/* Header */}
 				<div className="mb-8 border-b pb-6">
 					<h2 className="text-3xl font-bold tracking-tight">
 						{transaction ? 'Edit Transaction' : 'New Transaction'}
 					</h2>
-					<p className="mt-1.5 text-sm text-muted-foreground">
+					<p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
 						{transaction
 							? 'Update your transaction details'
 							: 'Add a new income, expense, or transfer'}
@@ -272,9 +274,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
 				{/* Recurring – Smart Autofill */}
 				{!transaction && recurringTransactions.length > 0 && (
-					<div className="mb-8 rounded-xl border border-dashed bg-muted/40 p-4">
+					<div className="mb-8 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-4 dark:border-gray-700 dark:bg-gray-800/40">
 						<div className="mb-3 flex items-center gap-2 text-sm font-medium">
-							<FiRefreshCw className="h-4 w-4 text-primary" />
+							<FiRefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
 							<Label htmlFor="quick-fill">Quick fill from a recurring expense</Label>
 						</div>
 						<Select
@@ -314,10 +316,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 								<Button
 									key={t}
 									type="button"
-									variant={type === t ? 'default' : 'outline'}
+									variant={type === t ? 'marketing' : 'outline'}
 									onClick={() => handleTypeChange(t)}
 									disabled={isSubmitting}
-									className="h-14 rounded-xl capitalize"
+									className="h-14 rounded-2xl capitalize"
 								>
 									{t}
 								</Button>
@@ -507,7 +509,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					<div className="flex gap-3 pt-4">
 						<Button
 							type="submit"
-							className="flex-1 h-12"
+							variant="marketing"
+							className="h-12 flex-1"
 							disabled={isSubmitting || (type === 'transfer' && !transferAccountId)}
 						>
 							{isSubmitting

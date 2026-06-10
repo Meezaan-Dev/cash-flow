@@ -16,12 +16,22 @@ import {
 	getAccountAvailableBalance,
 	getAccountLiability,
 } from '@/domains/accounts/models/AccountModel';
-import { formatCurrency } from '@/utils/formatCurrency';
-import { parseDbDate } from '@/utils/date';
+import Currency from '@/components/marketing/Currency';
 import { Button } from '@/components/app/ui/button';
 import AccountForm from '@/domains/accounts/views/AccountForm';
 import TransferForm from '@/domains/accounts/views/TransferForm';
 import ReconcileForm from '@/domains/accounts/views/ReconcileForm';
+import {
+	cardSurface,
+	currencyBase,
+	currencyExpense,
+	pageBg,
+	rowDivider,
+	sectionLabel,
+} from '@/styles/marketingStyles';
+import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/utils/formatCurrency';
+import { parseDbDate } from '@/utils/date';
 
 type SubView = 'detail' | 'edit' | 'transfer' | 'reconcile';
 
@@ -62,9 +72,7 @@ const AccountDetailPage: React.FC = () => {
 	}, [accountTransactions]);
 
 	if (subView === 'edit' && account) {
-		return (
-			<AccountForm account={account} onClose={() => setSubView('detail')} />
-		);
+		return <AccountForm account={account} onClose={() => setSubView('detail')} />;
 	}
 	if (subView === 'transfer') {
 		return <TransferForm onClose={() => setSubView('detail')} />;
@@ -75,13 +83,15 @@ const AccountDetailPage: React.FC = () => {
 
 	if (!account) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background p-4">
+			<div className={cn('flex min-h-screen items-center justify-center p-4', pageBg)}>
 				<div className="text-center">
-					<h2 className="text-xl font-semibold mb-2">Account not found</h2>
-					<p className="text-muted-foreground mb-4">
+					<h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-gray-50">
+						Account not found
+					</h2>
+					<p className="mb-4 text-gray-500 dark:text-gray-400">
 						This account may have been deleted.
 					</p>
-					<Button onClick={() => navigate('/dashboard')}>
+					<Button variant="marketing" onClick={() => navigate('/dashboard')}>
 						Back to Dashboard
 					</Button>
 				</div>
@@ -93,19 +103,17 @@ const AccountDetailPage: React.FC = () => {
 	const liability = getAccountLiability(account);
 
 	return (
-		<div className="flex flex-col min-h-screen bg-background">
+		<div className={cn('flex min-h-screen flex-col', pageBg)}>
 			<div className="flex-1 overflow-y-auto p-4 md:p-8">
-				{/* Back button */}
 				<button
 					onClick={() => navigate('/dashboard')}
-					className="mb-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+					className="mb-6 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
 				>
 					<FiArrowLeft className="h-4 w-4" />
 					Back to Dashboard
 				</button>
 
-				{/* Account header */}
-				<div className="mb-6 rounded-2xl border bg-card overflow-hidden">
+				<div className={cn('mb-6 overflow-hidden', cardSurface)}>
 					<div
 						className="h-3 w-full"
 						style={{ backgroundColor: account.color ?? '#6366f1' }}
@@ -113,37 +121,25 @@ const AccountDetailPage: React.FC = () => {
 					<div className="p-6">
 						<div className="flex items-start justify-between gap-4">
 							<div>
-								<h1 className="text-2xl font-bold tracking-tight">
+								<h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50">
 									{account.name}
 								</h1>
-								<div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+								<div className="mt-1 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
 									{account.bank && <span>{account.bank}</span>}
-									{account.bank && <span>&#183;</span>}
+									{account.bank && <span>·</span>}
 									<span>{ACCOUNT_TYPE_LABELS[account.type]}</span>
 								</div>
 							</div>
 							<div className="flex gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => setSubView('reconcile')}
-								>
+								<Button variant="outline" size="sm" className="rounded-full" onClick={() => setSubView('reconcile')}>
 									<FiRefreshCw className="mr-1.5 h-3.5 w-3.5" />
 									Reconcile
 								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => setSubView('transfer')}
-								>
+								<Button variant="outline" size="sm" className="rounded-full" onClick={() => setSubView('transfer')}>
 									<FiRepeat className="mr-1.5 h-3.5 w-3.5" />
 									Transfer
 								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => setSubView('edit')}
-								>
+								<Button variant="outline" size="sm" className="rounded-full" onClick={() => setSubView('edit')}>
 									<FiEdit2 className="mr-1.5 h-3.5 w-3.5" />
 									Edit
 								</Button>
@@ -152,84 +148,61 @@ const AccountDetailPage: React.FC = () => {
 
 						<div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 							<div>
-								<p className="text-xs text-muted-foreground mb-1">
-									Current Balance
-								</p>
-								<p
-									className={`text-2xl font-bold ${
-										account.balance < 0
-											? 'text-red-600 dark:text-red-400'
-											: 'text-foreground'
-									}`}
-								>
-									{formatCurrency(account.balance)}
-								</p>
+								<p className={cn(sectionLabel, 'mb-1')}>Current Balance</p>
+								<Currency
+									amount={account.balance}
+									tone={account.balance < 0 ? 'balance-negative' : 'default'}
+									className="text-2xl"
+								/>
 							</div>
 							<div>
-								<p className="text-xs text-muted-foreground mb-1">
-									{account.type === 'credit'
-										? 'Available Credit'
-										: 'Available Balance'}
+								<p className={cn(sectionLabel, 'mb-1')}>
+									{account.type === 'credit' ? 'Available Credit' : 'Available Balance'}
 								</p>
-								<p
-									className={`text-xl font-semibold ${
-										availableBalance < 0
-											? 'text-red-600 dark:text-red-400'
-											: 'text-green-600 dark:text-green-400'
-									}`}
-								>
-									{formatCurrency(availableBalance)}
-								</p>
+								<Currency
+									amount={availableBalance}
+									tone={availableBalance < 0 ? 'balance-negative' : 'balance-positive'}
+									className="text-xl"
+								/>
 								{account.type === 'credit' && (
-									<p className="mt-1 text-xs text-muted-foreground">
+									<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
 										Limit {formatCurrency(account.creditLimit ?? 0)}
 									</p>
 								)}
 							</div>
 							{account.type === 'credit' && (
 								<div>
-									<p className="text-xs text-muted-foreground mb-1">Debt</p>
-									<p
-										className={`text-xl font-semibold ${
-											liability > 0
-												? 'text-red-600 dark:text-red-400'
-												: 'text-foreground'
-										}`}
-									>
-										{formatCurrency(liability)}
-									</p>
+									<p className={cn(sectionLabel, 'mb-1')}>Debt</p>
+									<Currency
+										amount={liability}
+										tone={liability > 0 ? 'balance-negative' : 'default'}
+										className="text-xl"
+									/>
 								</div>
 							)}
 							<div>
-								<p className="text-xs text-muted-foreground mb-1">
-									Total Income
-								</p>
-								<p className="text-xl font-semibold text-green-600 dark:text-green-400">
-									{formatCurrency(totals.income)}
-								</p>
+								<p className={cn(sectionLabel, 'mb-1')}>Total Income</p>
+								<Currency amount={totals.income} tone="income" className="text-xl" />
 							</div>
 							<div>
-								<p className="text-xs text-muted-foreground mb-1">
-									Total Expenses
-								</p>
-								<p className="text-xl font-semibold text-red-600 dark:text-red-400">
-									{formatCurrency(totals.expense)}
-								</p>
+								<p className={cn(sectionLabel, 'mb-1')}>Total Expenses</p>
+								<Currency amount={totals.expense} tone="expense" className="text-xl" />
 							</div>
 						</div>
 					</div>
 				</div>
 
-				{/* Transactions */}
 				<div>
-					<h2 className="mb-4 text-lg font-semibold">Transactions</h2>
+					<h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-50">
+						Transactions
+					</h2>
 					{accountTransactions.length === 0 ? (
-						<div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+						<div className="rounded-2xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
 							No transactions for this account yet
 						</div>
 					) : (
-						<div className="space-y-2">
-							{accountTransactions.map((tx) => {
+						<div className={cn('overflow-hidden p-4', cardSurface)}>
+							{accountTransactions.map((tx, index) => {
 								const date = parseDbDate(tx.date ?? tx.createdAt);
 								const dateStr = date.toLocaleDateString('en-ZA', {
 									day: 'numeric',
@@ -239,48 +212,51 @@ const AccountDetailPage: React.FC = () => {
 								return (
 									<div
 										key={tx.id}
-										className="flex items-center justify-between rounded-xl border bg-card p-4"
+										className={cn(
+											'flex items-center justify-between py-2.5',
+											index < accountTransactions.length - 1 && rowDivider
+										)}
 									>
 										<div className="flex items-center gap-3">
 											<div
-												className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${
+												className={cn(
+													'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full',
 													tx.type === 'income'
-														? 'bg-green-100 dark:bg-green-900/30'
+														? 'bg-blue-50 dark:bg-blue-950'
 														: tx.type === 'transfer'
-															? 'bg-blue-100 dark:bg-blue-900/30'
-															: 'bg-red-100 dark:bg-red-900/30'
-												}`}
+															? 'bg-gray-100 dark:bg-gray-800'
+															: 'bg-gray-100 dark:bg-gray-800'
+												)}
 											>
 												{tx.type === 'income' ? (
-													<FiArrowUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+													<FiArrowUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
 												) : tx.type === 'transfer' ? (
-													<FiRepeat className="h-4 w-4 text-blue-500" />
+													<FiRepeat className="h-4 w-4 text-blue-600 dark:text-blue-400" />
 												) : (
-													<FiArrowDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+													<FiArrowDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
 												)}
 											</div>
 											<div>
-												<p className="font-medium text-sm">{tx.title}</p>
-												<p className="text-xs text-muted-foreground">
+												<p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+													{tx.title}
+												</p>
+												<p className="text-xs text-gray-400 dark:text-gray-500">
 													{tx.category
-														? `${getCategoryPathLabel(tx.category, tx.subcategory)} &#183; `
+														? `${getCategoryPathLabel(tx.category, tx.subcategory)} · `
 														: ''}
 													{dateStr}
 												</p>
 											</div>
 										</div>
-										<p
-											className={`font-semibold ${
-												tx.type === 'income'
-													? 'text-green-600 dark:text-green-400'
-													: tx.type === 'transfer'
-														? 'text-blue-500'
-														: 'text-red-600 dark:text-red-400'
-											}`}
-										>
-											{tx.type === 'income' ? '+' : tx.type === 'transfer' ? '' : '-'}
-											{formatCurrency(tx.amount)}
-										</p>
+										{tx.type === 'income' ? (
+											<Currency amount={tx.amount} tone="income" showSign className="text-sm" />
+										) : tx.type === 'transfer' ? (
+											<Currency amount={tx.amount} className="text-sm" />
+										) : (
+											<span className={cn(currencyBase, currencyExpense, 'text-sm')}>
+												-{formatCurrency(tx.amount).replace(/^-/, '')}
+											</span>
+										)}
 									</div>
 								);
 							})}
