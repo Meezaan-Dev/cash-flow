@@ -25,15 +25,16 @@ const Home: React.FC = () => {
 	};
 
 	return (
-		<div className="min-h-screen overflow-x-hidden bg-black">
+		<div className="min-h-screen overflow-x-hidden bg-white">
 			<Navbar onAuthClick={handleAuthClick} />
+			{/* Spacer for fixed navbar */}
+			<div className="h-16" />
 			<Hero onAuthClick={handleAuthClick} />
 			<Features />
 			<ProblemSolution />
 			<FAQ />
-			<Footer />
+			<Footer onAuthClick={handleAuthClick} />
 
-			{/* Auth Modals */}
 			<AuthModals
 				open={authModalOpen}
 				onClose={handleAuthClose}
