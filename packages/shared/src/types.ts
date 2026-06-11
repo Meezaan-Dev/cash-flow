@@ -71,40 +71,31 @@ export interface Transaction {
 	recurringOccurrenceDate?: string;
 }
 
-// Budget
-export type BudgetStatus = 'draft' | 'published';
-
 export interface Budget {
-	id?: string;
-	userId?: string;
-	category: string;
+	id: string;
+	userId: string;
+	accountId?: string;
+	categoryId: string;
+	subCategoryId?: string;
 	amount: number;
-	period: 'monthly';
-	status: BudgetStatus;
-	plannedStartDate: string;
-	plannedEndDate: string;
-	actualStartDate?: string;
-	actualEndDate?: string;
+	period: 'monthly' | 'custom';
+	month?: string;
+	startDate: string;
+	endDate: string;
+	lifecycleStatus: 'draft' | 'published';
+	displayOrder?: number;
 	createdAt?: Date | { toDate: () => Date };
+	updatedAt?: Date | { toDate: () => Date };
 }
+
+export type BudgetStatus = 'safe' | 'warning' | 'over';
 
 export interface BudgetProgress {
 	budget: Budget;
-	status: BudgetStatus;
-	isDraft: boolean;
-	plannedAmount: number;
-	plannedStartDate: string;
-	plannedEndDate: string;
-	actualStartDate?: string;
-	actualEndDate?: string;
-	comparisonStartDate: string;
-	comparisonEndDate: string;
-	started: boolean;
-	calculating: boolean;
-	actualSpent: number;
+	spent: number;
 	remaining: number;
-	overBudget: number;
-	percent: number;
+	usedPercentage: number;
+	status: BudgetStatus;
 }
 
 // Report types

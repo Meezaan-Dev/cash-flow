@@ -1,23 +1,30 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useBudgets } from '../useBudgets';
 import { auth } from '@/services/firebase';
+import {
+	createBudget,
+	deleteBudget,
+	publishBudget,
+	reorderBudgets,
+	repeatBudget,
+	updateBudget,
+} from '@/domains/budgets/services/budgetService';
 
-const mockAddDoc = jest.fn();
-const mockUpdateDoc = jest.fn();
-const mockDeleteDoc = jest.fn();
 const mockOnSnapshot = jest.fn();
 
 jest.mock('firebase/firestore', () => ({
 	collection: jest.fn((...path: string[]) => ({ path })),
-	addDoc: (...args: unknown[]) => mockAddDoc(...args),
-	deleteDoc: (...args: unknown[]) => mockDeleteDoc(...args),
-	updateDoc: (...args: unknown[]) => mockUpdateDoc(...args),
-	doc: jest.fn((...path: string[]) => ({ path })),
 	query: jest.fn((collectionRef: unknown) => collectionRef),
 	onSnapshot: (...args: unknown[]) => mockOnSnapshot(...args),
-	Timestamp: {
-		now: jest.fn(() => 'timestamp-now'),
-	},
+}));
+
+jest.mock('@/domains/budgets/services/budgetService', () => ({
+	createBudget: jest.fn(),
+	updateBudget: jest.fn(),
+	deleteBudget: jest.fn(),
+	publishBudget: jest.fn(),
+	repeatBudget: jest.fn(),
+	reorderBudgets: jest.fn(),
 }));
 
 const mockUser = { uid: 'user-1' };
@@ -40,25 +47,17 @@ describe('useBudgets', () => {
 				next({
 					docs: [
 						{
-							id: 'draft-1',
+							id: 'budget-1',
 							data: () => ({
-								category: 'groceries',
-								amount: 1000,
+								userId: 'user-1',
+								categoryId: 'food',
+								subCategoryId: 'takeaways',
+								amount: 1500,
 								period: 'monthly',
-								status: 'draft',
-								plannedStartDate: '2026-05-01',
-								plannedEndDate: '2026-05-31',
-							}),
-						},
-						{
-							id: 'published-1',
-							data: () => ({
-								category: 'groceries',
-								amount: 500,
-								period: 'monthly',
-								status: 'published',
-								plannedStartDate: '2026-05-01',
-								plannedEndDate: '2026-05-31',
+								month: '2026-05',
+								startDate: '2026-05-01',
+								endDate: '2026-05-31',
+								lifecycleStatus: 'draft',
 							}),
 						},
 					],
@@ -68,48 +67,41 @@ describe('useBudgets', () => {
 		);
 	});
 
-	it('creates draft budgets with draft status', async () => {
+	it('subscribes to and normalizes user budgets', async () => {
 		const { result } = renderHook(() => useBudgets());
-
-		await act(async () => {
-			await result.current.addDraftBudget({
-				category: 'groceries',
-				amount: 1000,
-				period: 'monthly',
-				plannedStartDate: '2026-05-01',
-				plannedEndDate: '2026-05-31',
-			});
-		});
-
-		expect(mockAddDoc).toHaveBeenCalledWith(expect.anything(), {
-			category: 'groceries',
-			amount: 1000,
-			period: 'monthly',
-			plannedStartDate: '2026-05-01',
-			plannedEndDate: '2026-05-31',
-			status: 'draft',
-			userId: 'user-1',
-			createdAt: 'timestamp-now',
-		});
+		await waitFor(() => expect(result.current.budgets).toHaveLength(1));
+		expect(result.current.budgets[0].subCategoryId).toBe('takeaways');
 	});
 
-	it('publishes a draft by updating status and using the planned period', async () => {
+	it('delegates create, update, and delete operations with ownership', async () => {
 		const { result } = renderHook(() => useBudgets());
-
-		await waitFor(() => {
-			expect(result.current.budgets).toHaveLength(2);
-		});
+		const input = {
+			categoryId: 'food',
+			subCategoryId: 'takeaways',
+			amount: 1500,
+			period: 'monthly' as const,
+			month: '2026-05',
+			startDate: '2026-05-01',
+			endDate: '2026-05-31',
+			lifecycleStatus: 'draft' as const,
+		};
 
 		await act(async () => {
-			await result.current.publishBudget('draft-1');
+			await result.current.addBudget(input);
+			await result.current.updateBudget('budget-1', { amount: 1700 });
+			await result.current.deleteBudget('budget-1');
+			await result.current.publishBudget('budget-1');
+			await result.current.repeatBudget('budget-1');
+			await result.current.reorderBudgets(['budget-1']);
 		});
 
-		expect(mockUpdateDoc).toHaveBeenCalledWith(expect.anything(), {
-			status: 'published',
-			actualStartDate: '2026-05-01',
-			actualEndDate: '2026-05-31',
+		expect(createBudget).toHaveBeenCalledWith({ ...input, userId: 'user-1' });
+		expect(updateBudget).toHaveBeenCalledWith('user-1', 'budget-1', {
+			amount: 1700,
 		});
-		expect(mockAddDoc).not.toHaveBeenCalled();
-		expect(mockDeleteDoc).not.toHaveBeenCalled();
+		expect(deleteBudget).toHaveBeenCalledWith('user-1', 'budget-1');
+		expect(publishBudget).toHaveBeenCalledWith('user-1', 'budget-1');
+		expect(repeatBudget).toHaveBeenCalledWith('user-1', 'budget-1');
+		expect(reorderBudgets).toHaveBeenCalledWith('user-1', ['budget-1']);
 	});
 });

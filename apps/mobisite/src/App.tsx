@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
 	ArrowDownCircle,
 	ArrowUpCircle,
+	CheckCircle2,
 	ChevronRight,
 	List,
 	LogOut,
@@ -164,10 +165,12 @@ const AddTransactionView = () => {
 	const selectedCategory = categories.find((item) => item.value === category);
 	const availableSubcategories = selectedCategory?.subcategories ?? [];
 	const [subcategory, setSubcategory] = useState('');
+	const [success, setSuccess] = useState('');
 
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
 		setError('');
+		setSuccess('');
 
 		if (!accountId) {
 			setError('Create an account in desktop admin first.');
@@ -189,6 +192,7 @@ const AddTransactionView = () => {
 				subcategory: subcategory || undefined,
 				date: date ? new Date(date) : new Date(),
 			});
+			setSuccess(`${type === 'expense' ? 'Expense' : 'Income'} "${title}" added successfully.`);
 			setTitle('');
 			setAmount('');
 			setSubcategory('');
@@ -222,6 +226,18 @@ const AddTransactionView = () => {
 	return (
 		<div className="py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
 			<form onSubmit={handleSubmit} className="mx-auto max-w-sm space-y-4">
+				{success && (
+					<div
+						role="status"
+						className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/10 px-3 py-3 text-sm text-foreground shadow-sm"
+					>
+						<CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+						<div>
+							<p className="font-semibold">Transaction created</p>
+							<p className="mt-0.5 text-muted-foreground">{success}</p>
+						</div>
+					</div>
+				)}
 				{error && (
 					<div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
 						{error}
@@ -250,7 +266,10 @@ const AddTransactionView = () => {
 					<span>Title</span>
 					<input
 						value={title}
-						onChange={(event) => setTitle(event.target.value)}
+						onChange={(event) => {
+							setTitle(event.target.value);
+							setSuccess('');
+						}}
 						className="h-12 w-full rounded-md border bg-background px-3"
 						required
 					/>

@@ -44,6 +44,8 @@ The friendly first-run path is:
 
 Core capabilities include Firebase auth, multi-account management for debit/credit/savings/cash, atomic income and expense writes, linked transfer records, account reconciliation, desktop dashboard/admin views, mobile transaction capture, recurring due-today drafts, import/export, reports, settings, and the AI assistant.
 
+Budget planning supports category-wide or optional sub-category scopes, monthly or custom date ranges, draft publishing, repeating completed periods, and persistent card ordering. A user can keep up to eight budgets, including budgets outside the currently selected month.
+
 ## Architecture Map
 
 The app now follows an app-flow structure with domain logic separated from pages and shared app services:
@@ -64,6 +66,7 @@ There is only one deployed SPA. `apps/mobisite` is internal separation, not a se
 
 - Accounts come before transactions in the user flow.
 - Transaction writes that change balances must stay atomic with Firestore `writeBatch` and `increment()`.
+- Budget reorder writes must stay atomic so every document receives a consistent `displayOrder`.
 - Transfers are represented as two linked transaction records and two account balance updates.
 - Keep data normalization in domain models and Firebase behavior in domain hooks.
 - Use shared types from `src/types/` instead of redefining domain shapes in UI components.

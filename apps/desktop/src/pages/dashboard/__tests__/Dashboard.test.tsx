@@ -41,8 +41,17 @@ jest.mock('@/pages/dashboard/components/DashboardOverview', () => ({
 
 jest.mock('@/pages/dashboard/components/Sidebar', () => ({
 	__esModule: true,
-	default: ({ onCreate }: { onCreate: () => void }) => (
-		<button onClick={onCreate}>Create transaction</button>
+	default: ({
+		onCreate,
+		onViewChange,
+	}: {
+		onCreate: () => void;
+		onViewChange: (view: string) => void;
+	}) => (
+		<>
+			<button onClick={onCreate}>Create transaction</button>
+			<button onClick={() => onViewChange('budgets')}>Open budgets</button>
+		</>
 	),
 }));
 
@@ -53,10 +62,23 @@ jest.mock('@/pages/dashboard/components/SettingsModal', () => ({
 
 jest.mock('@/domains/transactions/views/TransactionForm', () => ({
 	__esModule: true,
-	default: ({ onClose }: { onClose: () => void }) => (
+	default: ({
+		onClose,
+		onSuccess,
+	}: {
+		onClose: () => void;
+		onSuccess?: (message: string) => void;
+	}) => (
 		<div>
 			<div>Transaction form</div>
-			<button onClick={onClose}>Finish add</button>
+			<button
+				onClick={() => {
+					onSuccess?.('Expense added successfully.');
+					onClose();
+				}}
+			>
+				Finish add
+			</button>
 		</div>
 	),
 }));
@@ -135,6 +157,30 @@ describe('Dashboard', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Finish add' }));
 
 		expect(screen.getByText('Dashboard overview')).toBeInTheDocument();
+		expect(screen.queryByText('Transaction form')).not.toBeInTheDocument();
+		expect(mockToast).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Transaction created',
+				description: 'Expense added successfully.',
+			})
+		);
+	});
+
+	it('navigates from the transaction form to budgets without getting stuck', () => {
+		render(
+			<MemoryRouter initialEntries={['/dashboard']}>
+				<Routes>
+					<Route path="/dashboard" element={<Dashboard />} />
+					<Route path="/dashboard/budgets" element={<Dashboard />} />
+				</Routes>
+			</MemoryRouter>
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: 'Create transaction' }));
+		expect(screen.getByText('Transaction form')).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Open budgets' }));
+		expect(screen.getByText('Budgets list')).toBeInTheDocument();
 		expect(screen.queryByText('Transaction form')).not.toBeInTheDocument();
 	});
 });

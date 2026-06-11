@@ -1,52 +1,33 @@
-import { useBudgets } from '@/domains/budgets/hooks/useBudgets';
-import { Budget, BudgetProgress, DateRange, Transaction } from '@/types';
-import { calculateBudgetUsage } from '@/domains/budgets/models/BudgetModel';
+import { useBudgets, type BudgetFormData } from '@/domains/budgets/hooks/useBudgets';
+import { Budget, BudgetProgress, Transaction } from '@/types';
+import { calculateBudgetProgress } from '@/domains/budgets/models/BudgetModel';
+import { UpdateBudgetInput } from '@/domains/budgets/services/budgetService';
 
-type BudgetFormData = Omit<
-	Budget,
-	'id' | 'createdAt' | 'userId' | 'status' | 'actualStartDate' | 'actualEndDate'
->;
-
-interface BudgetsControllerReturn {
+export interface BudgetsControllerReturn {
 	budgets: Budget[];
 	loading: boolean;
 	addBudget: (budget: BudgetFormData) => Promise<void>;
-	addDraftBudget: (budget: BudgetFormData) => Promise<void>;
-	updateBudget: (id: string, updates: Partial<Budget>) => Promise<void>;
-	startBudget: (id: string, actualRange: DateRange) => Promise<void>;
-	publishBudget: (id: string) => Promise<void>;
+	updateBudget: (id: string, updates: UpdateBudgetInput) => Promise<void>;
 	deleteBudget: (id: string) => Promise<void>;
-	getBudgetProgress: (budgetId: string, transactions: Transaction[]) => BudgetProgress | null;
+	publishBudget: (id: string) => Promise<void>;
+	repeatBudget: (id: string) => Promise<void>;
+	reorderBudgets: (orderedBudgetIds: string[]) => Promise<void>;
+	getBudgetProgress: (
+		budgetId: string,
+		transactions: Transaction[]
+	) => BudgetProgress | null;
 	getAllBudgetProgress: (transactions: Transaction[]) => BudgetProgress[];
 }
 
 export const useBudgetsController = (): BudgetsControllerReturn => {
-	const {
-		budgets,
-		addBudget,
-		addDraftBudget,
-		updateBudget,
-		startBudget,
-		publishBudget,
-		deleteBudget,
-		loading,
-	} = useBudgets();
-
+	const data = useBudgets();
 	return {
-		budgets,
-		loading,
-		addBudget,
-		addDraftBudget,
-		updateBudget,
-		startBudget,
-		publishBudget,
-		deleteBudget,
+		...data,
 		getBudgetProgress: (budgetId, transactions) => {
-			const budget = budgets.find((b) => b.id === budgetId);
-			if (!budget) return null;
-			return calculateBudgetUsage(budget, transactions);
+			const budget = data.budgets.find((item) => item.id === budgetId);
+			return budget ? calculateBudgetProgress(budget, transactions) : null;
 		},
 		getAllBudgetProgress: (transactions) =>
-			budgets.map((b) => calculateBudgetUsage(b, transactions)),
+			data.budgets.map((budget) => calculateBudgetProgress(budget, transactions)),
 	};
 };

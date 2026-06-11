@@ -216,9 +216,10 @@ export const useCategories = () => {
 		);
 		const budgetsRef = collection(db, USERS_COLLECTION, user!.uid, 'budgets');
 
-		const [transactionDocs, recurringDocs, budgetDocs] = await Promise.all([
+		const [transactionDocs, recurringDocs, budgetDocs, legacyBudgetDocs] = await Promise.all([
 			getDocs(query(transactionsRef, where('category', '==', category.value))),
 			getDocs(query(recurringRef, where('category', '==', category.value))),
+			getDocs(query(budgetsRef, where('categoryId', '==', category.value))),
 			getDocs(query(budgetsRef, where('category', '==', category.value))),
 		]);
 
@@ -226,6 +227,7 @@ export const useCategories = () => {
 			...transactionDocs.docs.map((docRef) => docRef.ref),
 			...recurringDocs.docs.map((docRef) => docRef.ref),
 			...budgetDocs.docs.map((docRef) => docRef.ref),
+			...legacyBudgetDocs.docs.map((docRef) => docRef.ref),
 		];
 
 		const categoryRef = doc(db, USERS_COLLECTION, user!.uid, 'categories', id);
@@ -251,9 +253,11 @@ export const useCategories = () => {
 			}
 
 			for (const ref of chunk) {
-				batch.update(ref, {
-					category: payload.value,
-				});
+				if (ref.parent.id === 'budgets') {
+					batch.update(ref, { categoryId: payload.value });
+				} else {
+					batch.update(ref, { category: payload.value });
+				}
 			}
 
 			await batch.commit();
@@ -277,14 +281,18 @@ export const useCategories = () => {
 		);
 		const budgetsRef = collection(db, USERS_COLLECTION, user!.uid, 'budgets');
 
-		const [transactionDocs, recurringDocs, budgetDocs] = await Promise.all([
+		const [transactionDocs, recurringDocs, budgetDocs, legacyBudgetDocs] = await Promise.all([
 			getDocs(query(transactionsRef, where('category', '==', category.value))),
 			getDocs(query(recurringRef, where('category', '==', category.value))),
+			getDocs(query(budgetsRef, where('categoryId', '==', category.value))),
 			getDocs(query(budgetsRef, where('category', '==', category.value))),
 		]);
 
 		const usageCount =
-			transactionDocs.size + recurringDocs.size + budgetDocs.size;
+			transactionDocs.size +
+			recurringDocs.size +
+			budgetDocs.size +
+			legacyBudgetDocs.size;
 
 		if (usageCount > 0) {
 			throw new Error(
@@ -341,10 +349,12 @@ export const useCategories = () => {
 			user!.uid,
 			'recurringTransactions'
 		);
+		const budgetsRef = collection(db, USERS_COLLECTION, user!.uid, 'budgets');
 
-		const [transactionDocs, recurringDocs] = await Promise.all([
+		const [transactionDocs, recurringDocs, budgetDocs] = await Promise.all([
 			getDocs(query(transactionsRef, where('category', '==', category.value))),
 			getDocs(query(recurringRef, where('category', '==', category.value))),
+			getDocs(query(budgetsRef, where('categoryId', '==', category.value))),
 		]);
 
 		const allRefs = [
@@ -353,6 +363,9 @@ export const useCategories = () => {
 				.map((docRef) => docRef.ref),
 			...recurringDocs.docs
 				.filter((docRef) => docRef.data().subcategory === subcategory.value)
+				.map((docRef) => docRef.ref),
+			...budgetDocs.docs
+				.filter((docRef) => docRef.data().subCategoryId === subcategory.value)
 				.map((docRef) => docRef.ref),
 		];
 		const categoryRef = doc(db, USERS_COLLECTION, user!.uid, 'categories', categoryId);
@@ -381,9 +394,11 @@ export const useCategories = () => {
 			}
 
 			for (const ref of chunk) {
-				batch.update(ref, {
-					subcategory: payload.value,
-				});
+				if (ref.parent.id === 'budgets') {
+					batch.update(ref, { subCategoryId: payload.value });
+				} else {
+					batch.update(ref, { subcategory: payload.value });
+				}
 			}
 
 			await batch.commit();
@@ -410,17 +425,22 @@ export const useCategories = () => {
 			user!.uid,
 			'recurringTransactions'
 		);
+		const budgetsRef = collection(db, USERS_COLLECTION, user!.uid, 'budgets');
 
-		const [transactionDocs, recurringDocs] = await Promise.all([
+		const [transactionDocs, recurringDocs, budgetDocs] = await Promise.all([
 			getDocs(query(transactionsRef, where('category', '==', category.value))),
 			getDocs(query(recurringRef, where('category', '==', category.value))),
+			getDocs(query(budgetsRef, where('categoryId', '==', category.value))),
 		]);
 
 		const usageCount =
 			transactionDocs.docs.filter((docRef) => docRef.data().subcategory === subcategory.value)
 				.length +
 			recurringDocs.docs.filter((docRef) => docRef.data().subcategory === subcategory.value)
-				.length;
+				.length +
+			budgetDocs.docs.filter(
+				(docRef) => docRef.data().subCategoryId === subcategory.value
+			).length;
 
 		if (usageCount > 0) {
 			throw new Error(

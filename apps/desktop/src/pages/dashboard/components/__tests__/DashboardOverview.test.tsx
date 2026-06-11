@@ -66,6 +66,12 @@ jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 	}),
 }));
 
+jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
+	useBudgetsContext: () => ({
+		budgets: [],
+	}),
+}));
+
 jest.mock('@/components/app/ui/use-toast', () => ({
 	useToast: () => ({
 		toast: jest.fn(),

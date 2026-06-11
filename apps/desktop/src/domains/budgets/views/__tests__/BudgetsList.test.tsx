@@ -1,132 +1,225 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import BudgetsList from '../BudgetsList';
-import { BudgetProgress, Transaction } from '@/types';
+import {
+	getCurrentBudgetMonth,
+	getMonthDateRange,
+} from '@/domains/budgets/models/BudgetModel';
 
+const mockMonth = getCurrentBudgetMonth();
+const mockRange = getMonthDateRange(mockMonth);
 const mockPublishBudget = jest.fn();
-
-const mockDraftProgress: BudgetProgress = {
-	budget: {
-		id: 'draft-1',
-		category: 'groceries',
-		amount: 1000,
-		period: 'monthly',
-		status: 'draft',
-		plannedStartDate: '2026-05-01',
-		plannedEndDate: '2026-05-31',
-	},
-	status: 'draft',
-	isDraft: true,
-	plannedAmount: 1000,
-	plannedStartDate: '2026-05-01',
-	plannedEndDate: '2026-05-31',
-	comparisonStartDate: '2026-05-01',
-	comparisonEndDate: '2026-05-31',
-	started: false,
-	calculating: true,
-	actualSpent: 250,
-	remaining: 750,
-	overBudget: 0,
-	percent: 25,
-};
-
-const mockPublishedProgress: BudgetProgress = {
-	budget: {
-		id: 'published-1',
-		category: 'transport',
-		amount: 500,
-		period: 'monthly',
-		status: 'published',
-		plannedStartDate: '2026-05-01',
-		plannedEndDate: '2026-05-31',
-		actualStartDate: '2026-05-01',
-		actualEndDate: '2026-05-31',
-	},
-	status: 'published',
-	isDraft: false,
-	plannedAmount: 500,
-	plannedStartDate: '2026-05-01',
-	plannedEndDate: '2026-05-31',
-	actualStartDate: '2026-05-01',
-	actualEndDate: '2026-05-31',
-	comparisonStartDate: '2026-05-01',
-	comparisonEndDate: '2026-05-31',
-	started: true,
-	calculating: true,
-	actualSpent: 100,
-	remaining: 400,
-	overBudget: 0,
-	percent: 20,
-};
-
-const mockTransactions: Transaction[] = [
-	{
-		id: 'transaction-1',
-		accountId: 'account-1',
-		title: 'Supermarket',
-		amount: 250,
-		type: 'expense',
-		category: 'groceries',
-		date: new Date('2026-05-10T12:00:00Z'),
-	},
-];
+const mockRepeatBudget = jest.fn();
+const mockDeleteBudget = jest.fn();
+const mockReorderBudgets = jest.fn();
 
 jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 	useBudgetsContext: () => ({
-		budgets: [mockDraftProgress.budget, mockPublishedProgress.budget],
-		loading: false,
-		addBudget: jest.fn(),
-		addDraftBudget: jest.fn(),
-		updateBudget: jest.fn(),
-		startBudget: jest.fn(),
+		budgets: [
+			{
+				id: 'draft-petrol',
+				userId: 'user-1',
+				categoryId: 'petrol',
+				amount: 1000,
+				period: 'monthly',
+				month: mockMonth,
+				startDate: mockRange.startDate,
+				endDate: mockRange.endDate,
+				lifecycleStatus: 'draft',
+				displayOrder: 0,
+			},
+			{
+				id: 'active-takeaways',
+				userId: 'user-1',
+				categoryId: 'food',
+				subCategoryId: 'takeaways',
+				amount: 1500,
+				period: 'monthly',
+				month: mockMonth,
+				startDate: mockRange.startDate,
+				endDate: mockRange.endDate,
+				lifecycleStatus: 'published',
+				displayOrder: 1,
+			},
+			{
+				id: 'warning-food',
+				userId: 'user-1',
+				categoryId: 'food',
+				subCategoryId: 'groceries',
+				amount: 1000,
+				period: 'monthly',
+				month: mockMonth,
+				startDate: mockRange.startDate,
+				endDate: mockRange.endDate,
+				lifecycleStatus: 'published',
+				displayOrder: 2,
+			},
+			{
+				id: 'over-petrol',
+				userId: 'user-1',
+				categoryId: 'petrol',
+				amount: 100,
+				period: 'monthly',
+				month: mockMonth,
+				startDate: mockRange.startDate,
+				endDate: mockRange.endDate,
+				lifecycleStatus: 'published',
+				displayOrder: 3,
+			},
+			{
+				id: 'next-month-travel',
+				userId: 'user-1',
+				categoryId: 'travel',
+				amount: 2200,
+				period: 'monthly',
+				month: '2099-01',
+				startDate: '2099-01-01',
+				endDate: '2099-01-31',
+				lifecycleStatus: 'draft',
+				displayOrder: 4,
+			},
+		],
+		deleteBudget: mockDeleteBudget,
 		publishBudget: mockPublishBudget,
-		deleteBudget: jest.fn(),
-		getBudgetProgress: jest.fn(),
-		getAllBudgetProgress: jest.fn(() => [mockDraftProgress, mockPublishedProgress]),
+		repeatBudget: mockRepeatBudget,
+		reorderBudgets: mockReorderBudgets,
 	}),
 }));
 
 jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 	useTransactionsContext: () => ({
-		transactions: mockTransactions,
+		transactions: [
+			{
+				id: 'takeaways',
+				userId: 'user-1',
+				accountId: 'account-1',
+				title: 'Dinner',
+				amount: 920,
+				type: 'expense',
+				category: 'food',
+				subcategory: 'takeaways',
+				date: new Date(`${mockMonth}-10T12:00:00`),
+			},
+			{
+				id: 'groceries',
+				userId: 'user-1',
+				accountId: 'account-1',
+				title: 'Groceries',
+				amount: 800,
+				type: 'expense',
+				category: 'food',
+				subcategory: 'groceries',
+				date: new Date(`${mockMonth}-11T12:00:00`),
+			},
+			{
+				id: 'fuel',
+				userId: 'user-1',
+				accountId: 'account-1',
+				title: 'Fuel',
+				amount: 120,
+				type: 'expense',
+				category: 'petrol',
+				date: new Date(`${mockMonth}-12T12:00:00`),
+			},
+		],
 	}),
 }));
 
 jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 	useCategoriesContext: () => ({
-		getCategoryLabel: (category: string) =>
-			category === 'groceries' ? 'Groceries' : 'Transport',
-		categoryOptions: [
-			{ value: 'groceries', label: 'Groceries' },
-			{ value: 'transport', label: 'Transport' },
+		categories: [
+			{
+				id: 'food',
+				value: 'food',
+				label: 'Food',
+				subcategories: [
+					{ value: 'takeaways', label: 'Takeaways' },
+					{ value: 'groceries', label: 'Groceries' },
+				],
+			},
+			{
+				id: 'petrol',
+				value: 'petrol',
+				label: 'Petrol',
+				subcategories: [],
+			},
+			{
+				id: 'travel',
+				value: 'travel',
+				label: 'Travel',
+				subcategories: [],
+			},
 		],
+		getCategoryLabel: (category: string) =>
+			category === 'food' ? 'Food' : category === 'travel' ? 'Travel' : 'Petrol',
+		getSubcategoryLabel: (_category: string, subcategory?: string) =>
+			subcategory === 'groceries' ? 'Groceries' : 'Takeaways',
 	}),
 }));
 
-describe('BudgetsList draft publishing', () => {
+describe('BudgetsList', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
-	it('separates draft and published budgets and shows live draft calculations', () => {
+	it('separates drafts and active budgets with explicit titles', () => {
 		render(<BudgetsList />);
-
-		expect(screen.getByText('Draft Budgets')).toBeInTheDocument();
-		expect(screen.getByText('Published Budgets')).toBeInTheDocument();
-		expect(screen.getByText('Live draft calculations for the planned period')).toBeInTheDocument();
-		expect(screen.getByText(/250,00 actual spend/)).toBeInTheDocument();
-		expect(screen.getByText('Supermarket')).toBeInTheDocument();
+		expect(screen.getByText('Draft budgets')).toBeInTheDocument();
+		expect(screen.getByText('Active budgets')).toBeInTheDocument();
+		expect(screen.getAllByText('Petrol').length).toBeGreaterThan(0);
+		expect(screen.getByText('Food · Takeaways')).toBeInTheDocument();
+		expect(screen.queryByText('All category spending')).not.toBeInTheDocument();
+		expect(screen.getAllByText('Tracks all Petrol expenses').length).toBeGreaterThan(0);
+		expect(screen.getByText('Other budget periods')).toBeInTheDocument();
+		expect(screen.getByText('Travel')).toBeInTheDocument();
+		expect(screen.getByText('5 of 8 budgets created')).toBeInTheDocument();
 	});
 
-	it('publishes a draft without replacing existing published budgets', async () => {
-		const user = userEvent.setup();
+	it('shows concise dates, sentence metrics, and status states', () => {
+		render(<BudgetsList />);
+		const monthLabel = new Date(`${mockMonth}-01T12:00:00`).toLocaleDateString(
+			'en-ZA',
+			{ month: 'long', year: 'numeric' }
+		);
+		expect(screen.getAllByText(monthLabel).length).toBeGreaterThan(0);
+		expect(screen.getAllByText(/spent of/).length).toBeGreaterThan(0);
+		expect(screen.getByText('On track')).toBeInTheDocument();
+		expect(screen.getByText('Watch spending')).toBeInTheDocument();
+		expect(screen.getByText('Over budget')).toBeInTheDocument();
+		expect(screen.getByRole('img', { name: '61 percent used' })).toBeInTheDocument();
+		expect(screen.getAllByText('Set budget').length).toBeGreaterThan(0);
+		expect(screen.getAllByTestId('budget-grid')[0]).toHaveClass('xl:grid-cols-4');
+	});
+
+	it('publishes a draft and opens the side-panel form', async () => {
+		render(<BudgetsList />);
+		fireEvent.click(screen.getByRole('button', { name: 'Publish Petrol' }));
+		await waitFor(() =>
+			expect(mockPublishBudget).toHaveBeenCalledWith('draft-petrol')
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: 'New budget' }));
+		expect(screen.getByRole('dialog')).toBeInTheDocument();
+		expect(screen.getByText('Create a budget')).toBeInTheDocument();
+		expect(screen.getByText('What are you budgeting?')).toBeInTheDocument();
+		expect(screen.getByText('How much?')).toBeInTheDocument();
+		expect(screen.getByText('For when?')).toBeInTheDocument();
+	});
+
+	it('reorders budgets from the card controls and persists the order', async () => {
 		render(<BudgetsList />);
 
-		await user.click(screen.getByRole('button', { name: /publish/i }));
+		fireEvent.click(
+			screen.getByRole('button', { name: 'Move Food · Groceries right' })
+		);
 
-		await waitFor(() => {
-			expect(mockPublishBudget).toHaveBeenCalledWith('draft-1');
-		});
-		expect(screen.getByText('Published Budgets')).toBeInTheDocument();
+		await waitFor(() =>
+			expect(mockReorderBudgets).toHaveBeenCalledWith([
+				'draft-petrol',
+				'active-takeaways',
+				'over-petrol',
+				'warning-food',
+				'next-month-travel',
+			])
+		);
 	});
 });
