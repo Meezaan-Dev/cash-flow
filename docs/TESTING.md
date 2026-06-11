@@ -59,9 +59,14 @@ Run `npm test` for the latest exact test count in your environment.
 - Recurring transaction CRUD and quick-fill behavior
 - Import/export flows (CSV/JSON, duplicate handling)
 - Dashboard/Table/List filtering and sorting behavior
+- Category budget create/edit/delete, optional sub-category matching, draft publishing, custom dates, repeating, duplicate validation, eight-budget enforcement, and progress totals
+- Budget cards remain equal height, render four per row at desktop widths, and preserve drag/button ordering after reload
+- Budget cards outside the selected month remain visible under other periods
+- Mobile-created expense transactions appearing in matching desktop budgets
+- Desktop/mobile transaction and budget creation show success feedback
 - Multi-account transfer and reconcile flows
 - Theme switching (dark/light mode)
-- Mobile responsiveness and sidebar navigation
+- Mobile responsiveness and sidebar navigation, including leaving an open transaction form for budgets
 
 ## High-Priority Missing Tests
 

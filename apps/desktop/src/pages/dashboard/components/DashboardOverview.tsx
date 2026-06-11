@@ -16,6 +16,7 @@ import { Transaction } from '@/types';
 import AccountBalanceStrip from '@/pages/dashboard/components/AccountBalanceStrip';
 import MonthlyDigest from '@/pages/dashboard/components/MonthlyDigest';
 import RecentTransactionsPanel from '@/pages/dashboard/components/RecentTransactionsPanel';
+import BudgetSummary from '@/pages/dashboard/components/BudgetSummary';
 import { calculateDashboardSummary } from '@/pages/dashboard/utils/dashboardSummary';
 import {
 	DashboardDigestPeriod,
@@ -242,6 +243,10 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 							</MarketingCard>
 						</MotionReveal>
 					)}
+
+					<MotionReveal delay={0.16} className="shrink-0">
+						<BudgetSummary />
+					</MotionReveal>
 
 					<div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(280px,0.78fr)_minmax(360px,1fr)_minmax(320px,0.85fr)]">
 						<MotionReveal delay={0.18}>

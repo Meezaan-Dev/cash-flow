@@ -232,6 +232,7 @@ const Dashboard: React.FC = () => {
 			setActiveView(view);
 			return;
 		}
+		setActiveView(view);
 		navigate(viewToRoute(view));
 	};
 
@@ -249,6 +250,13 @@ const Dashboard: React.FC = () => {
 					<TransactionForm
 						transaction={selectedTx || undefined}
 						onClose={handleCloseForm}
+						onSuccess={(message) =>
+							toast({
+								title: selectedTx ? 'Transaction updated' : 'Transaction created',
+								description: message,
+								duration: 3500,
+							})
+						}
 					/>
 				);
 			case 'table':

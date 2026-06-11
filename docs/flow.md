@@ -35,12 +35,22 @@ A transfer is represented as **two Transaction documents** — both with `type: 
 
 **Budget:**
 
-- `id?: string`
-- `userId?: string`
-- `category: string`
+- `id: string`
+- `userId: string`
+- `accountId?: string`
+- `categoryId: string`
+- `subCategoryId?: string`
 - `amount: number`
-- `period: 'monthly'`
+- `period: 'monthly' | 'custom'`
+- `month?: string` (`YYYY-MM`, monthly budgets only)
+- `startDate: string`
+- `endDate: string`
+- `lifecycleStatus: 'draft' | 'published'`
+- `displayOrder?: number` (persisted card position; legacy budgets use a stable fallback)
 - `createdAt?: Date | { toDate: () => Date }`
+- `updatedAt?: Date | { toDate: () => Date }`
+
+Users can create up to eight budgets. New budgets begin as drafts, published budgets track matching expenses, and completed periods can be repeated into a new draft.
 
 **RecurringTransaction:**
 
@@ -67,7 +77,7 @@ All data is scoped to the authenticated user via subcollections:
 users/{userId}/
   transactions/{transactionId}   — income, expense, and transfer records
   accounts/{accountId}           — financial accounts (debit, credit, savings, cash)
-  budgets/{budgetId}             — monthly category budgets
+  budgets/{budgetId}             — category budgets with optional sub-category scope
   categories/{categoryId}        — custom categories and subcategories
   recurringTransactions/{id}     — recurring transaction templates (income or expense)
 ```
@@ -83,7 +93,7 @@ Legacy top-level `transactions` and `recurringExpenses` collections exist as **r
 | File | Responsibilities |
 |---|---|
 | `AccountModel.ts` | `Account` interface, `normalizeAccount()`, `calculateNetWorth()`, `ACCOUNT_TYPE_LABELS`, `ACCOUNT_COLORS` |
-| `BudgetModel.ts` | `Budget` interface, `normalizeBudget()`, `calculateBudgetUsage(budget, transactions)` |
+| `BudgetModel.ts` | Budget normalization, stable display ordering, draft/publish lifecycle, monthly/custom periods, optional sub-category matching, repeat helpers, and progress calculations |
 | `TransactionModel.ts` | `Transaction` interface, `normalizeTransaction()`, filter helpers (`filterExpenses`, `filterIncome`, `filterTransfers`, `filterByAccount`, `filterByCategory`, `groupByCategory`, `calculateTotals`) |
 | `RecurringTransactionModel.ts` | `RecurringTransaction` interface, `normalizeRecurringTransaction()`, `normalizeRecurringTransactions()`, `validateRecurringTransaction()` (validates title, amount > 0, category, frequency enum) |
 
@@ -92,7 +102,7 @@ Legacy top-level `transactions` and `recurringExpenses` collections exist as **r
 | Hook | Collection | Key operations |
 |---|---|---|
 | `useAccounts` | `users/{uid}/accounts` | `onSnapshot`, `addAccount`, `updateAccount`, `deleteAccount`, `updateBalance(delta)` |
-| `useBudgets` | `users/{uid}/budgets` | `onSnapshot`, `addBudget`, `updateBudget`, `deleteBudget` |
+| `useBudgets` | `users/{uid}/budgets` | `onSnapshot`, lifecycle-aware category budget CRUD and atomic reorder persistence via the budget service |
 | `useTransactions` | `users/{uid}/transactions` | `onSnapshot`, `addTransaction` (batch tx + balance; requires account), `addTransfer` (batch 2 tx + 2 balances; requires both accounts), `deleteTransaction` (batch delete + reverse balance; skips missing accounts) |
 | `useRecurringTransactions` | `users/{uid}/recurringTransactions` | `onSnapshot`, `addRecurringTransaction`, `updateRecurringTransaction`, `deleteRecurringTransaction` |
 
@@ -132,8 +142,8 @@ ThemeProvider
 | `AccountForm` | `views/Accounts/` | Create / edit account |
 | `TransferForm` | `views/Accounts/` | Transfer between two accounts |
 | `ReconcileForm` | `views/Accounts/` | 3-step reconciliation flow |
-| `BudgetsList` | `views/Budgets/` | Budget cards with progress bars |
-| `BudgetForm` | `views/Budgets/` | Create / edit budget |
+| `BudgetsList` | `domains/budgets/views/` | Equal-height draft/active cards, month filtering, progress, publish/repeat actions, and persisted reordering |
+| `BudgetForm` | `domains/budgets/views/` | Theme-aware side panel for category/sub-category, amount, and monthly/custom date selection |
 | `ReportsView` | `views/Reports/` | 4 charts: category pie, account bar, monthly trend, net worth |
 | `TransactionForm` | `views/Transactions/` | Create / edit; supports income, expense, transfer types + account selector |
 | `TransactionsTable` | `views/Transactions/` | Tabular transaction list |
@@ -178,9 +188,26 @@ TransferForm --submit--> TransactionsContext.addTransfer({ fromAccountId, toAcco
 ```
 BudgetsList --render--> useBudgetsContext.getAllBudgetProgress(transactions)
   --> BudgetsController.getAllBudgetProgress(transactions)
-      --> budgets.map(b => calculateBudgetUsage(b, transactions))
-          // pure: filter expenses by category + current month, sum amounts
-          --> { budget, spent, remaining, percent }
+      --> budgets.map(b => calculateBudgetProgress(b, transactions))
+          // pure: match expense by user, category, optional sub-category/account, and date range
+          --> { budget, spent, remaining, usedPercentage, status }
+```
+
+### Budget Lifecycle And Ordering
+
+```
+BudgetForm --save--> createBudget(...)
+  --> validates category, amount, dates, duplicates, and the eight-budget limit
+  --> stores lifecycleStatus: 'draft' and appends displayOrder
+
+BudgetsList --publish--> publishBudget(id)
+  --> lifecycleStatus: 'published'
+
+BudgetsList --repeat completed period--> repeatBudget(id)
+  --> creates the next monthly/custom period as a draft
+
+BudgetsList --drag or move controls--> reorderBudgets(orderedIds)
+  --> one Firestore batch updates displayOrder for every budget
 ```
 
 ### Reports

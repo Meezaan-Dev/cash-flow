@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FiCalendar, FiDollarSign, FiTarget } from 'react-icons/fi';
 import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { Budget } from '@/types';
@@ -11,186 +12,416 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/app/ui/select';
-import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
-
-const getCurrentMonthRange = () => {
-	const now = new Date();
-	const start = new Date(now.getFullYear(), now.getMonth(), 1);
-	const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-	return {
-		startDate: start.toISOString().split('T')[0],
-		endDate: end.toISOString().split('T')[0],
-	};
-};
+import {
+	SidePanelClose,
+	SidePanelContent,
+	SidePanelDescription,
+	SidePanelTitle,
+} from '@/components/app/ui/side-panel';
+import {
+	getMonthDateRange,
+	isDuplicateBudget,
+	MAX_BUDGETS,
+} from '@/domains/budgets/models/BudgetModel';
+import {
+	getBudgetScopeHelp,
+	getBudgetTitle,
+} from '@/domains/budgets/views/budgetDisplay';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/components/app/ui/use-toast';
 
 interface BudgetFormProps {
 	onClose: () => void;
 	budget?: Budget;
+	defaultMonth: string;
 }
 
-const BudgetForm: React.FC<BudgetFormProps> = ({ onClose, budget }) => {
-	const { addDraftBudget, updateBudget } = useBudgetsContext();
-	const { categoryOptions } = useCategoriesContext();
+const NO_SUBCATEGORY = '__no_subcategory__';
 
-	const [category, setCategory] = useState('');
-	const [amount, setAmount] = useState(0);
-	const [plannedStartDate, setPlannedStartDate] = useState(getCurrentMonthRange().startDate);
-	const [plannedEndDate, setPlannedEndDate] = useState(getCurrentMonthRange().endDate);
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState('');
-	const availableCategories = React.useMemo(
-		() => mergeCategoryOptions(categoryOptions, category ? [category] : []),
-		[categoryOptions, category]
+const FieldError: React.FC<{ children?: string }> = ({ children }) =>
+	children ? <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{children}</p> : null;
+
+const BudgetForm: React.FC<BudgetFormProps> = ({
+	onClose,
+	budget,
+	defaultMonth,
+}) => {
+	const { budgets, addBudget, updateBudget } = useBudgetsContext();
+	const { toast } = useToast();
+	const {
+		categories,
+		getCategoryLabel,
+		getSubcategoryLabel,
+	} = useCategoriesContext();
+	const [period, setPeriod] = useState<Budget['period']>('monthly');
+	const [month, setMonth] = useState(defaultMonth);
+	const [startDate, setStartDate] = useState('');
+	const [endDate, setEndDate] = useState('');
+	const [categoryId, setCategoryId] = useState('');
+	const [subCategoryId, setSubCategoryId] = useState(NO_SUBCATEGORY);
+	const [amount, setAmount] = useState('');
+	const [saving, setSaving] = useState(false);
+	const [formError, setFormError] = useState('');
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+	const selectedCategory = useMemo(
+		() => categories.find((category) => category.value === categoryId),
+		[categories, categoryId]
 	);
+	const previewBudget = {
+		categoryId,
+		subCategoryId:
+			subCategoryId === NO_SUBCATEGORY ? undefined : subCategoryId,
+	};
+	const previewTitle = categoryId
+		? getBudgetTitle(previewBudget, getCategoryLabel, getSubcategoryLabel)
+		: 'Choose a category';
+	const scopeHelp = categoryId
+		? getBudgetScopeHelp(previewBudget, getCategoryLabel)
+		: null;
 
 	useEffect(() => {
-		if (budget) {
-			setCategory(budget.category);
-			setAmount(budget.amount);
-			setPlannedStartDate(budget.plannedStartDate);
-			setPlannedEndDate(budget.plannedEndDate);
-		} else {
-			const defaultRange = getCurrentMonthRange();
-			setCategory('');
-			setAmount(0);
-			setPlannedStartDate(defaultRange.startDate);
-			setPlannedEndDate(defaultRange.endDate);
-		}
-	}, [budget]);
+		const initialPeriod = budget?.period ?? 'monthly';
+		const initialMonth = budget?.month ?? defaultMonth;
+		const monthlyRange = getMonthDateRange(initialMonth);
+		setPeriod(initialPeriod);
+		setMonth(initialMonth);
+		setStartDate(budget?.startDate ?? monthlyRange.startDate);
+		setEndDate(budget?.endDate ?? monthlyRange.endDate);
+		setCategoryId(budget?.categoryId ?? '');
+		setSubCategoryId(budget?.subCategoryId ?? NO_SUBCATEGORY);
+		setAmount(budget ? String(budget.amount) : '');
+		setFormError('');
+		setFieldErrors({});
+	}, [budget, defaultMonth]);
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!category) {
-			setError('Please select a category.');
+	const handleMonthChange = (value: string) => {
+		setMonth(value);
+		const range = getMonthDateRange(value);
+		setStartDate(range.startDate);
+		setEndDate(range.endDate);
+	};
+
+	const handleCategoryChange = (value: string) => {
+		setCategoryId(value);
+		setSubCategoryId(NO_SUBCATEGORY);
+		setFieldErrors((current) => ({ ...current, category: '' }));
+	};
+
+	const handleSubmit = async (event: React.FormEvent) => {
+		event.preventDefault();
+		const numericAmount = Number(amount);
+		const finalRange =
+			period === 'monthly' ? getMonthDateRange(month) : { startDate, endDate };
+		const finalSubCategoryId =
+			subCategoryId === NO_SUBCATEGORY ? undefined : subCategoryId;
+		const nextErrors: Record<string, string> = {};
+
+		if (!budget && budgets.length >= MAX_BUDGETS) {
+			setFormError(`You can create up to ${MAX_BUDGETS} budgets.`);
 			return;
 		}
-		if (Number(amount) <= 0) {
-			setError('Budget amount must be greater than zero.');
+		if (!categoryId) nextErrors.category = 'Choose a category.';
+		if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+			nextErrors.amount = 'Enter an amount greater than zero.';
+		}
+		if (!finalRange.startDate || !finalRange.endDate) {
+			nextErrors.period = 'Choose a start and end date.';
+		} else if (finalRange.startDate > finalRange.endDate) {
+			nextErrors.period = 'End date must be on or after the start date.';
+		}
+		if (Object.keys(nextErrors).length > 0) {
+			setFieldErrors(nextErrors);
 			return;
 		}
-		if (!plannedStartDate || !plannedEndDate) {
-			setError('Please choose both a planned start and end date.');
+		if (
+			isDuplicateBudget(
+				budgets,
+				{
+					accountId: budget?.accountId,
+					categoryId,
+					subCategoryId: finalSubCategoryId,
+					startDate: finalRange.startDate,
+					endDate: finalRange.endDate,
+				},
+				budget?.id
+			)
+		) {
+			setFormError('A budget already exists for this category and period.');
 			return;
 		}
-		if (plannedStartDate > plannedEndDate) {
-			setError('Planned end date must be on or after the planned start date.');
-			return;
-		}
-		setError('');
-		setLoading(true);
+
+		setSaving(true);
+		setFormError('');
+		setFieldErrors({});
 		try {
 			const data = {
-				category,
-				amount: Number(amount),
-				period: 'monthly' as const,
-				plannedStartDate,
-				plannedEndDate,
+				accountId: budget?.accountId,
+				categoryId,
+				subCategoryId: finalSubCategoryId,
+				amount: numericAmount,
+				period,
+				month: period === 'monthly' ? month : undefined,
+				startDate: finalRange.startDate,
+				endDate: finalRange.endDate,
+				lifecycleStatus: budget?.lifecycleStatus ?? ('draft' as const),
 			};
-			if (budget?.id) {
+			if (budget) {
 				await updateBudget(budget.id, data);
 			} else {
-				await addDraftBudget(data);
+				await addBudget(data);
 			}
+			toast({
+				title: budget ? 'Budget updated' : 'Budget draft created',
+				description: budget
+					? `${previewTitle} was updated successfully.`
+					: `${previewTitle} is ready for review and publishing.`,
+				duration: 3500,
+			});
 			onClose();
-		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : 'Failed to save budget. Please try again.');
+		} catch (saveError) {
+			setFormError(
+				saveError instanceof Error
+					? saveError.message
+					: 'Failed to save budget. Please try again.'
+			);
 		} finally {
-			setLoading(false);
+			setSaving(false);
 		}
 	};
 
+	const sectionClass =
+		'rounded-2xl border border-border bg-card p-5 text-card-foreground';
+	const inputClass = 'h-11 rounded-xl border-border bg-background';
+
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background p-4">
-			<div className="w-full max-w-md rounded-2xl border bg-card p-8 shadow-xl">
-				<div className="mb-8 border-b pb-6">
-					<h2 className="text-3xl font-bold tracking-tight">
-						{budget ? 'Edit Budget' : 'New Draft Budget'}
-					</h2>
-					<p className="mt-1.5 text-sm text-muted-foreground">
-						{budget
-							? 'Update your planned budget amount and date range'
-							: 'Plan an amount and date range before publishing it'}
+		<SidePanelContent>
+			<form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+				<header className="border-b border-border bg-muted/30 px-6 py-6 pr-16">
+					<p className="text-xs font-semibold uppercase tracking-wider text-primary">
+						{budget ? 'Update budget' : 'New draft'}
 					</p>
+					<SidePanelTitle className="mt-2 text-2xl font-semibold tracking-tight">
+						{budget ? 'Edit budget' : 'Create a budget'}
+					</SidePanelTitle>
+					<SidePanelDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						Set the spending goal, amount, and period. New budgets stay in draft
+						until published.
+					</SidePanelDescription>
+				</header>
+
+				<div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-muted/20 p-4 sm:p-6">
+					{formError && (
+						<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+							{formError}
+						</div>
+					)}
+
+					<div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+						<div className="flex items-start gap-3">
+							<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+								<FiTarget className="h-5 w-5" />
+							</div>
+							<div className="min-w-0">
+								<p className="text-xs font-medium uppercase tracking-wider text-primary">
+									Budget preview
+								</p>
+								<p className="mt-1 truncate text-xl font-semibold text-gray-950 dark:text-white">
+									{previewTitle}
+								</p>
+								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+									{scopeHelp ?? 'Tracks expenses for this specific sub-category'}
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<section className={sectionClass}>
+						<div className="mb-4 flex items-center gap-3">
+							<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+								<FiTarget className="h-4 w-4" />
+							</div>
+							<div>
+								<h2 className="font-semibold">What are you budgeting?</h2>
+								<p className="text-xs text-gray-500 dark:text-gray-400">
+									Choose a category, then optionally narrow the goal.
+								</p>
+							</div>
+						</div>
+						<div className="space-y-4">
+							<div>
+								<label className="mb-1.5 block text-sm font-medium">Category</label>
+								<Select value={categoryId} onValueChange={handleCategoryChange}>
+									<SelectTrigger className={inputClass}>
+										<SelectValue placeholder="Select a category" />
+									</SelectTrigger>
+									<SelectContent>
+										{categories.map((category) => (
+											<SelectItem key={category.id} value={category.value}>
+												{category.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<FieldError>{fieldErrors.category}</FieldError>
+							</div>
+
+							<div>
+								<label className="mb-1.5 block text-sm font-medium">
+									Sub-category <span className="font-normal text-gray-400">(optional)</span>
+								</label>
+								<Select
+									value={subCategoryId}
+									onValueChange={setSubCategoryId}
+									disabled={!selectedCategory}
+								>
+									<SelectTrigger className={inputClass}>
+										<SelectValue placeholder="No sub-category" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value={NO_SUBCATEGORY}>No sub-category</SelectItem>
+										{selectedCategory?.subcategories.map((subcategory) => (
+											<SelectItem key={subcategory.value} value={subcategory.value}>
+												{subcategory.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								{scopeHelp && (
+									<p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+										{scopeHelp}
+									</p>
+								)}
+							</div>
+						</div>
+					</section>
+
+					<section className={sectionClass}>
+						<div className="mb-4 flex items-center gap-3">
+							<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+								<FiDollarSign className="h-4 w-4" />
+							</div>
+							<div>
+								<h2 className="font-semibold">How much?</h2>
+								<p className="text-xs text-gray-500 dark:text-gray-400">
+									Set the maximum planned spend in ZAR.
+								</p>
+							</div>
+						</div>
+						<label htmlFor="budget-amount" className="mb-1.5 block text-sm font-medium">
+							Budget amount
+						</label>
+						<div className="relative">
+							<span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+								R
+							</span>
+							<Input
+								id="budget-amount"
+								type="number"
+								step="0.01"
+								min="0.01"
+								value={amount}
+								onChange={(event) => {
+									setAmount(event.target.value);
+									setFieldErrors((current) => ({ ...current, amount: '' }));
+								}}
+								placeholder="1 500"
+								className={cn(inputClass, 'pl-8 text-base')}
+								required
+							/>
+						</div>
+						<FieldError>{fieldErrors.amount}</FieldError>
+					</section>
+
+					<section className={sectionClass}>
+						<div className="mb-4 flex items-center gap-3">
+							<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+								<FiCalendar className="h-4 w-4" />
+							</div>
+							<div>
+								<h2 className="font-semibold">For when?</h2>
+								<p className="text-xs text-gray-500 dark:text-gray-400">
+									Use a calendar month or set exact dates.
+								</p>
+							</div>
+						</div>
+						<div className="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
+							{(['monthly', 'custom'] as const).map((value) => (
+								<button
+									key={value}
+									type="button"
+									onClick={() => setPeriod(value)}
+									className={cn(
+										'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+										period === value
+											? 'bg-background text-foreground shadow-sm'
+											: 'text-muted-foreground hover:text-foreground'
+									)}
+								>
+									{value === 'monthly' ? 'Monthly' : 'Custom dates'}
+								</button>
+							))}
+						</div>
+
+						{period === 'monthly' ? (
+							<div>
+								<label htmlFor="budget-month" className="mb-1.5 block text-sm font-medium">
+									Month
+								</label>
+								<Input
+									id="budget-month"
+									type="month"
+									value={month}
+									onChange={(event) => handleMonthChange(event.target.value)}
+									className={inputClass}
+									required
+								/>
+							</div>
+						) : (
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div>
+									<label htmlFor="budget-start" className="mb-1.5 block text-sm font-medium">
+										Start date
+									</label>
+									<Input
+										id="budget-start"
+										type="date"
+										value={startDate}
+										onChange={(event) => setStartDate(event.target.value)}
+										className={inputClass}
+										required
+									/>
+								</div>
+								<div>
+									<label htmlFor="budget-end" className="mb-1.5 block text-sm font-medium">
+										End date
+									</label>
+									<Input
+										id="budget-end"
+										type="date"
+										value={endDate}
+										onChange={(event) => setEndDate(event.target.value)}
+										className={inputClass}
+										required
+									/>
+								</div>
+							</div>
+						)}
+						<FieldError>{fieldErrors.period}</FieldError>
+					</section>
 				</div>
 
-				{error && (
-					<div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-						{error}
-					</div>
-				)}
-
-				<form onSubmit={handleSubmit} className="space-y-5">
-					<div className="space-y-1.5">
-						<label className="text-sm font-medium">Category</label>
-						<Select value={category} onValueChange={setCategory}>
-							<SelectTrigger className="h-11">
-								<SelectValue placeholder="Select a category" />
-							</SelectTrigger>
-							<SelectContent>
-								{availableCategories.map((c) => (
-									<SelectItem key={c.value} value={c.value}>
-										{c.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-
-					<div className="space-y-1.5">
-						<label className="text-sm font-medium">Planned Amount (ZAR)</label>
-						<Input
-							type="number"
-							step="0.01"
-							min="0.01"
-							value={amount}
-							onChange={(e) => setAmount(Number(e.target.value))}
-							placeholder="e.g. 2000"
-							required
-						/>
-					</div>
-
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div className="space-y-1.5">
-							<label className="text-sm font-medium">Planned Start Date</label>
-							<Input
-								type="date"
-								value={plannedStartDate}
-								onChange={(e) => setPlannedStartDate(e.target.value)}
-								required
-							/>
-						</div>
-						<div className="space-y-1.5">
-							<label className="text-sm font-medium">Planned End Date</label>
-							<Input
-								type="date"
-								value={plannedEndDate}
-								onChange={(e) => setPlannedEndDate(e.target.value)}
-								required
-							/>
-						</div>
-					</div>
-
-					<div className="rounded-xl border bg-muted/30 p-3 text-sm text-muted-foreground">
-						Draft budgets show live spend for this planned period. Publish when
-						you are ready to make the period active.
-					</div>
-
-					<div className="flex gap-3 pt-2">
-						<Button type="submit" className="flex-1 h-12" disabled={loading}>
-							{loading
-								? 'Saving...'
-								: budget
-									? 'Update Budget'
-									: 'Create Draft'}
-						</Button>
-						<Button type="button" variant="outline" onClick={onClose}>
+				<footer className="sticky bottom-0 flex gap-3 border-t border-border bg-background px-4 py-4 sm:px-6">
+					<SidePanelClose asChild>
+						<Button type="button" variant="outline" className="h-11 flex-1 rounded-xl">
 							Cancel
 						</Button>
-					</div>
-				</form>
-			</div>
-		</div>
+					</SidePanelClose>
+					<Button type="submit" className="h-11 flex-[1.4] rounded-xl" disabled={saving}>
+						{saving ? 'Saving...' : budget ? 'Update budget' : 'Save draft'}
+					</Button>
+				</footer>
+			</form>
+		</SidePanelContent>
 	);
 };
 

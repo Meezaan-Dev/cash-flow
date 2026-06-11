@@ -1,6 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
+
+const addTransaction = jest.fn();
 
 jest.mock('firebase/auth', () => ({
 	createUserWithEmailAndPassword: jest.fn(),
@@ -43,13 +45,15 @@ jest.mock('@cash-flow/shared', () => ({
 				createdAt: new Date(2026, 4, 22),
 			},
 		],
-		addTransaction: jest.fn(),
+		addTransaction,
 	}),
 }));
 
 describe('Mobisite App', () => {
 	beforeEach(() => {
 		window.sessionStorage.clear();
+		addTransaction.mockReset();
+		addTransaction.mockResolvedValue(undefined);
 	});
 
 	it('starts on the home dashboard with add and list options', async () => {
@@ -103,5 +107,19 @@ describe('Mobisite App', () => {
 		expect(await screen.findByTestId('mobisite-nav')).toBeInTheDocument();
 		expect(screen.getByRole('heading', { name: 'Transactions' })).toBeInTheDocument();
 		expect(screen.getByText('Coffee')).toBeInTheDocument();
+	});
+
+	it('confirms when a transaction is created', async () => {
+		const user = userEvent.setup();
+
+		render(<App />);
+		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
+		await user.type(screen.getByLabelText('Title'), 'Lunch');
+		await user.type(screen.getByLabelText('Amount'), '120');
+		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
+
+		await waitFor(() => expect(addTransaction).toHaveBeenCalledTimes(1));
+		expect(screen.getByRole('status')).toHaveTextContent('Transaction created');
+		expect(screen.getByRole('status')).toHaveTextContent('Expense "Lunch" added successfully.');
 	});
 });

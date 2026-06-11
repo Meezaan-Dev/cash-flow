@@ -25,12 +25,14 @@ import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
 
 interface TransactionFormProps {
 	onClose: () => void;
+	onSuccess?: (message: string) => void;
 	transaction?: Transaction;
 	recurringTransaction?: RecurringTransaction;
 }
 
 const TransactionForm: React.FC<TransactionFormProps> = ({
 	onClose,
+	onSuccess,
 	transaction,
 	recurringTransaction: initialRecurringTransaction,
 }) => {
@@ -245,6 +247,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					date: date ? new Date(date) : new Date(),
 				});
 			}
+			onSuccess?.(
+				transaction
+					? 'Transaction updated successfully.'
+					: type === 'transfer'
+						? 'Transfer added successfully.'
+						: `${type === 'expense' ? 'Expense' : 'Income'} added successfully.`
+			);
 			onClose();
 		} catch (error) {
 			console.error('Failed to submit transaction:', error);
