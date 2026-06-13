@@ -14,6 +14,9 @@ type BudgetDoc = {
 	amount?: number;
 	period?: Budget['period'];
 	month?: string;
+	cycleDay?: number;
+	startDay?: number;
+	endDay?: number;
 	startDate?: string;
 	endDate?: string;
 	lifecycleStatus?: Budget['lifecycleStatus'];
@@ -35,6 +38,44 @@ const toDateKey = (date: Date): string => {
 	const month = String(date.getMonth() + 1).padStart(2, '0');
 	const day = String(date.getDate()).padStart(2, '0');
 	return `${year}-${month}-${day}`;
+};
+
+export const clampBudgetDay = (day: number): number => {
+	if (!Number.isFinite(day)) return 1;
+	return Math.min(31, Math.max(1, Math.round(day)));
+};
+
+const getDaysInMonth = (year: number, month: number): number =>
+	new Date(year, month + 1, 0).getDate();
+
+const createClampedDate = (year: number, month: number, day: number): Date =>
+	new Date(year, month, Math.min(clampBudgetDay(day), getDaysInMonth(year, month)));
+
+export const getBudgetCycleDateRange = (
+	cycleDay: number,
+	referenceDate = new Date()
+): { startDate: string; endDate: string } => {
+	const normalizedCycleDay = clampBudgetDay(cycleDay);
+	const currentRenewal = createClampedDate(
+		referenceDate.getFullYear(),
+		referenceDate.getMonth(),
+		normalizedCycleDay
+	);
+	const startsThisMonth = referenceDate >= currentRenewal;
+	const startMonthOffset = startsThisMonth ? 0 : -1;
+	const endMonthOffset = startsThisMonth ? 1 : 0;
+	const start = createClampedDate(
+		referenceDate.getFullYear(),
+		referenceDate.getMonth() + startMonthOffset,
+		normalizedCycleDay
+	);
+	const end = createClampedDate(
+		referenceDate.getFullYear(),
+		referenceDate.getMonth() + endMonthOffset,
+		normalizedCycleDay
+	);
+
+	return { startDate: toDateKey(start), endDate: toDateKey(end) };
 };
 
 export const getCurrentBudgetMonth = (date = new Date()): string =>
@@ -75,6 +116,20 @@ export const normalizeBudget = (doc: BudgetDoc): Budget => {
 		doc.actualEndDate ??
 		doc.plannedEndDate ??
 		monthlyRange.endDate;
+	const cycleDay =
+		period === 'custom'
+			? clampBudgetDay(
+					doc.cycleDay ?? doc.startDay ?? Number(startDate.slice(-2))
+				)
+			: undefined;
+	const startDay =
+		period === 'custom'
+			? clampBudgetDay(doc.startDay ?? cycleDay ?? Number(startDate.slice(-2)))
+			: undefined;
+	const endDay =
+		period === 'custom'
+			? clampBudgetDay(doc.endDay ?? Number(endDate.slice(-2)))
+			: undefined;
 
 	return {
 		id: doc.id,
@@ -85,6 +140,9 @@ export const normalizeBudget = (doc: BudgetDoc): Budget => {
 		amount: doc.amount ?? 0,
 		period,
 		month: period === 'monthly' ? fallbackMonth : undefined,
+		cycleDay,
+		startDay,
+		endDay,
 		startDate,
 		endDate,
 		lifecycleStatus:
@@ -100,38 +158,56 @@ export const normalizeBudgets = (docs: BudgetDoc[]): Budget[] => docs.map(normal
 
 export const isTransactionInBudgetPeriod = (
 	transaction: Transaction,
-	budget: Pick<Budget, 'startDate' | 'endDate'>
+	budget: Pick<
+		Budget,
+		'period' | 'startDate' | 'endDate' | 'cycleDay' | 'startDay'
+	>,
+	referenceDate = new Date()
 ): boolean => {
 	const transactionDate =
 		parseDbDateOrNull(transaction.date) ?? parseDbDateOrNull(transaction.createdAt);
 	if (!transactionDate) return false;
+	const range =
+		budget.period === 'custom' && (budget.cycleDay || budget.startDay)
+			? getBudgetCycleDateRange(
+					budget.cycleDay ?? budget.startDay!,
+					referenceDate
+				)
+			: budget;
 	const dateKey = toDateKey(transactionDate);
-	return dateKey >= budget.startDate && dateKey <= budget.endDate;
+	return budget.period === 'custom'
+		? dateKey >= range.startDate && dateKey < range.endDate
+		: dateKey >= range.startDate && dateKey <= range.endDate;
 };
 
 export const isTransactionInBudgetMonth = (
 	transaction: Transaction,
 	month: string
 ): boolean =>
-	isTransactionInBudgetPeriod(transaction, getMonthDateRange(month));
+	isTransactionInBudgetPeriod(transaction, {
+		period: 'monthly',
+		...getMonthDateRange(month),
+	});
 
 export const transactionMatchesBudget = (
 	transaction: Transaction,
-	budget: Budget
+	budget: Budget,
+	referenceDate = new Date()
 ): boolean =>
 	transaction.type === 'expense' &&
 	(!transaction.userId || transaction.userId === budget.userId) &&
 	transaction.category === budget.categoryId &&
 	(!budget.subCategoryId || transaction.subcategory === budget.subCategoryId) &&
 	(!budget.accountId || transaction.accountId === budget.accountId) &&
-	isTransactionInBudgetPeriod(transaction, budget);
+	isTransactionInBudgetPeriod(transaction, budget, referenceDate);
 
 export const calculateBudgetSpent = (
 	transactions: Transaction[],
-	budget: Budget
+	budget: Budget,
+	referenceDate = new Date()
 ): number =>
 	transactions
-		.filter((transaction) => transactionMatchesBudget(transaction, budget))
+		.filter((transaction) => transactionMatchesBudget(transaction, budget, referenceDate))
 		.reduce((sum, transaction) => sum + transaction.amount, 0);
 
 export const calculateBudgetRemaining = (
@@ -156,17 +232,37 @@ export const getBudgetStatus = (
 
 export const budgetOverlapsMonth = (budget: Budget, month: string): boolean => {
 	const range = getMonthDateRange(month);
-	return budget.startDate <= range.endDate && budget.endDate >= range.startDate;
+	const budgetRange =
+		budget.period === 'custom' && (budget.cycleDay || budget.startDay)
+			? getBudgetCycleDateRange(
+					budget.cycleDay ?? budget.startDay!,
+					new Date(`${month}-15T12:00:00`)
+				)
+			: budget;
+	const monthEndExclusive = getMonthDateRange(getNextBudgetMonth(month)).startDate;
+	return budget.period === 'custom'
+		? budgetRange.startDate < monthEndExclusive &&
+				budgetRange.endDate > range.startDate
+		: budgetRange.startDate <= range.endDate &&
+				budgetRange.endDate >= range.startDate;
 };
 
 export const isBudgetPeriodDone = (budget: Budget, now = new Date()): boolean =>
-	budget.endDate < toDateKey(now);
+	budget.period === 'monthly' && budget.endDate < toDateKey(now);
 
 export const isDuplicateBudget = (
 	budgets: Budget[],
 	candidate: Pick<
 		Budget,
-		'accountId' | 'categoryId' | 'subCategoryId' | 'startDate' | 'endDate'
+		| 'accountId'
+		| 'categoryId'
+		| 'subCategoryId'
+		| 'period'
+		| 'cycleDay'
+		| 'startDay'
+		| 'endDay'
+		| 'startDate'
+		| 'endDate'
 	>,
 	ignoreBudgetId?: string
 ): boolean =>
@@ -176,8 +272,11 @@ export const isDuplicateBudget = (
 			(budget.accountId ?? '') === (candidate.accountId ?? '') &&
 			budget.categoryId === candidate.categoryId &&
 			(budget.subCategoryId ?? '') === (candidate.subCategoryId ?? '') &&
-			budget.startDate === candidate.startDate &&
-			budget.endDate === candidate.endDate
+			(budget.period === 'custom' && candidate.period === 'custom'
+				? (budget.cycleDay ?? budget.startDay) ===
+					(candidate.cycleDay ?? candidate.startDay)
+				: budget.startDate === candidate.startDate &&
+					budget.endDate === candidate.endDate)
 	);
 
 export const buildRepeatedBudget = (
@@ -227,9 +326,10 @@ export const sortBudgetsByDisplayOrder = (budgets: Budget[]): Budget[] =>
 
 export const calculateBudgetProgress = (
 	budget: Budget,
-	transactions: Transaction[]
+	transactions: Transaction[],
+	referenceDate = new Date()
 ): BudgetProgress => {
-	const spent = calculateBudgetSpent(transactions, budget);
+	const spent = calculateBudgetSpent(transactions, budget, referenceDate);
 	return {
 		budget,
 		spent,
@@ -250,7 +350,13 @@ export const calculateBudgetSummary = (
 				budget.lifecycleStatus === 'published' &&
 				budgetOverlapsMonth(budget, month)
 		)
-		.map((budget) => calculateBudgetProgress(budget, transactions));
+		.map((budget) =>
+			calculateBudgetProgress(
+				budget,
+				transactions,
+				new Date(`${month}-15T12:00:00`)
+			)
+		);
 
 	return {
 		totalBudget: progress.reduce((sum, item) => sum + item.budget.amount, 0),

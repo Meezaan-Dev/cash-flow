@@ -19,6 +19,8 @@ import {
 	SidePanelTitle,
 } from '@/components/app/ui/side-panel';
 import {
+	clampBudgetDay,
+	getBudgetCycleDateRange,
 	getMonthDateRange,
 	isDuplicateBudget,
 	MAX_BUDGETS,
@@ -55,8 +57,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 	} = useCategoriesContext();
 	const [period, setPeriod] = useState<Budget['period']>('monthly');
 	const [month, setMonth] = useState(defaultMonth);
-	const [startDate, setStartDate] = useState('');
-	const [endDate, setEndDate] = useState('');
+	const [cycleDay, setCycleDay] = useState(25);
 	const [categoryId, setCategoryId] = useState('');
 	const [subCategoryId, setSubCategoryId] = useState(NO_SUBCATEGORY);
 	const [amount, setAmount] = useState('');
@@ -82,11 +83,13 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 	useEffect(() => {
 		const initialPeriod = budget?.period ?? 'monthly';
 		const initialMonth = budget?.month ?? defaultMonth;
-		const monthlyRange = getMonthDateRange(initialMonth);
 		setPeriod(initialPeriod);
 		setMonth(initialMonth);
-		setStartDate(budget?.startDate ?? monthlyRange.startDate);
-		setEndDate(budget?.endDate ?? monthlyRange.endDate);
+		setCycleDay(
+			budget?.cycleDay ??
+				budget?.startDay ??
+				(Number(budget?.startDate.slice(-2)) || 25)
+		);
 		setCategoryId(budget?.categoryId ?? '');
 		setSubCategoryId(budget?.subCategoryId ?? NO_SUBCATEGORY);
 		setAmount(budget ? String(budget.amount) : '');
@@ -96,9 +99,6 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 
 	const handleMonthChange = (value: string) => {
 		setMonth(value);
-		const range = getMonthDateRange(value);
-		setStartDate(range.startDate);
-		setEndDate(range.endDate);
 	};
 
 	const handleCategoryChange = (value: string) => {
@@ -111,7 +111,12 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 		event.preventDefault();
 		const numericAmount = Number(amount);
 		const finalRange =
-			period === 'monthly' ? getMonthDateRange(month) : { startDate, endDate };
+			period === 'monthly'
+				? getMonthDateRange(month)
+				: getBudgetCycleDateRange(
+						cycleDay,
+						new Date(`${month}-15T12:00:00`)
+					);
 		const finalSubCategoryId =
 			subCategoryId === NO_SUBCATEGORY ? undefined : subCategoryId;
 		const nextErrors: Record<string, string> = {};
@@ -140,6 +145,8 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 					accountId: budget?.accountId,
 					categoryId,
 					subCategoryId: finalSubCategoryId,
+					period,
+					cycleDay: period === 'custom' ? clampBudgetDay(cycleDay) : undefined,
 					startDate: finalRange.startDate,
 					endDate: finalRange.endDate,
 				},
@@ -161,6 +168,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 				amount: numericAmount,
 				period,
 				month: period === 'monthly' ? month : undefined,
+				cycleDay: period === 'custom' ? clampBudgetDay(cycleDay) : undefined,
 				startDate: finalRange.startDate,
 				endDate: finalRange.endDate,
 				lifecycleStatus: budget?.lifecycleStatus ?? ('draft' as const),
@@ -340,7 +348,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 							<div>
 								<h2 className="font-semibold">For when?</h2>
 								<p className="text-xs text-gray-500 dark:text-gray-400">
-									Use a calendar month or set exact dates.
+									Use a calendar month or a recurring monthly cycle.
 								</p>
 							</div>
 						</div>
@@ -357,7 +365,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 											: 'text-muted-foreground hover:text-foreground'
 									)}
 								>
-									{value === 'monthly' ? 'Monthly' : 'Custom dates'}
+									{value === 'monthly' ? 'Monthly' : 'Budget cycle'}
 								</button>
 							))}
 						</div>
@@ -377,33 +385,28 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 								/>
 							</div>
 						) : (
-							<div className="grid gap-4 sm:grid-cols-2">
+							<div>
 								<div>
-									<label htmlFor="budget-start" className="mb-1.5 block text-sm font-medium">
-										Start date
+									<label htmlFor="budget-cycle-day" className="mb-1.5 block text-sm font-medium">
+										Renewal day
 									</label>
 									<Input
-										id="budget-start"
-										type="date"
-										value={startDate}
-										onChange={(event) => setStartDate(event.target.value)}
-										className={inputClass}
+										id="budget-cycle-day"
+										type="number"
+										min={1}
+										max={31}
+										value={cycleDay}
+										onChange={(event) =>
+											setCycleDay(clampBudgetDay(Number(event.target.value)))
+										}
+										className={cn(inputClass, 'sm:max-w-40')}
 										required
 									/>
 								</div>
-								<div>
-									<label htmlFor="budget-end" className="mb-1.5 block text-sm font-medium">
-										End date
-									</label>
-									<Input
-										id="budget-end"
-										type="date"
-										value={endDate}
-										onChange={(event) => setEndDate(event.target.value)}
-										className={inputClass}
-										required
-									/>
-								</div>
+								<p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+									Renews monthly on day {cycleDay}. A day 25 cycle runs from
+									25 May up to, but not including, 25 June.
+								</p>
 							</div>
 						)}
 						<FieldError>{fieldErrors.period}</FieldError>

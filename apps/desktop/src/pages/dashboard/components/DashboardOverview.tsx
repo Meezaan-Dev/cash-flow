@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FiCheck, FiEye, FiRefreshCw, FiSearch, FiSettings } from 'react-icons/fi';
+import { FiCheck, FiPlus, FiRefreshCw, FiSettings } from 'react-icons/fi';
 import { getDueRecurringDrafts } from '@cash-flow/shared/recurring/dueRecurringDrafts';
 import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
 import AIChatbot from '@/domains/ai/components/AIChatbot';
@@ -8,8 +8,8 @@ import { useCategoriesContext } from '@/domains/categories/context/CategoriesCon
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import Currency from '@/components/marketing/Currency';
 import MotionReveal from '@/components/marketing/MotionReveal';
-import SectionHeader from '@/components/marketing/SectionHeader';
 import MarketingCard from '@/components/marketing/MarketingCard';
+import { PageHeader, PageShell } from '@/components/app/page-layout';
 import { Button } from '@/components/app/ui/button';
 import { useToast } from '@/components/app/ui/use-toast';
 import { Transaction } from '@/types';
@@ -23,20 +23,25 @@ import {
 	loadDashboardDigestPeriod,
 	saveDashboardDigestPeriod,
 } from '@/pages/dashboard/utils/digestPeriod';
-import { outlinePill, pageBg, radialWash } from '@/styles/marketingStyles';
-import { cn } from '@/lib/utils';
+import { TransactionFilterDescriptor } from '@/shared/filters/utils/transactionFilters';
 
 interface DashboardOverviewProps {
 	onOpenAccounts: () => void;
 	onOpenHistory: () => void;
+	onOpenBudgets: () => void;
 	onOpenSettings: () => void;
+	onCreateTransaction: () => void;
+	onOpenTransactions: (filters: TransactionFilterDescriptor) => void;
 	onSelectTransaction: (transaction: Transaction) => void;
 }
 
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 	onOpenAccounts,
 	onOpenHistory,
+	onOpenBudgets,
 	onOpenSettings,
+	onCreateTransaction,
+	onOpenTransactions,
 	onSelectTransaction,
 }) => {
 	const { transactions, recurringTransactions, addTransaction } = useTransactionsContext();
@@ -111,80 +116,77 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 	};
 
 	const headerActions = (
-		<>
+		<div className="flex items-center gap-2">
 			<Button
 				type="button"
 				variant="outline"
 				size="icon"
-				className={cn('h-9 w-9', outlinePill)}
-				onClick={onOpenHistory}
-				aria-label="Search transactions"
-			>
-				<FiSearch className="h-4 w-4" />
-			</Button>
-			<Button
-				type="button"
-				variant="outline"
-				size="icon"
-				className={cn('h-9 w-9', outlinePill)}
 				onClick={onOpenSettings}
 				aria-label="Open dashboard settings"
 			>
 				<FiSettings className="h-4 w-4" />
 			</Button>
-			<Button
-				type="button"
-				variant="outline"
-				size="icon"
-				className={cn('h-9 w-9', outlinePill)}
-				onClick={onOpenAccounts}
-				aria-label="View accounts"
-			>
-				<FiEye className="h-4 w-4" />
+			<Button type="button" variant="marketing" onClick={onCreateTransaction}>
+				<FiPlus className="h-4 w-4" />
+				New transaction
 			</Button>
-		</>
+		</div>
 	);
 
 	return (
-		<div className={cn('relative flex h-full min-h-0 flex-col', pageBg)}>
-			<div className={radialWash} aria-hidden />
-			<div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:px-5 lg:px-6 xl:overflow-hidden xl:px-6">
-				<MotionReveal className="mb-4 flex-shrink-0 border-b border-gray-200 pb-4 dark:border-gray-800">
-					<SectionHeader
-						badge="CashFlow overview"
-						title="Dashboard"
-						compact
-						subtitle={
-							<span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-								<span>
-									Net worth{' '}
-									<Currency amount={summary.netWorth} className="text-sm" />
-								</span>
-								<Currency
-									amount={summary.saved}
-									tone={summary.saved >= 0 ? 'balance-positive' : 'balance-negative'}
-									className="text-sm"
-									showSign
-								/>
-								<span className="text-gray-500 dark:text-gray-400">this period</span>
+		<PageShell>
+			<MotionReveal>
+				<PageHeader
+					title="Dashboard"
+					subtitle={
+						<span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+							<span>
+								Net worth <Currency amount={summary.netWorth} className="text-sm" />
 							</span>
-						}
-						actions={headerActions}
-					/>
-				</MotionReveal>
+							<span>{summary.periodLabel}</span>
+						</span>
+					}
+					actions={headerActions}
+				/>
+			</MotionReveal>
 
-				<div className="flex min-h-0 flex-1 flex-col gap-3">
-					<MotionReveal delay={0.06} className="shrink-0">
+			<div className="space-y-8">
+				<MotionReveal delay={0.06}>
 						<MonthlyDigest
 							summary={summary}
 							period={digestPeriod}
 							onPeriodChange={handleDigestPeriodChange}
-							compact
+							onOpenTransactions={onOpenTransactions}
+						/>
+				</MotionReveal>
+
+				<MotionReveal delay={0.12}>
+					<BudgetSummary
+						onOpenBudgets={onOpenBudgets}
+						onOpenTransactions={onOpenTransactions}
+					/>
+				</MotionReveal>
+
+				<div className="grid gap-4 xl:grid-cols-2">
+					<MotionReveal delay={0.18}>
+						<RecentTransactionsPanel
+							transactions={transactions}
+							accounts={accounts}
+							getCategoryPathLabel={getCategoryPathLabel}
+							onSelect={onSelectTransaction}
+							onOpenHistory={onOpenHistory}
 						/>
 					</MotionReveal>
+					<MotionReveal delay={0.24}>
+						<AccountBalanceStrip
+							accounts={accounts}
+							onOpenAccounts={onOpenAccounts}
+						/>
+					</MotionReveal>
+				</div>
 
-					{dueRecurringDrafts.length > 0 && (
-						<MotionReveal delay={0.12} className="relative z-10 shrink-0">
+				{dueRecurringDrafts.length > 0 && (
+					<MotionReveal delay={0.28}>
 							<MarketingCard
 								header={
 									<div>
@@ -241,38 +243,14 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 									})}
 								</div>
 							</MarketingCard>
-						</MotionReveal>
-					)}
-
-					<MotionReveal delay={0.16} className="shrink-0">
-						<BudgetSummary />
 					</MotionReveal>
+				)}
 
-					<div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(280px,0.78fr)_minmax(360px,1fr)_minmax(320px,0.85fr)]">
-						<MotionReveal delay={0.18}>
-							<AccountBalanceStrip
-								accounts={accounts}
-								onOpenAccounts={onOpenAccounts}
-								compact
-							/>
-						</MotionReveal>
-						<MotionReveal delay={0.24}>
-							<RecentTransactionsPanel
-								transactions={transactions}
-								accounts={accounts}
-								getCategoryPathLabel={getCategoryPathLabel}
-								onSelect={onSelectTransaction}
-								onOpenHistory={onOpenHistory}
-								compact
-							/>
-						</MotionReveal>
-						<MotionReveal delay={0.3} className="min-h-[28rem] xl:min-h-0">
-							<AIChatbot variant="docked" alwaysDocked />
-						</MotionReveal>
-					</div>
-				</div>
+				<MotionReveal delay={0.32} className="min-h-[28rem]">
+					<AIChatbot variant="docked" alwaysDocked />
+				</MotionReveal>
 			</div>
-		</div>
+		</PageShell>
 	);
 };
 

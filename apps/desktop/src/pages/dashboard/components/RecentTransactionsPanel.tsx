@@ -42,7 +42,7 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 	);
 
 	return (
-		<section className={cn('flex h-full min-h-0 flex-col p-5', cardSurface)}>
+		<section className={cn('flex flex-col p-5', cardSurface)}>
 			<div className="mb-4 flex flex-shrink-0 items-start justify-between gap-3">
 				<div>
 					<p className={sectionLabel}>Recent</p>
@@ -70,7 +70,7 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 					</p>
 				</div>
 			) : (
-				<div className="min-h-0 flex-1 overflow-y-auto">
+				<div className="flex-1">
 					{recentTransactions.map((transaction, index) => {
 						const isPositive = transaction.type === 'income';
 						const isTransfer = transaction.type === 'transfer';

@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
 	FiCalendar,
-	FiChevronLeft,
-	FiChevronRight,
+	FiChevronDown,
+	FiChevronUp,
 	FiEdit2,
-	FiMoreHorizontal,
 	FiMove,
 	FiPlus,
 	FiRepeat,
@@ -33,6 +33,17 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import { useToast } from '@/components/app/ui/use-toast';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
+import MotionReveal from '@/components/marketing/MotionReveal';
+import {
+	DataListHeader,
+	DataListRow,
+	DataListSurface,
+	EmptyState,
+	PageHeader,
+	PageShell,
+	SummaryCard,
+	SummaryCardGrid,
+} from '@/components/app/page-layout';
 import { SidePanel } from '@/components/app/ui/side-panel';
 import {
 	Dialog,
@@ -43,99 +54,45 @@ import {
 	DialogTitle,
 } from '@/components/app/ui/dialog';
 import { cn } from '@/lib/utils';
+import { modalShell } from '@/styles/marketingStyles';
 import {
-	cardSurface,
-	cardSurfaceMuted,
-	modalShell,
-	pageBg,
-	sectionLabel,
-} from '@/styles/marketingStyles';
+	getBudgetTransactionFilters,
+	transactionFiltersToSearch,
+} from '@/shared/filters/utils/transactionFilters';
 import BudgetForm from './BudgetForm';
 
 const STATUS_STYLES = {
 	safe: {
 		label: 'On track',
-		ring: '#3b82f6',
+		bar: 'bg-blue-500',
 		text: 'text-blue-600 dark:text-blue-400',
 		badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
 	},
 	warning: {
 		label: 'Watch spending',
-		ring: '#f59e0b',
+		bar: 'bg-amber-500',
 		text: 'text-amber-600 dark:text-amber-400',
 		badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
 	},
 	over: {
 		label: 'Over budget',
-		ring: '#ef4444',
+		bar: 'bg-red-500',
 		text: 'text-red-600 dark:text-red-400',
 		badge: 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300',
 	},
 };
 
-const BudgetProgressRing: React.FC<{
-	percentage: number;
-	status: BudgetProgress['status'];
-}> = ({ percentage, status }) => {
-	const size = 112;
-	const strokeWidth = 9;
-	const radius = (size - strokeWidth) / 2;
-	const circumference = 2 * Math.PI * radius;
-	const normalized = Math.min(Math.max(percentage, 0), 100);
-	const offset = circumference - (normalized / 100) * circumference;
-	const styles = STATUS_STYLES[status];
-
-	return (
-		<div className="relative flex h-28 w-28 items-center justify-center">
-			<svg
-				viewBox={`0 0 ${size} ${size}`}
-				className="-rotate-90"
-				aria-label={`${Math.round(percentage)} percent used`}
-				role="img"
-			>
-				<circle
-					cx={size / 2}
-					cy={size / 2}
-					r={radius}
-					fill="none"
-					stroke="currentColor"
-					strokeWidth={strokeWidth}
-					className="text-blue-100 dark:text-gray-800"
-				/>
-				<circle
-					cx={size / 2}
-					cy={size / 2}
-					r={radius}
-					fill="none"
-					stroke={styles.ring}
-					strokeWidth={strokeWidth}
-					strokeLinecap="round"
-					strokeDasharray={circumference}
-					strokeDashoffset={offset}
-					className="transition-all duration-500"
-				/>
-			</svg>
-			<div className="absolute text-center">
-				<p className={cn('text-2xl font-semibold tracking-tight', styles.text)}>
-					{Math.round(percentage)}%
-				</p>
-				<p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-					used
-				</p>
-			</div>
-		</div>
-	);
-};
-
-interface BudgetCardProps {
+interface BudgetRowProps {
 	item: BudgetProgress;
 	getCategoryLabel: (categoryId: string) => string;
 	getSubcategoryLabel: (categoryId: string, subCategoryId?: string) => string;
 	actionId?: string;
+	referenceDate: Date;
 	onEdit: (budget: Budget) => void;
 	onDelete: (budget: Budget) => void;
 	onPublish: (budget: Budget) => void;
 	onRepeat: (budgetId: string) => void;
+	onViewTransactions: (budget: Budget) => void;
 	onMove: (direction: -1 | 1) => void;
 	onDragStart: () => void;
 	onDragEnd: () => void;
@@ -146,15 +103,17 @@ interface BudgetCardProps {
 	isDragging: boolean;
 }
 
-const BudgetCard: React.FC<BudgetCardProps> = ({
+const BudgetRow: React.FC<BudgetRowProps> = ({
 	item,
 	getCategoryLabel,
 	getSubcategoryLabel,
 	actionId,
+	referenceDate,
 	onEdit,
 	onDelete,
 	onPublish,
 	onRepeat,
+	onViewTransactions,
 	onMove,
 	onDragStart,
 	onDragEnd,
@@ -175,11 +134,10 @@ const BudgetCard: React.FC<BudgetCardProps> = ({
 	const isDraft = item.budget.lifecycleStatus === 'draft';
 
 	return (
-		<article
+		<DataListRow
 			className={cn(
-				'flex h-full min-h-[500px] flex-col overflow-hidden transition duration-200',
-				cardSurface,
-				isDragging && 'scale-[0.98] opacity-60'
+				'group relative grid gap-4 border-b border-gray-100 px-5 py-4 transition-colors last:border-b-0 hover:bg-gray-50/70 dark:border-gray-800 dark:hover:bg-gray-800/30 md:grid-cols-[minmax(220px,0.9fr)_minmax(260px,1.2fr)_minmax(260px,1fr)] md:items-center',
+				isDragging && 'bg-blue-50/70 opacity-60 dark:bg-blue-950/20'
 			)}
 			draggable
 			onDragStart={onDragStart}
@@ -187,117 +145,76 @@ const BudgetCard: React.FC<BudgetCardProps> = ({
 			onDragOver={onDragOver}
 			onDrop={onDrop}
 		>
-			<div className="relative flex min-h-52 flex-col items-center justify-center border-b border-gray-100 bg-gradient-to-br from-blue-50/80 via-gray-50 to-white px-6 py-7 dark:border-gray-800 dark:from-blue-950/25 dark:via-gray-900 dark:to-gray-900">
-				<div className="absolute right-3 top-3 flex items-center gap-1">
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						className="h-8 w-8 rounded-full"
-						onClick={() => onMove(-1)}
-						disabled={isFirst}
-						aria-label={`Move ${title} left`}
-					>
-						<FiChevronLeft className="h-4 w-4" />
-					</Button>
-					<span
-						className="flex h-8 w-8 cursor-grab items-center justify-center rounded-full text-gray-400 active:cursor-grabbing"
-						title="Drag to reorder"
-						aria-hidden="true"
-					>
-						<FiMove className="h-4 w-4" />
-					</span>
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						className="h-8 w-8 rounded-full"
-						onClick={() => onMove(1)}
-						disabled={isLast}
-						aria-label={`Move ${title} right`}
-					>
-						<FiChevronRight className="h-4 w-4" />
-					</Button>
-				</div>
-				<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-					Set budget
-				</p>
-				<p className="mb-4 mt-1 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
-					{formatCurrency(item.budget.amount)}
-				</p>
-				<BudgetProgressRing
-					percentage={item.usedPercentage}
-					status={item.status}
-				/>
-			</div>
-			<div className="flex flex-1 flex-col p-5">
-				<div className="flex items-start justify-between gap-3">
-					<div className="min-w-0">
-						<div className="mb-2 flex flex-wrap items-center gap-2">
-							<span
-								className={cn(
-									'rounded-full px-2.5 py-1 text-xs font-medium',
-									isDraft
-										? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
-										: styles.badge
-								)}
-							>
-								{isDraft ? 'Draft' : styles.label}
-							</span>
-							<span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-								<FiCalendar className="h-3.5 w-3.5" />
-								{getBudgetPeriodLabel(item.budget)}
-							</span>
-						</div>
-						<h2 className="truncate text-lg font-semibold text-gray-950 dark:text-white">
+			<div className="flex min-w-0 items-center gap-3 pr-20 md:pr-0">
+				<span
+					className="flex h-10 w-6 shrink-0 cursor-grab items-center justify-center text-gray-400 active:cursor-grabbing"
+					title="Drag to reorder"
+					aria-hidden="true"
+				>
+					<FiMove className="h-4 w-4" />
+				</span>
+				<div className="min-w-0">
+					<div className="flex items-center gap-2">
+						<h2 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
 							{title}
 						</h2>
-						<p className="mt-1 min-h-8 text-xs text-gray-500 dark:text-gray-400">
-							{scopeHelp ?? 'Tracks this specific spending category'}
-						</p>
-					</div>
-					<div className="flex shrink-0 gap-1">
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon"
-							className="h-8 w-8 rounded-full"
-							onClick={() => onEdit(item.budget)}
-							aria-label={`Edit ${title}`}
+						<span
+							className={cn(
+								'rounded-full px-2 py-0.5 text-[11px] font-medium',
+								isDraft
+									? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+									: styles.badge
+							)}
 						>
-							<FiEdit2 className="h-3.5 w-3.5" />
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon"
-							className="h-8 w-8 rounded-full text-gray-400 hover:text-red-600"
-							onClick={() => onDelete(item.budget)}
-							aria-label={`Delete ${title}`}
-						>
-							<FiTrash2 className="h-3.5 w-3.5" />
-						</Button>
+							{isDraft ? 'Draft' : styles.label}
+						</span>
 					</div>
-				</div>
-
-				<div className="mt-5 min-h-[76px] rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
-					<p className="text-sm text-gray-700 dark:text-gray-200">
-						<span className="font-semibold">{formatCurrency(item.spent)}</span>
-						{' spent of '}
-						<span className="font-semibold">{formatCurrency(item.budget.amount)}</span>
-					</p>
-					<p className={cn('mt-1 text-sm font-medium', styles.text)}>
-						{item.remaining >= 0
-							? `${formatCurrency(item.remaining)} remaining`
-							: `${formatCurrency(Math.abs(item.remaining))} over budget`}
+					<p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
+						{scopeHelp ?? 'Tracks this specific spending category'}
 					</p>
 				</div>
+			</div>
 
-				<div className="mt-auto pt-4">
+			<div>
+				<div className="flex items-end justify-between gap-3">
+					<p className="text-sm font-semibold text-gray-950 dark:text-white">
+						{formatCurrency(item.spent)} spent of {formatCurrency(item.budget.amount)}
+					</p>
+					<span className={cn('text-xs font-medium', styles.text)}>
+						{Math.round(item.usedPercentage)}% used
+					</span>
+				</div>
+				<div
+					className="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+					role="img"
+					aria-label={`${Math.round(item.usedPercentage)} percent used`}
+				>
+					<div
+						className={cn('h-full rounded-full transition-all', styles.bar)}
+						style={{ width: `${Math.min(Math.max(item.usedPercentage, 0), 100)}%` }}
+					/>
+				</div>
+			</div>
+
+			<div className="min-w-0">
+				<div className="flex items-center gap-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+					<FiCalendar className="h-3.5 w-3.5 text-gray-400" />
+					<span className="truncate">
+						{getBudgetPeriodLabel(item.budget, referenceDate)}
+					</span>
+				</div>
+				<p className={cn('mt-1 text-xs font-medium', styles.text)}>
+					{item.remaining >= 0
+						? `${formatCurrency(item.remaining)} remaining`
+						: `${formatCurrency(Math.abs(item.remaining))} over budget`}
+				</p>
+				<div className="mt-2">
 					{isDraft ? (
 						<Button
 							type="button"
-							className="w-full rounded-xl"
+							variant="outline"
+							size="sm"
+							className="h-8 rounded-lg"
 							onClick={() => onPublish(item.budget)}
 							disabled={actionId === item.budget.id}
 							aria-label={`Publish ${title}`}
@@ -306,30 +223,82 @@ const BudgetCard: React.FC<BudgetCardProps> = ({
 							Publish budget
 						</Button>
 					) : canRepeat ? (
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							className="h-8 rounded-lg"
+							onClick={() => onRepeat(item.budget.id)}
+							disabled={actionId === item.budget.id}
+							aria-label={`Repeat ${title} for next period`}
+						>
+							<FiRepeat className="h-3.5 w-3.5" />
+							Repeat
+						</Button>
+					) : null}
 					<Button
 						type="button"
-						variant="outline"
+						variant="ghost"
 						size="sm"
-						className="w-full rounded-xl"
-						onClick={() => onRepeat(item.budget.id)}
-						disabled={actionId === item.budget.id}
-						aria-label={`Repeat ${title} for next period`}
+						className="mt-1 h-8 px-0 text-blue-600 hover:bg-transparent hover:text-blue-700 dark:text-blue-400"
+						onClick={() => onViewTransactions(item.budget)}
+						aria-label={`View transactions for ${title}`}
 					>
-						<FiRepeat className="h-4 w-4" />
-						Repeat for next period
+						View transactions
 					</Button>
-					) : (
-						<div className="flex h-9 items-center justify-center rounded-xl border border-transparent text-xs text-gray-400">
-							Active for this period
-						</div>
-					)}
 				</div>
 			</div>
-		</article>
+
+			<div className="absolute right-3 top-3 flex gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					className="h-7 w-7 rounded-md"
+					onClick={() => onMove(-1)}
+					disabled={isFirst}
+					aria-label={`Move ${title} up`}
+				>
+					<FiChevronUp className="h-3.5 w-3.5" />
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					className="h-7 w-7 rounded-md"
+					onClick={() => onMove(1)}
+					disabled={isLast}
+					aria-label={`Move ${title} down`}
+				>
+					<FiChevronDown className="h-3.5 w-3.5" />
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					className="h-7 w-7 rounded-md"
+					onClick={() => onEdit(item.budget)}
+					aria-label={`Edit ${title}`}
+				>
+					<FiEdit2 className="h-3.5 w-3.5" />
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					className="h-7 w-7 rounded-md text-gray-400 hover:text-red-600"
+					onClick={() => onDelete(item.budget)}
+					aria-label={`Delete ${title}`}
+				>
+					<FiTrash2 className="h-3.5 w-3.5" />
+				</Button>
+			</div>
+		</DataListRow>
 	);
 };
 
 const BudgetsList: React.FC = () => {
+	const navigate = useNavigate();
 	const { budgets, deleteBudget, publishBudget, repeatBudget, reorderBudgets } =
 		useBudgetsContext();
 	const { transactions } = useTransactionsContext();
@@ -381,8 +350,14 @@ const BudgetsList: React.FC = () => {
 		() =>
 			orderedBudgets
 				.filter((budget) => Boolean(budget.categoryId))
-				.map((budget) => calculateBudgetProgress(budget, transactions)),
-		[orderedBudgets, transactions]
+				.map((budget) =>
+					calculateBudgetProgress(
+						budget,
+						transactions,
+						new Date(`${selectedMonth}-15T12:00:00`)
+					)
+				),
+		[orderedBudgets, selectedMonth, transactions]
 	);
 	const progress = useMemo(
 		() =>
@@ -495,18 +470,21 @@ const BudgetsList: React.FC = () => {
 		if (target) void reorderGroup(group, budgetId, target.budget.id);
 	};
 
-	const renderBudgetGrid = (items: BudgetProgress[]) => (
-		<div
-			className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-			data-testid="budget-grid"
-		>
+	const renderBudgetList = (items: BudgetProgress[]) => (
+		<DataListSurface data-testid="budget-list">
+			<DataListHeader>
+				<span>Budget name</span>
+				<span>Budget overview</span>
+				<span>Budget data</span>
+			</DataListHeader>
 			{items.map((item, index) => (
-				<BudgetCard
+				<BudgetRow
 					key={item.budget.id}
 					item={item}
 					getCategoryLabel={getCategoryLabel}
 					getSubcategoryLabel={getSubcategoryLabel}
 					actionId={actionId}
+					referenceDate={new Date(`${selectedMonth}-15T12:00:00`)}
 					onEdit={openEdit}
 					onDelete={setBudgetToDelete}
 					onPublish={(budget) =>
@@ -527,6 +505,16 @@ const BudgetsList: React.FC = () => {
 							'A new draft was created for the next period.'
 						)
 					}
+					onViewTransactions={(budget) =>
+						navigate(
+							`/dashboard/transactions${transactionFiltersToSearch(
+								getBudgetTransactionFilters(
+									budget,
+									new Date(`${selectedMonth}-15T12:00:00`)
+								)
+							)}`
+						)
+					}
 					onMove={(direction) => moveInGroup(items, item.budget.id, direction)}
 					onDragStart={() => setDraggingBudgetId(item.budget.id)}
 					onDragEnd={() => setDraggingBudgetId(undefined)}
@@ -542,12 +530,12 @@ const BudgetsList: React.FC = () => {
 					isDragging={draggingBudgetId === item.budget.id}
 				/>
 			))}
-		</div>
+		</DataListSurface>
 	);
 	const atBudgetLimit = budgets.length >= MAX_BUDGETS;
 
 	return (
-		<div className={cn('relative flex min-h-screen flex-col', pageBg)}>
+		<div className="relative flex min-h-0 flex-1 flex-col">
 			<SidePanel open={showForm} onOpenChange={(open) => !open && closeForm()}>
 				{showForm && (
 					<BudgetForm
@@ -588,25 +576,11 @@ const BudgetsList: React.FC = () => {
 				</DialogContent>
 			</Dialog>
 
-			<div className="flex-1 overflow-y-auto px-4 py-5 md:px-6 lg:px-8">
-				<div className="mx-auto max-w-7xl">
-					<header className="mb-6 flex flex-col gap-4 border-b border-gray-200 pb-5 dark:border-gray-800 sm:flex-row sm:items-end sm:justify-between">
-						<div>
-							<p className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-								Spending plans
-							</p>
-							<h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-950 dark:text-white">
-								Budgets
-							</h1>
-							<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-								Clear limits, live spending, and less time figuring out what each
-								budget means.
-							</p>
-							<p className="mt-2 text-xs font-medium text-gray-400 dark:text-gray-500">
-								{budgets.length} of {MAX_BUDGETS} budgets created
-								{atBudgetLimit ? ' · Limit reached' : ''}
-							</p>
-						</div>
+			<PageShell>
+				<PageHeader
+					title="Budgets"
+					subtitle={`${budgets.length} of ${MAX_BUDGETS} budgets created${atBudgetLimit ? ' · Limit reached' : ''}`}
+					actions={
 						<div className="flex flex-wrap items-end gap-3">
 							<div>
 								<label
@@ -624,6 +598,7 @@ const BudgetsList: React.FC = () => {
 								/>
 							</div>
 							<Button
+								variant="marketing"
 								onClick={() => setShowForm(true)}
 								disabled={categories.length === 0 || atBudgetLimit}
 								className="h-10 rounded-xl px-4"
@@ -632,17 +607,19 @@ const BudgetsList: React.FC = () => {
 								New budget
 							</Button>
 						</div>
-					</header>
+					}
+					className="mb-6"
+				/>
 
-					{actionError && (
+				{actionError && (
 						<div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
 							{actionError}
 						</div>
 					)}
 
-					{publishedProgress.length > 0 && (
-						<section className="mb-8">
-							<div className="grid gap-3 sm:grid-cols-3">
+				{publishedProgress.length > 0 && (
+					<section className="mb-8">
+						<SummaryCardGrid>
 								{[
 									['Budgeted', totals.budget, 'Published limits'],
 									['Spent', totals.spent, 'Matched expenses'],
@@ -651,67 +628,46 @@ const BudgetsList: React.FC = () => {
 										Math.abs(totals.remaining),
 										totals.remaining >= 0 ? 'Available to spend' : 'Beyond limits',
 									],
+									['Published', publishedProgress.length, 'Active plans'],
 								].map(([label, value, note], index) => (
-									<div
-										key={String(label)}
-										className={cn(
-											'flex items-center gap-4 p-4',
-											cardSurfaceMuted
-										)}
-									>
-										<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm dark:bg-gray-900 dark:text-blue-400">
-											{index === 0 ? (
-												<FiTarget className="h-4 w-4" />
-											) : index === 1 ? (
-												<FiMoreHorizontal className="h-4 w-4" />
-											) : (
-												<FiCalendar className="h-4 w-4" />
-											)}
-										</div>
-										<div>
-											<p className={sectionLabel}>{label}</p>
-											<p className="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
-												{formatCurrency(value as number)}
-											</p>
-											<p className="text-xs text-gray-500 dark:text-gray-400">
-												{note}
-											</p>
-										</div>
-									</div>
+									<MotionReveal key={String(label)} delay={index * 0.06}>
+										<SummaryCard
+											label={String(label)}
+											amount={index === 3 ? undefined : (value as number)}
+											value={index === 3 ? String(value) : undefined}
+											note={String(note)}
+											tone={
+												label === 'Over budget'
+													? 'balance-negative'
+													: 'default'
+											}
+										/>
+									</MotionReveal>
 								))}
-							</div>
-						</section>
-					)}
+						</SummaryCardGrid>
+					</section>
+				)}
 
-					{categories.length === 0 ? (
-						<section className={cn('p-12 text-center', cardSurface)}>
-							<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-								<FiTarget className="h-6 w-6" />
-							</div>
-							<h2 className="mt-4 text-lg font-semibold">Create a category first</h2>
-							<p className="mx-auto mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400">
-								Budgets can cover one category or a specific sub-category.
-							</p>
-						</section>
+				{categories.length === 0 ? (
+						<EmptyState
+							title="Create a category first"
+							description="Budgets can cover one category or a specific sub-category."
+							icon={<FiTarget className="h-6 w-6" />}
+						/>
 					) : allProgress.length === 0 ? (
-						<section className={cn('p-12 text-center', cardSurface)}>
-							<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-								<FiTarget className="h-6 w-6" />
-							</div>
-							<h2 className="mt-4 text-lg font-semibold">
-								No budgets for this month
-							</h2>
-							<p className="mx-auto mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400">
-								Create a clear spending goal and keep it as a draft until it is
-								ready.
-							</p>
-							<Button className="mt-5 rounded-xl" onClick={() => setShowForm(true)}>
-								<FiPlus className="h-4 w-4" />
-								Create budget
-							</Button>
-						</section>
-					) : (
-						<div className="space-y-10">
+						<EmptyState
+							title="No budgets for this month"
+							description="Create a clear spending goal and keep it as a draft until it is ready."
+							icon={<FiTarget className="h-6 w-6" />}
+							action={
+								<Button onClick={() => setShowForm(true)}>
+									<FiPlus className="h-4 w-4" />
+									Create budget
+								</Button>
+							}
+						/>
+				) : (
+					<div className="space-y-8">
 							{draftProgress.length > 0 && (
 								<section>
 									<div className="mb-4 flex items-end justify-between">
@@ -727,7 +683,7 @@ const BudgetsList: React.FC = () => {
 											{draftProgress.length}
 										</span>
 									</div>
-									{renderBudgetGrid(draftProgress)}
+									{renderBudgetList(draftProgress)}
 								</section>
 							)}
 
@@ -741,7 +697,7 @@ const BudgetsList: React.FC = () => {
 											Live spending against published goals.
 										</p>
 									</div>
-									{renderBudgetGrid(publishedProgress)}
+									{renderBudgetList(publishedProgress)}
 								</section>
 							)}
 
@@ -755,13 +711,12 @@ const BudgetsList: React.FC = () => {
 											These budgets do not overlap the selected month.
 										</p>
 									</div>
-									{renderBudgetGrid(otherProgress)}
+									{renderBudgetList(otherProgress)}
 								</section>
 							)}
 						</div>
 					)}
-				</div>
-			</div>
+			</PageShell>
 		</div>
 	);
 };

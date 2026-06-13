@@ -6,6 +6,9 @@ const mockAddTransfer = jest.fn();
 const mockOnOpenAccounts = jest.fn();
 const mockOnOpenHistory = jest.fn();
 const mockOnOpenSettings = jest.fn();
+const mockOnOpenBudgets = jest.fn();
+const mockOnCreateTransaction = jest.fn();
+const mockOnOpenTransactions = jest.fn();
 const mockOnSelectTransaction = jest.fn();
 const today = new Date();
 let mockTransactions = [
@@ -176,19 +179,34 @@ describe('DashboardOverview', () => {
 			<DashboardOverview
 				onOpenAccounts={mockOnOpenAccounts}
 				onOpenHistory={mockOnOpenHistory}
+				onOpenBudgets={mockOnOpenBudgets}
 				onOpenSettings={mockOnOpenSettings}
+				onCreateTransaction={mockOnCreateTransaction}
+				onOpenTransactions={mockOnOpenTransactions}
 				onSelectTransaction={mockOnSelectTransaction}
 			/>
 		);
 
 		expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
 		expect(screen.getByText(/Net worth/i)).toBeInTheDocument();
-		expect(screen.getByText(/digest/i)).toBeInTheDocument();
+		expect(screen.getByText('Available balance')).toBeInTheDocument();
+		expect(screen.getByText('Income')).toBeInTheDocument();
+		expect(screen.getByText('Expenses')).toBeInTheDocument();
+		expect(screen.getByText('Net change')).toBeInTheDocument();
 		expect(screen.getByText('Accounts')).toBeInTheDocument();
 		expect(screen.getByText('Recent')).toBeInTheDocument();
 		expect(screen.getByText('Latest transactions')).toBeInTheDocument();
 		expect(screen.getByTestId('assistant-variant')).toHaveTextContent(
 			'docked:always-docked'
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: /income/i }));
+		expect(mockOnOpenTransactions).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'income',
+				startDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+				endDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+			})
 		);
 	});
 
@@ -197,7 +215,10 @@ describe('DashboardOverview', () => {
 			<DashboardOverview
 				onOpenAccounts={mockOnOpenAccounts}
 				onOpenHistory={mockOnOpenHistory}
+				onOpenBudgets={mockOnOpenBudgets}
 				onOpenSettings={mockOnOpenSettings}
+				onCreateTransaction={mockOnCreateTransaction}
+				onOpenTransactions={mockOnOpenTransactions}
 				onSelectTransaction={mockOnSelectTransaction}
 			/>
 		);

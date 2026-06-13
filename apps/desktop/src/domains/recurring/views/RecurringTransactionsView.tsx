@@ -21,8 +21,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/app/ui/select';
-import SectionHeader from '@/components/marketing/SectionHeader';
-import { cardSurface, pageBg } from '@/styles/marketingStyles';
+import { PageHeader, PageShell } from '@/components/app/page-layout';
+import { cardSurface } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
@@ -294,8 +294,8 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 	}
 
 	return (
-		<div className={cn('flex flex-1 flex-col overflow-y-auto p-4 md:p-6 lg:p-8', pageBg, 'min-h-screen')}>
-			<SectionHeader
+		<PageShell>
+			<PageHeader
 				badge="Recurring"
 				title="Recurring Transactions"
 				subtitle="Manage your subscriptions, debit orders, salary, and other recurring transactions."
@@ -598,7 +598,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-		</div>
+		</PageShell>
 	);
 };
 

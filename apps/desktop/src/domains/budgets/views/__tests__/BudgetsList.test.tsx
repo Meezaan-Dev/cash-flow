@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import BudgetsList from '../BudgetsList';
 import {
 	getCurrentBudgetMonth,
@@ -11,6 +12,19 @@ const mockPublishBudget = jest.fn();
 const mockRepeatBudget = jest.fn();
 const mockDeleteBudget = jest.fn();
 const mockReorderBudgets = jest.fn();
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+	...jest.requireActual('react-router-dom'),
+	useNavigate: () => mockNavigate,
+}));
+
+const renderBudgets = () =>
+	render(
+		<MemoryRouter>
+			<BudgetsList />
+		</MemoryRouter>
+	);
 
 jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 	useBudgetsContext: () => ({
@@ -162,7 +176,7 @@ describe('BudgetsList', () => {
 	});
 
 	it('separates drafts and active budgets with explicit titles', () => {
-		render(<BudgetsList />);
+		renderBudgets();
 		expect(screen.getByText('Draft budgets')).toBeInTheDocument();
 		expect(screen.getByText('Active budgets')).toBeInTheDocument();
 		expect(screen.getAllByText('Petrol').length).toBeGreaterThan(0);
@@ -175,7 +189,7 @@ describe('BudgetsList', () => {
 	});
 
 	it('shows concise dates, sentence metrics, and status states', () => {
-		render(<BudgetsList />);
+		renderBudgets();
 		const monthLabel = new Date(`${mockMonth}-01T12:00:00`).toLocaleDateString(
 			'en-ZA',
 			{ month: 'long', year: 'numeric' }
@@ -186,12 +200,12 @@ describe('BudgetsList', () => {
 		expect(screen.getByText('Watch spending')).toBeInTheDocument();
 		expect(screen.getByText('Over budget')).toBeInTheDocument();
 		expect(screen.getByRole('img', { name: '61 percent used' })).toBeInTheDocument();
-		expect(screen.getAllByText('Set budget').length).toBeGreaterThan(0);
-		expect(screen.getAllByTestId('budget-grid')[0]).toHaveClass('xl:grid-cols-4');
+		expect(screen.getAllByText('Budget name').length).toBeGreaterThan(0);
+		expect(screen.getAllByTestId('budget-list')[0]).toHaveClass('rounded-2xl');
 	});
 
 	it('publishes a draft and opens the side-panel form', async () => {
-		render(<BudgetsList />);
+		renderBudgets();
 		fireEvent.click(screen.getByRole('button', { name: 'Publish Petrol' }));
 		await waitFor(() =>
 			expect(mockPublishBudget).toHaveBeenCalledWith('draft-petrol')
@@ -205,11 +219,11 @@ describe('BudgetsList', () => {
 		expect(screen.getByText('For when?')).toBeInTheDocument();
 	});
 
-	it('reorders budgets from the card controls and persists the order', async () => {
-		render(<BudgetsList />);
+	it('reorders budgets from the row controls and persists the order', async () => {
+		renderBudgets();
 
 		fireEvent.click(
-			screen.getByRole('button', { name: 'Move Food · Groceries right' })
+			screen.getByRole('button', { name: 'Move Food · Groceries down' })
 		);
 
 		await waitFor(() =>
@@ -220,6 +234,28 @@ describe('BudgetsList', () => {
 				'warning-food',
 				'next-month-travel',
 			])
+		);
+	});
+
+	it('opens transaction history with the selected budget scope', () => {
+		renderBudgets();
+
+		fireEvent.click(
+			screen.getByRole('button', {
+				name: 'View transactions for Food · Groceries',
+			})
+		);
+
+		expect(mockNavigate).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'/dashboard/transactions?category=food&subcategory=groceries&type=expense'
+			)
+		);
+		expect(mockNavigate).toHaveBeenCalledWith(
+			expect.stringContaining(`from=${mockRange.startDate}`)
+		);
+		expect(mockNavigate).toHaveBeenCalledWith(
+			expect.stringContaining(`to=${mockRange.endDate}`)
 		);
 	});
 });

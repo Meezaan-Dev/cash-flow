@@ -1,30 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FiTrash2, FiSettings } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiSettings, FiTrash2 } from 'react-icons/fi';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
+import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
 import DateRangeFilter from '@/shared/filters/components/DateRangeFilter';
-import { filterTransactionsByDateRangeObject } from '@/shared/filters/utils/dateRangeFilter';
 import Currency from '@/components/marketing/Currency';
-import SectionHeader from '@/components/marketing/SectionHeader';
 import {
-	cardSurface,
-	frostedPanel,
-	pageBg,
-	selectedRow,
-} from '@/styles/marketingStyles';
+	DataListHeader,
+	DataListRow,
+	DataListSurface,
+	EmptyState,
+	FilterBar,
+	PageHeader,
+	PageShell,
+	SummaryCard,
+	SummaryCardGrid,
+} from '@/components/app/page-layout';
+import { selectedRow } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { DateRange, Transaction } from '@/types';
 import { compareTransactionsByDateDesc, getTransactionDateOrEpoch } from '@/utils/date';
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from '@/components/app/ui/table';
 import { Input } from '@/components/app/ui/input';
 import {
 	Select,
@@ -34,7 +32,6 @@ import {
 	SelectValue,
 } from '@/components/app/ui/select';
 import { Button } from '@/components/app/ui/button';
-import { Badge } from '@/components/app/ui/badge';
 import { useToast } from '@/components/app/ui/use-toast';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
 import {
@@ -42,10 +39,21 @@ import {
 	mergeCategoryOptions,
 } from '@/domains/categories/utils/categories';
 import { getCategoryColor } from '@/domains/categories/utils/categoryColors';
+import {
+	TransactionFilterDescriptor,
+	transactionFiltersFromSearch,
+	transactionFiltersToSearch,
+	transactionMatchesFilters,
+} from '@/shared/filters/utils/transactionFilters';
+import {
+	calculateBudgetProgress,
+	transactionMatchesBudget,
+} from '@/domains/budgets/models/BudgetModel';
 
 interface TransactionsTableProps {
 	onDelete: (id: string) => void;
 	onSelect: (tx: Transaction) => void;
+	onCreate?: () => void;
 	selectedId: string | null;
 	onOpenSettings?: () => void;
 }
@@ -72,22 +80,37 @@ const LOAD_MORE_COUNT = 15;
 const TransactionsTable: React.FC<TransactionsTableProps> = ({
 	onDelete,
 	onSelect,
+	onCreate,
 	selectedId,
 	onOpenSettings,
 }) => {
 	const { transactions, bulkUpdateTransactionCategories } = useTransactionsContext();
 	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { categories, categoryOptions, getCategoryPathLabel } = useCategoriesContext();
+	const { budgets } = useBudgetsContext();
 	const { prefs } = useFilterPreferences();
 	const { toast } = useToast();
+	const location = useLocation();
+	const navigate = useNavigate();
 	const tablePrefs = prefs.transactionsTable;
+	const routeFilters = useMemo(
+		() => transactionFiltersFromSearch(location.search),
+		[location.search]
+	);
 	const [search, setSearch] = useState('');
-	const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
-	const [filterCategory, setFilterCategory] = useState('all');
+	const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>(
+		routeFilters.type ?? 'all'
+	);
+	const [filterCategory, setFilterCategory] = useState(
+		routeFilters.category ?? 'all'
+	);
+	const [filterAccount, setFilterAccount] = useState(
+		routeFilters.accountId ?? 'all'
+	);
 	const [filterMonth, setFilterMonth] = useState('all');
 	const [dateRange, setDateRange] = useState<DateRange>({
-		startDate: '',
-		endDate: '',
+		startDate: routeFilters.startDate ?? '',
+		endDate: routeFilters.endDate ?? '',
 	});
 	const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -96,15 +119,45 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 	const selectVisibleRef = useRef<HTMLInputElement>(null);
 	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
-	const { filtered, totals } = useMemo(() => {
-		const dateFiltered = filterTransactionsByDateRangeObject(transactions, dateRange);
+	useEffect(() => {
+		setFilterType(routeFilters.type ?? 'all');
+		setFilterCategory(routeFilters.category ?? 'all');
+		setFilterAccount(routeFilters.accountId ?? 'all');
+		setDateRange({
+			startDate: routeFilters.startDate ?? '',
+			endDate: routeFilters.endDate ?? '',
+		});
+	}, [routeFilters]);
 
-		const filtered = dateFiltered
+	const updateRouteFilters = (next: TransactionFilterDescriptor) => {
+		navigate(
+			`/dashboard/transactions${transactionFiltersToSearch(next)}`,
+			{ replace: true }
+		);
+	};
+
+	const currentRouteFilters = (): TransactionFilterDescriptor => ({
+		accountId: filterAccount === 'all' ? undefined : filterAccount,
+		category: filterCategory === 'all' ? undefined : filterCategory,
+		subcategory: routeFilters.subcategory,
+		type: filterType === 'all' ? undefined : filterType,
+		startDate: dateRange.startDate || undefined,
+		endDate: dateRange.endDate || undefined,
+		endExclusive: routeFilters.endExclusive,
+	});
+
+	const { filtered, totals } = useMemo(() => {
+		const filtered = transactions
 			.filter((tx) => {
 				const searchText = `${tx.title} ${tx.subcategory ?? ''}`.toLowerCase();
 				const matchesSearch = searchText.includes(search.toLowerCase());
 				const matchesType = filterType === 'all' || tx.type === filterType;
 				const matchesCategory = filterCategory === 'all' || tx.category === filterCategory;
+				const matchesSubcategory =
+					!routeFilters.subcategory ||
+					(tx.subcategory ?? '') === routeFilters.subcategory;
+				const matchesAccount =
+					filterAccount === 'all' || tx.accountId === filterAccount;
 				const dateValue = tx.date ?? tx.createdAt;
 				const month = dateValue
 					? new Date(
@@ -115,7 +168,19 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 					: -1;
 				const matchesMonth = filterMonth === 'all' || month === parseInt(filterMonth);
 
-				return matchesSearch && matchesType && matchesCategory && matchesMonth;
+				return (
+					matchesSearch &&
+					matchesType &&
+					matchesCategory &&
+					matchesSubcategory &&
+					matchesAccount &&
+					matchesMonth &&
+					transactionMatchesFilters(tx, {
+						startDate: dateRange.startDate || undefined,
+						endDate: dateRange.endDate || undefined,
+						endExclusive: routeFilters.endExclusive,
+					})
+				);
 			})
 			.sort(compareTransactionsByDateDesc);
 
@@ -128,7 +193,32 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 			.reduce((sum, tx) => sum + tx.amount, 0);
 
 		return { filtered, totals: { totalAmount, totalIncome, totalExpense } };
-	}, [transactions, dateRange, search, filterType, filterCategory, filterMonth]);
+	}, [
+		transactions,
+		dateRange,
+		search,
+		filterType,
+		filterCategory,
+		filterAccount,
+		filterMonth,
+		routeFilters.endExclusive,
+		routeFilters.subcategory,
+	]);
+
+	const publishedBudgetProgress = useMemo(
+		() =>
+			budgets
+				.filter((budget) => budget.lifecycleStatus === 'published')
+				.map((budget) => calculateBudgetProgress(budget, transactions)),
+		[budgets, transactions]
+	);
+
+	const getBudgetContext = (transaction: Transaction) => {
+		if (transaction.type !== 'expense') return undefined;
+		return publishedBudgetProgress.find((item) =>
+			transactionMatchesBudget(transaction, item.budget)
+		);
+	};
 
 	const allCategories = useMemo(
 		() =>
@@ -260,24 +350,53 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 		!tablePrefs.month &&
 		!tablePrefs.dateRange;
 
-	const amountHeader =
-		filterType === 'all'
-			? `Amount (Total: ${formatCurrency(totals.totalAmount)}, Income: ${formatCurrency(totals.totalIncome)}, Expense: ${formatCurrency(totals.totalExpense)})`
-			: filterType === 'income'
-				? `Amount (Total Income: ${formatCurrency(totals.totalIncome)})`
-				: `Amount (Total Expense: ${formatCurrency(totals.totalExpense)})`;
-
 	return (
-		<div className={cn('flex flex-col gap-6 p-4 md:p-6', pageBg, 'min-h-screen')}>
-			<SectionHeader
+		<PageShell>
+			<PageHeader
 				title="Transaction history"
 				subtitle="Search, filter, and review your activity."
-				compact
+				actions={
+					onCreate ? (
+						<Button type="button" variant="marketing" onClick={onCreate}>
+							<FiPlus className="h-4 w-4" />
+							New transaction
+						</Button>
+					) : undefined
+				}
 			/>
 
-			{/* Control Bar */}
+			<SummaryCardGrid className="mb-6">
+				<SummaryCard
+					label="Income"
+					amount={totals.totalIncome}
+					tone="income"
+					note="Filtered inflow"
+				/>
+				<SummaryCard
+					label="Expenses"
+					amount={totals.totalExpense}
+					tone="expense"
+					note="Filtered spending"
+				/>
+				<SummaryCard
+					label="Net"
+					amount={totals.totalIncome - totals.totalExpense}
+					tone={
+						totals.totalIncome - totals.totalExpense >= 0
+							? 'balance-positive'
+							: 'balance-negative'
+					}
+					note="Income less expenses"
+				/>
+				<SummaryCard
+					label="Transactions"
+					value={filtered.length}
+					note={`${visibleTransactions.length} currently shown`}
+				/>
+			</SummaryCardGrid>
+
 			{allFiltersHidden ? (
-				<div className="flex items-center gap-2 rounded-2xl border border-dashed border-gray-200 p-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+				<div className="mb-6 flex items-center gap-2 rounded-2xl border border-dashed border-gray-200 p-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
 					<FiSettings className="h-4 w-4 shrink-0" />
 					<span>All filters are hidden.</span>
 					<button
@@ -288,24 +407,32 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 					</button>
 				</div>
 			) : (
-				<div className={cn('flex flex-wrap items-center gap-2 rounded-2xl p-3', frostedPanel)}>
+				<FilterBar className="mb-6">
 					{tablePrefs.search && (
-						<Input
-							placeholder="Search transactions…"
-							value={search}
-							onChange={(e) => {
-								setSearch(e.target.value);
-								resetVisibleCountAndSelection();
-							}}
-							className="h-10 flex-1 min-w-[220px] border-none focus-visible:ring-0"
-						/>
+						<div className="relative min-w-[220px] flex-1">
+							<FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+							<Input
+								placeholder="Search transactions…"
+								value={search}
+								onChange={(event) => {
+									setSearch(event.target.value);
+									resetVisibleCountAndSelection();
+								}}
+								className="h-10 w-full rounded-xl pl-9"
+							/>
+						</div>
 					)}
 
 					{tablePrefs.type && (
 						<Select
 							value={filterType}
 							onValueChange={(value: string) => {
-								setFilterType(value as 'all' | 'income' | 'expense');
+								const nextType = value as 'all' | 'income' | 'expense';
+								setFilterType(nextType);
+								updateRouteFilters({
+									...currentRouteFilters(),
+									type: nextType === 'all' ? undefined : nextType,
+								});
 								resetVisibleCountAndSelection();
 							}}
 						>
@@ -325,6 +452,11 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 							value={filterCategory}
 							onValueChange={(value: string) => {
 								setFilterCategory(value);
+								updateRouteFilters({
+									...currentRouteFilters(),
+									category: value === 'all' ? undefined : value,
+									subcategory: undefined,
+								});
 								resetVisibleCountAndSelection();
 							}}
 						>
@@ -353,6 +485,30 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 						</Select>
 					)}
 
+					<Select
+						value={filterAccount}
+						onValueChange={(value: string) => {
+							setFilterAccount(value);
+							updateRouteFilters({
+								...currentRouteFilters(),
+								accountId: value === 'all' ? undefined : value,
+							});
+							resetVisibleCountAndSelection();
+						}}
+					>
+						<SelectTrigger className="h-10 w-[160px] rounded-xl">
+							<SelectValue placeholder="Account" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All accounts</SelectItem>
+							{accounts.map((account) => (
+								<SelectItem key={account.id} value={account.id!}>
+									{account.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+
 					{tablePrefs.month && (
 						<Select
 							value={filterMonth}
@@ -379,20 +535,31 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 							dateRange={dateRange}
 							onDateRangeChange={(newRange) => {
 								setDateRange(newRange);
+								updateRouteFilters({
+									...currentRouteFilters(),
+									startDate: newRange.startDate || undefined,
+									endDate: newRange.endDate || undefined,
+								});
 								resetVisibleCountAndSelection();
 							}}
 							onClear={() => {
 								setDateRange({ startDate: '', endDate: '' });
+								updateRouteFilters({
+									...currentRouteFilters(),
+									startDate: undefined,
+									endDate: undefined,
+									endExclusive: undefined,
+								});
 								resetVisibleCountAndSelection();
 							}}
 						/>
 					)}
-				</div>
+				</FilterBar>
 			)}
 
 			{selectedCount > 0 && (
 				<div
-					className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-blue-50/50 p-3 dark:border-gray-800 dark:bg-blue-950/30"
+					className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-blue-50/50 p-3 dark:border-gray-800 dark:bg-blue-950/30"
 					onClick={(event) => event.stopPropagation()}
 				>
 					<div className="text-sm font-medium">
@@ -433,144 +600,158 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 				</div>
 			)}
 
-			{/* Table Surface */}
-			<div className={cardSurface}>
-				<div
-					className="relative max-h-[calc(var(--vh-screen)-220px)] overflow-auto"
-					onScroll={handleScroll}
-				>
-					<Table>
-						<TableHeader className="sticky top-0 z-10 bg-white/80 backdrop-blur dark:bg-gray-900/80">
-							<TableRow className="hover:bg-transparent">
-								<TableHead className="w-12">
+			{filtered.length === 0 ? (
+				<EmptyState
+					title={transactions.length === 0 ? 'No transactions yet' : 'Nothing to show'}
+					description={
+						transactions.length === 0
+							? hasNoAccounts
+								? 'Create an account first, then transactions will appear here.'
+								: 'Add your first transaction to start reviewing history.'
+							: 'Try adjusting your filters or search.'
+					}
+					icon={<FiSearch className="h-6 w-6" />}
+				/>
+			) : (
+				<DataListSurface onScroll={handleScroll}>
+					<DataListHeader>
+						<span className="flex items-center gap-3">
+							<input
+								ref={selectVisibleRef}
+								type="checkbox"
+								aria-label="Select visible transactions"
+								checked={allVisibleSelected}
+								disabled={visibleSelectableTransactions.length === 0}
+								onChange={toggleVisibleSelection}
+								className="h-4 w-4 rounded border-input accent-primary"
+							/>
+							Transaction
+						</span>
+						<span>Amount</span>
+						<span>Account and date</span>
+					</DataListHeader>
+					{visibleTransactions.map((tx) => {
+						const categoryColor = getCategoryColor(tx.category);
+						const isSelectable = Boolean(tx.id && tx.type !== 'transfer');
+						const isSelected = Boolean(tx.id && selectedIds.has(tx.id));
+						const account = accounts.find((item) => item.id === tx.accountId);
+						const budgetContext = getBudgetContext(tx);
+						return (
+							<DataListRow
+								key={tx.id}
+								onClick={() => onSelect(tx)}
+								className={cn(
+									'cursor-pointer',
+									tx.id === selectedId && selectedRow
+								)}
+							>
+								<div className="flex min-w-0 items-start gap-3 pr-12 md:pr-0">
 									<input
-										ref={selectVisibleRef}
 										type="checkbox"
-										aria-label="Select visible transactions"
-										checked={allVisibleSelected}
-										disabled={visibleSelectableTransactions.length === 0}
-										onChange={toggleVisibleSelection}
+										aria-label={`Select ${tx.title}`}
+										checked={isSelected}
+										disabled={!isSelectable || isBulkSaving}
+										onChange={() => {
+											if (tx.id) toggleTransactionSelection(tx.id);
+										}}
 										onClick={(event) => event.stopPropagation()}
-										className="h-4 w-4 rounded border-input accent-primary"
+										className="mt-1 h-4 w-4 shrink-0 rounded border-input accent-primary disabled:cursor-not-allowed disabled:opacity-40"
 									/>
-								</TableHead>
-								<TableHead>Description</TableHead>
-								<TableHead className="text-right">{amountHeader}</TableHead>
-								<TableHead className="text-right">Date</TableHead>
-								<TableHead className="text-right">Category</TableHead>
-								<TableHead className="text-right"></TableHead>
-							</TableRow>
-						</TableHeader>
-
-						<TableBody>
-							{visibleTransactions.map((tx) => {
-								const categoryColor = getCategoryColor(tx.category);
-								const isSelectable = Boolean(tx.id && tx.type !== 'transfer');
-								const isSelected = Boolean(tx.id && selectedIds.has(tx.id));
-								return (
-								<TableRow
-									key={tx.id}
-									onClick={() => onSelect(tx)}
-									className={cn(
-										'cursor-pointer transition-colors',
-										tx.id === selectedId
-											? selectedRow
-											: 'hover:bg-gray-50/80 dark:hover:bg-gray-800/30'
+									<div className="min-w-0">
+										<p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
+											{tx.title}
+										</p>
+										<div className="mt-1 flex flex-wrap items-center gap-2">
+											<span
+												className="h-2.5 w-2.5 rounded-full"
+												style={{ backgroundColor: categoryColor }}
+											/>
+											<span className="truncate text-xs text-gray-500 dark:text-gray-400">
+												{getCategoryPathLabel(tx.category, tx.subcategory)}
+											</span>
+										</div>
+									</div>
+								</div>
+								<div>
+									<Currency
+										amount={tx.amount}
+										tone={tx.type === 'income' ? 'income' : 'expense'}
+										className="text-lg"
+									/>
+									<p className="mt-1 text-xs capitalize text-gray-500 dark:text-gray-400">
+										{tx.type}
+									</p>
+								</div>
+								<div className="min-w-0">
+									<p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+										{account?.name ?? 'Unknown account'}
+									</p>
+									<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+										{getTransactionDateOrEpoch(
+											tx.date,
+											tx.createdAt
+										).toLocaleDateString('en-ZA', {
+											day: 'numeric',
+											month: 'short',
+											year: 'numeric',
+										})}
+									</p>
+									{budgetContext && (
+										<p
+											className={cn(
+												'mt-1 text-xs font-medium',
+												budgetContext.remaining >= 0
+													? 'text-blue-600 dark:text-blue-400'
+													: 'text-red-600 dark:text-red-400'
+											)}
+										>
+											{getCategoryPathLabel(
+												budgetContext.budget.categoryId,
+												budgetContext.budget.subCategoryId
+											)}
+											{' · '}
+											{budgetContext.remaining >= 0
+												? `${formatCurrency(budgetContext.remaining)} remaining`
+												: `${formatCurrency(
+														Math.abs(budgetContext.remaining)
+													)} over budget`}
+										</p>
 									)}
+								</div>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="absolute right-3 top-3 h-8 w-8 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+									onClick={(event) => {
+										event.stopPropagation();
+										if (tx.id) onDelete(tx.id);
+									}}
+									aria-label={`Delete ${tx.title}`}
 								>
-									<TableCell>
-										<input
-											type="checkbox"
-											aria-label={`Select ${tx.title}`}
-											checked={isSelected}
-											disabled={!isSelectable || isBulkSaving}
-											onChange={() => {
-												if (tx.id) toggleTransactionSelection(tx.id);
-											}}
-											onClick={(event) => event.stopPropagation()}
-											className="h-4 w-4 rounded border-input accent-primary disabled:cursor-not-allowed disabled:opacity-40"
-										/>
-									</TableCell>
-									<TableCell>
-										<div className="font-medium">{tx.title}</div>
-										<div className="text-xs text-gray-500 dark:text-gray-400">
-											{tx.type}
-										</div>
-									</TableCell>
+									<FiTrash2 className="h-4 w-4" />
+								</Button>
+							</DataListRow>
+						);
+					})}
+				</DataListSurface>
+			)}
 
-									<TableCell className="text-right">
-										<Currency
-											amount={tx.amount}
-											tone={tx.type === 'income' ? 'income' : 'expense'}
-											className="text-sm"
-										/>
-									</TableCell>
-
-									<TableCell className="text-right text-sm text-gray-500 dark:text-gray-400">
-										{(() => {
-											return getTransactionDateOrEpoch(
-												tx.date,
-												tx.createdAt
-											).toLocaleDateString('en-US', {
-												month: 'short',
-												day: 'numeric',
-												year: 'numeric',
-											});
-										})()}
-									</TableCell>
-
-									<TableCell className="text-right">
-										<Badge
-											className="text-white"
-											style={{
-												backgroundColor: categoryColor,
-											}}
-										>
-											{getCategoryPathLabel(tx.category, tx.subcategory)}
-										</Badge>
-									</TableCell>
-
-									<TableCell className="text-right">
-										<Button
-											variant="ghost"
-											size="icon"
-											onClick={(e) => {
-												e.stopPropagation();
-												if (tx.id) onDelete(tx.id);
-											}}
-										>
-											<FiTrash2 className="h-4 w-4" />
-										</Button>
-									</TableCell>
-								</TableRow>
-								);
-							})}
-
-							{filtered.length === 0 && (
-								<TableRow>
-									<TableCell colSpan={6} className="py-16 text-center">
-										<div className="space-y-1">
-											<div className="text-sm font-medium">
-												{transactions.length === 0
-													? 'No transactions yet'
-													: 'Nothing to show'}
-											</div>
-											<div className="text-sm text-gray-500 dark:text-gray-400">
-												{transactions.length === 0
-													? hasNoAccounts
-														? 'Create an account first, then transactions will appear here.'
-														: 'Add your first transaction to start reviewing history.'
-													: 'Try adjusting your filters or search.'}
-											</div>
-										</div>
-									</TableCell>
-								</TableRow>
-							)}
-						</TableBody>
-					</Table>
+			{visibleCount < filtered.length && (
+				<div className="mt-4 flex justify-center">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() =>
+							setVisibleCount((count) =>
+								Math.min(count + LOAD_MORE_COUNT, filtered.length)
+							)
+						}
+					>
+						Load more
+					</Button>
 				</div>
-			</div>
-		</div>
+			)}
+		</PageShell>
 	);
 };
 

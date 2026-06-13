@@ -1,4 +1,7 @@
-import { calculateNetWorth } from '@/domains/accounts/models/AccountModel';
+import {
+	calculateAvailableBalance,
+	calculateNetWorth,
+} from '@/domains/accounts/models/AccountModel';
 import {
 	DashboardDigestPeriod,
 	getDashboardDigestDateRange,
@@ -11,6 +14,7 @@ export interface DashboardSummary {
 	expense: number;
 	saved: number;
 	transactionCount: number;
+	availableBalance: number;
 	netWorth: number;
 	monthLabel: string;
 	periodLabel: string;
@@ -75,6 +79,7 @@ export const calculateDashboardSummary = (
 		expense,
 		saved: income - expense,
 		transactionCount: monthTransactions.length,
+		availableBalance: calculateAvailableBalance(accounts),
 		netWorth,
 		monthLabel: today.toLocaleDateString('en-ZA', {
 			month: 'long',

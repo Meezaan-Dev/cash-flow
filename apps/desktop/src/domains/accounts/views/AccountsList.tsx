@@ -5,12 +5,20 @@ import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { Account } from '@/types';
 import {
 	ACCOUNT_TYPE_LABELS,
-	getAccountAvailableBalance,
 	getAccountLiability,
 } from '@/domains/accounts/models/AccountModel';
 import Currency from '@/components/marketing/Currency';
 import MotionReveal from '@/components/marketing/MotionReveal';
-import SectionHeader from '@/components/marketing/SectionHeader';
+import {
+	DataListHeader,
+	DataListRow,
+	DataListSurface,
+	EmptyState,
+	PageHeader,
+	PageShell,
+	SummaryCard,
+	SummaryCardGrid,
+} from '@/components/app/page-layout';
 import { Button } from '@/components/app/ui/button';
 import {
 	Dialog,
@@ -21,11 +29,7 @@ import {
 	DialogTitle,
 } from '@/components/app/ui/dialog';
 import {
-	cardSurface,
-	cardSurfaceMuted,
 	modalShell,
-	pageBg,
-	sectionLabel,
 } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -95,7 +99,7 @@ const AccountsList: React.FC = () => {
 	];
 
 	return (
-		<div className={cn('flex min-h-screen flex-col', pageBg)}>
+		<div className="flex min-h-0 flex-1 flex-col">
 			<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
 				<DialogContent className={cn('w-[90vw] md:w-full', modalShell)}>
 					<DialogHeader>
@@ -116,8 +120,8 @@ const AccountsList: React.FC = () => {
 				</DialogContent>
 			</Dialog>
 
-			<div className="flex-1 overflow-y-auto p-4 md:p-8">
-				<SectionHeader
+			<PageShell>
+				<PageHeader
 					title="Accounts"
 					subtitle="Manage your bank and cash accounts"
 					actions={
@@ -129,51 +133,45 @@ const AccountsList: React.FC = () => {
 					className="mb-6"
 				/>
 
-				<div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<SummaryCardGrid className="mb-8">
 					{statCards.map((stat, index) => (
 						<MotionReveal key={stat.label} delay={index * 0.06}>
-							<div className={cn('p-5', cardSurfaceMuted)}>
-								<p className={sectionLabel}>{stat.label}</p>
-								<Currency
-									amount={stat.amount}
-									tone={stat.tone as 'balance-positive' | 'balance-negative'}
-									className="mt-1 text-xl"
-								/>
-							</div>
+							<SummaryCard
+								label={stat.label}
+								amount={stat.amount}
+								tone={stat.tone as 'balance-positive' | 'balance-negative'}
+							/>
 						</MotionReveal>
 					))}
-				</div>
+				</SummaryCardGrid>
 
 				{accounts.length === 0 ? (
-					<div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-16 text-center dark:border-gray-700">
-						<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950">
-							<FiPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-						</div>
-						<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-							No accounts yet
-						</h3>
-						<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-							Add your first account to start tracking balances
-						</p>
-						<Button variant="marketing" className="mt-4" onClick={() => setShowForm(true)}>
-							Add Account
-						</Button>
-					</div>
+					<EmptyState
+						title="No accounts yet"
+						description="Add your first account to start tracking balances."
+						icon={<FiPlus className="h-6 w-6" />}
+						action={
+							<Button variant="marketing" onClick={() => setShowForm(true)}>
+								Add Account
+							</Button>
+						}
+					/>
 				) : (
-					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					<DataListSurface>
+						<DataListHeader>
+							<span>Account name</span>
+							<span>Balance</span>
+							<span>Account data</span>
+						</DataListHeader>
 						{accounts.map((account, index) => {
-							const availableAmount = getAccountAvailableBalance(account);
 							const liability = getAccountLiability(account);
-							const displayAmount =
-								account.type === 'credit' ? availableAmount : account.balance;
-							const isNegative =
-								account.type === 'credit'
-									? availableAmount < 0
-									: account.balance < 0;
+							const displayAmount = account.balance;
+							const isNegative = account.balance < 0;
+							const creditLimit = account.creditLimit ?? 0;
 
 							return (
 								<MotionReveal key={account.id} delay={index * 0.06}>
-									<div
+									<DataListRow
 										role="button"
 										tabIndex={0}
 										onClick={() =>
@@ -185,61 +183,55 @@ const AccountsList: React.FC = () => {
 											}
 										}}
 										className={cn(
-											'group relative cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600',
-											cardSurface
+											'group relative grid cursor-pointer gap-4 border-b border-gray-100 px-5 py-4 transition-colors last:border-b-0 hover:bg-gray-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:border-gray-800 dark:hover:bg-gray-800/30 md:grid-cols-[minmax(220px,0.9fr)_minmax(260px,1.2fr)_minmax(260px,1fr)] md:items-center'
 										)}
 									>
-										<div
-											className="h-2 w-full"
-											style={{ backgroundColor: account.color ?? '#6366f1' }}
-										/>
-
-										<div className="p-5">
-											<div className="mb-3 flex items-start justify-between">
-												<div className="min-w-0 flex-1">
-													<h3 className="truncate text-base font-semibold text-gray-900 dark:text-gray-50">
-														{account.name}
-													</h3>
-													{account.bank && (
-														<p className="truncate text-xs text-gray-500 dark:text-gray-400">
-															{account.bank}
-														</p>
-													)}
-												</div>
-												<span className="ml-2 flex-shrink-0 rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-													{ACCOUNT_TYPE_LABELS[account.type]}
-												</span>
+										<div className="flex min-w-0 items-center gap-3 pr-16 md:pr-0">
+											<span
+												className="h-10 w-1.5 shrink-0 rounded-full"
+												style={{ backgroundColor: account.color ?? '#6366f1' }}
+											/>
+											<div className="min-w-0">
+												<h3 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
+													{account.name}
+												</h3>
+												<p className="truncate text-xs text-gray-500 dark:text-gray-400">
+													{account.bank || ACCOUNT_TYPE_LABELS[account.type]}
+												</p>
 											</div>
+										</div>
 
+										<div>
 											<Currency
 												amount={displayAmount}
 												tone={isNegative ? 'balance-negative' : 'default'}
-												className="text-2xl"
+												className="text-lg"
 											/>
+										</div>
 
-											<div className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+										<div className="min-w-0">
+											<div className="flex items-center gap-1 text-sm font-medium text-gray-800 dark:text-gray-200">
 												{isNegative || liability > 0 ? (
-													<FiArrowDownRight className="h-3 w-3 text-red-500" />
+													<FiArrowDownRight className="h-3.5 w-3.5 text-red-500" />
 												) : (
-													<FiArrowUpRight className="h-3 w-3 text-emerald-500" />
+													<FiArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
 												)}
 												<span>
 													{account.type === 'credit'
 														? liability > 0
-															? `Debt ${formatCurrency(liability)}`
-															: 'Available credit'
+															? `${formatCurrency(liability)} debt`
+															: 'No credit used'
 														: 'Available balance'}
 												</span>
 											</div>
-											{account.type === 'credit' && (
-												<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-													Balance {formatCurrency(account.balance)} · Limit{' '}
-													{formatCurrency(account.creditLimit ?? 0)}
-												</p>
-											)}
+											<p className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">
+												{account.type === 'credit'
+													? `Balance ${formatCurrency(account.balance)} · Limit ${formatCurrency(creditLimit)}`
+													: ACCOUNT_TYPE_LABELS[account.type]}
+											</p>
 										</div>
 
-										<div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+										<div className="absolute right-3 top-3 flex gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
 											<button
 												onClick={(e) => handleEdit(e, account)}
 												className="rounded-md border border-gray-200 bg-white p-1.5 text-gray-500 shadow-sm transition-colors hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:text-gray-50"
@@ -257,13 +249,13 @@ const AccountsList: React.FC = () => {
 												<FiTrash2 className="h-3.5 w-3.5" />
 											</button>
 										</div>
-									</div>
+									</DataListRow>
 								</MotionReveal>
 							);
 						})}
-					</div>
+					</DataListSurface>
 				)}
-			</div>
+			</PageShell>
 		</div>
 	);
 };

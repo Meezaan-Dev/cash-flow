@@ -9,7 +9,6 @@ import Sidebar from '@/pages/dashboard/components/Sidebar';
 import SettingsModal from '@/pages/dashboard/components/SettingsModal';
 import TransactionForm from '@/domains/transactions/views/TransactionForm';
 import TransactionsTable from '@/domains/transactions/views/TransactionsTable';
-import TransactionsList from '@/domains/transactions/views/TransactionsList';
 import AccountsList from '@/domains/accounts/views/AccountsList';
 import TransferForm from '@/domains/accounts/views/TransferForm';
 import ReconcileForm from '@/domains/accounts/views/ReconcileForm';
@@ -35,6 +34,10 @@ import {
 } from '@/domains/transactions/utils/transactionImportExport';
 import { frostedPanel, modalShell, pageBg } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
+import {
+	TransactionFilterDescriptor,
+	transactionFiltersToSearch,
+} from '@/shared/filters/utils/transactionFilters';
 
 const routeToView = (pathname: string, isMobile: boolean): ViewType => {
 	if (pathname.startsWith('/dashboard/transactions')) return isMobile ? 'list' : 'table';
@@ -222,6 +225,13 @@ const Dashboard: React.FC = () => {
 		navigate('/dashboard/transactions');
 	}, [handleCreate, navigate, toast, transactions.length]);
 
+	const handleOpenTransactions = useCallback(
+		(filters: TransactionFilterDescriptor = {}) => {
+			navigate(`/dashboard/transactions${transactionFiltersToSearch(filters)}`);
+		},
+		[navigate]
+	);
+
 	const handleViewChange = (view: ViewType) => {
 		// If switching away from transaction detail, clear selection
 		if (view !== 'transaction') {
@@ -260,18 +270,12 @@ const Dashboard: React.FC = () => {
 					/>
 				);
 			case 'table':
+			case 'list':
 				return (
 					<TransactionsTable
 						onDelete={handleDeleteClick}
 						onSelect={handleSelect}
-						selectedId={selectedTransactionId}
-						onOpenSettings={() => handleOpenSettings('filters')}
-					/>
-				);
-			case 'list':
-				return (
-					<TransactionsList
-						onSelect={handleSelect}
+						onCreate={handleCreate}
 						selectedId={selectedTransactionId}
 						onOpenSettings={() => handleOpenSettings('filters')}
 					/>
@@ -291,9 +295,12 @@ const Dashboard: React.FC = () => {
 			default:
 				return (
 					<DashboardOverview
-						onOpenAccounts={() => setActiveView('accounts')}
+						onOpenAccounts={() => navigate('/dashboard/accounts')}
 						onOpenHistory={handleOpenHistory}
+						onOpenBudgets={() => navigate('/dashboard/budgets')}
 						onOpenSettings={() => handleOpenSettings('general')}
+						onCreateTransaction={handleCreate}
+						onOpenTransactions={handleOpenTransactions}
 						onSelectTransaction={handleSelect}
 					/>
 				);
@@ -429,7 +436,7 @@ const Dashboard: React.FC = () => {
 			/>
 
 			<div
-				className={`relative flex min-h-0 flex-1 flex-col overflow-y-auto transition-all duration-300 ease-in-out h-screen-safe md:h-auto ${sidebarVisible ? 'md:ml-8' : 'md:ml-0'
+				className={`relative flex min-h-0 flex-1 flex-col overflow-hidden transition-all duration-300 ease-in-out h-screen-safe md:h-auto ${sidebarVisible ? 'md:ml-8' : 'md:ml-0'
 					} ${!sidebarVisible ? 'pt-[4.5rem]' : ''}`}
 			>
 				{!sidebarVisible && (
