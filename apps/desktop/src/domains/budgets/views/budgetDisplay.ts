@@ -1,4 +1,5 @@
 import { Budget } from '@/types';
+import { getBudgetCycleDateRange } from '@/domains/budgets/models/BudgetModel';
 
 type BudgetLabels = Pick<Budget, 'categoryId' | 'subCategoryId'>;
 
@@ -28,13 +29,37 @@ const formatDate = (
 		.replace(/^0/, '');
 
 export const getBudgetPeriodLabel = (
-	budget: Pick<Budget, 'period' | 'month' | 'startDate' | 'endDate'>
+	budget: Pick<
+		Budget,
+		| 'period'
+		| 'month'
+		| 'cycleDay'
+		| 'startDay'
+		| 'startDate'
+		| 'endDate'
+	>,
+	referenceDate = new Date()
 ): string => {
 	if (budget.period === 'monthly' && budget.month) {
 		return formatDate(`${budget.month}-01`, {
 			month: 'long',
 			year: 'numeric',
 		});
+	}
+
+	const cycleDay = budget.cycleDay ?? budget.startDay;
+	if (cycleDay) {
+		const range = getBudgetCycleDateRange(cycleDay, referenceDate);
+		const startLabel = formatDate(range.startDate, {
+			day: 'numeric',
+			month: 'short',
+		});
+		const endLabel = formatDate(range.endDate, {
+			day: 'numeric',
+			month: 'short',
+			year: 'numeric',
+		});
+		return `${startLabel} – ${endLabel}`;
 	}
 
 	const sameYear = budget.startDate.slice(0, 4) === budget.endDate.slice(0, 4);

@@ -80,6 +80,9 @@ export interface Budget {
 	amount: number;
 	period: 'monthly' | 'custom';
 	month?: string;
+	cycleDay?: number;
+	startDay?: number;
+	endDay?: number;
 	startDate: string;
 	endDate: string;
 	lifecycleStatus: 'draft' | 'published';

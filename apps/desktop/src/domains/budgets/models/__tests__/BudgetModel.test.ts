@@ -4,6 +4,7 @@ import {
 	calculateBudgetRemaining,
 	calculateBudgetSpent,
 	calculateBudgetUsedPercentage,
+	getBudgetCycleDateRange,
 	getBudgetStatus,
 	getMonthDateRange,
 	isDuplicateBudget,
@@ -70,6 +71,89 @@ describe('BudgetModel', () => {
 			startDate: '2024-02-01',
 			endDate: '2024-02-29',
 		});
+	});
+
+	it('resolves a recurring monthly renewal cycle', () => {
+		expect(
+			getBudgetCycleDateRange(25, new Date('2026-06-13T12:00:00'))
+		).toEqual({
+			startDate: '2026-05-25',
+			endDate: '2026-06-25',
+		});
+		expect(
+			getBudgetCycleDateRange(25, new Date('2026-06-25T12:00:00'))
+		).toEqual({
+			startDate: '2026-06-25',
+			endDate: '2026-07-25',
+		});
+	});
+
+	it('includes the cycle start and excludes the renewal boundary', () => {
+		const budget = makeBudget({
+			period: 'custom',
+			month: undefined,
+			cycleDay: 25,
+			startDate: '2026-05-25',
+			endDate: '2026-06-25',
+		});
+		const referenceDate = new Date('2026-06-13T12:00:00');
+		expect(
+			transactionMatchesBudget(
+				makeTransaction({ date: new Date('2026-05-25T12:00:00') }),
+				budget,
+				referenceDate
+			)
+		).toBe(true);
+		expect(
+			transactionMatchesBudget(
+				makeTransaction({ date: new Date('2026-06-24T12:00:00') }),
+				budget,
+				referenceDate
+			)
+		).toBe(true);
+		expect(
+			transactionMatchesBudget(
+				makeTransaction({ date: new Date('2026-06-25T12:00:00') }),
+				budget,
+				referenceDate
+			)
+		).toBe(false);
+	});
+
+	it.each([
+		[28, '2026-02-28', '2026-03-28'],
+		[29, '2026-02-28', '2026-03-29'],
+		[30, '2026-02-28', '2026-03-30'],
+		[31, '2026-02-28', '2026-03-31'],
+	] as const)(
+		'clamps renewal day %s to the end of a short month',
+		(cycleDay, startDate, endDate) => {
+			expect(
+				getBudgetCycleDateRange(cycleDay, new Date('2026-02-28T12:00:00'))
+			).toEqual({ startDate, endDate });
+		}
+	);
+
+	it('normalizes legacy cycle fields into the canonical renewal day', () => {
+		expect(
+			normalizeBudget({
+				id: 'legacy-cycle',
+				userId: 'user-1',
+				categoryId: 'food',
+				amount: 1000,
+				period: 'custom',
+				startDay: 25,
+				endDay: 24,
+				startDate: '2026-05-25',
+				endDate: '2026-06-24',
+			})
+		).toEqual(
+			expect.objectContaining({
+				cycleDay: 25,
+				startDay: 25,
+				endDay: 24,
+			})
+		);
 	});
 
 	it('filters transactions by YYYY-MM using transaction date', () => {
@@ -155,6 +239,30 @@ describe('BudgetModel', () => {
 				makeBudget({ subCategoryId: undefined, startDate: '2026-06-01' })
 			)
 		).toBe(false);
+	});
+
+	it('detects recurring cycle duplicates across different calendar months', () => {
+		const budgets = [
+			makeBudget({
+				period: 'custom',
+				month: undefined,
+				cycleDay: 25,
+				startDate: '2026-05-25',
+				endDate: '2026-06-25',
+			}),
+		];
+		expect(
+			isDuplicateBudget(
+				budgets,
+				makeBudget({
+					period: 'custom',
+					month: undefined,
+					cycleDay: 25,
+					startDate: '2026-06-25',
+					endDate: '2026-07-25',
+				})
+			)
+		).toBe(true);
 	});
 
 	it('finds custom budgets that overlap the selected month', () => {

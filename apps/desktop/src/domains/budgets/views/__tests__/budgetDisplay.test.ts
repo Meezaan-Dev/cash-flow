@@ -43,5 +43,13 @@ describe('budgetDisplay', () => {
 				endDate: '2026-07-18',
 			})
 		).toBe('1 Jun – 18 Jul 2026');
+		expect(
+			getBudgetPeriodLabel({
+				period: 'custom',
+				cycleDay: 25,
+				startDate: '2026-05-25',
+				endDate: '2026-06-25',
+			}, new Date('2026-06-13T12:00:00'))
+		).toBe('25 May – 25 Jun 2026');
 	});
 });

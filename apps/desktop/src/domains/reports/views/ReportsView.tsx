@@ -33,12 +33,11 @@ import {
 import { filterTransactionsByDateRangeObject } from '@/shared/filters/utils/dateRangeFilter';
 import { compareTransactionsByDateDesc } from '@/utils/date';
 import Currency from '@/components/marketing/Currency';
-import SectionHeader from '@/components/marketing/SectionHeader';
+import { PageHeader, PageShell } from '@/components/app/page-layout';
 import {
 	cardSurface,
 	cardSurfaceInner,
 	cardSurfaceMuted,
-	pageBg,
 	progressTrack,
 	sectionLabel,
 } from '@/styles/marketingStyles';
@@ -60,7 +59,6 @@ interface ReportsViewProps {
 	onOpenSettings?: () => void;
 }
 
-type ReportMode = 'expense' | 'income' | 'net';
 type PeriodMode = 'month' | 'customCycle';
 
 const getInitialSelectedMonth = () => {
@@ -89,7 +87,6 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 	const [customCycle, setCustomCycle] = useState<DashboardDigestCustomPeriod>(
 		() => DEFAULT_CUSTOM_DASHBOARD_DIGEST_PERIOD
 	);
-	const [reportMode, setReportMode] = useState<ReportMode>('expense');
 	const [selectedAccountId, setSelectedAccountId] = useState('all');
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 	const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
@@ -266,30 +263,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 			: null;
 
 	return (
-		<div className={cn('flex min-h-screen flex-col', pageBg)}>
-			<div className="flex-1 overflow-y-auto p-4 md:p-8">
-				<SectionHeader
+		<div className="flex min-h-0 flex-1 flex-col">
+			<PageShell>
+				<PageHeader
 					title="Monthly Reports"
 					subtitle="A month-first view with visible amounts, category decisions, and account review."
-					actions={
-						<div className="inline-flex rounded-full border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
-							{(['expense', 'income', 'net'] as ReportMode[]).map((mode) => (
-								<button
-									key={mode}
-									type="button"
-									onClick={() => setReportMode(mode)}
-									className={cn(
-										'rounded-full px-3 py-1.5 text-sm font-medium capitalize transition-colors',
-										reportMode === mode
-											? 'bg-blue-600 text-white shadow-sm'
-											: 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'
-									)}
-								>
-									{mode}
-								</button>
-							))}
-						</div>
-					}
 					className="mb-6"
 				/>
 
@@ -686,11 +664,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 							<div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 								<h2 className="text-base font-semibold">6-Month Money Movement</h2>
 								<p className="text-sm text-muted-foreground">
-									{reportMode === 'expense'
-										? 'Expense focus'
-										: reportMode === 'income'
-											? 'Income focus'
-											: 'Net focus'}
+									Income, expenses, and net movement
 								</p>
 							</div>
 							{monthlyTrend.length > 0 ? (
@@ -711,15 +685,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 										<YAxis tickFormatter={formatTick} tick={{ fontSize: 12 }} className="fill-muted-foreground" />
 										<Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
 										<Legend />
-										{reportMode !== 'expense' && (
-											<Area type="monotone" dataKey="income" name="Income" stroke="#3b82f6" fill="url(#incomeGrad)" strokeWidth={2} />
-										)}
-										{reportMode !== 'income' && (
-											<Area type="monotone" dataKey="expense" name="Expenses" stroke="#6366f1" fill="url(#expenseGrad)" strokeWidth={2} />
-										)}
-										{reportMode === 'net' && (
-											<Line type="monotone" dataKey="net" name="Net" stroke="#2563eb" strokeWidth={2} dot={false} />
-										)}
+										<Area type="monotone" dataKey="income" name="Income" stroke="#3b82f6" fill="url(#incomeGrad)" strokeWidth={2} />
+										<Area type="monotone" dataKey="expense" name="Expenses" stroke="#6366f1" fill="url(#expenseGrad)" strokeWidth={2} />
+										<Line type="monotone" dataKey="net" name="Net" stroke="#2563eb" strokeWidth={2} dot={false} />
 									</AreaChart>
 								</ResponsiveContainer>
 							) : (
@@ -754,7 +722,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 						</div>
 					)}
 				</div>
-			</div>
+			</PageShell>
 		</div>
 	);
 };
