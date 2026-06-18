@@ -1,8 +1,39 @@
 import React from 'react';
 import SectionHeader from '@/components/marketing/SectionHeader';
 import Currency from '@/components/marketing/Currency';
-import { pageBg, sectionLabel } from '@/styles/marketingStyles';
+import { modalShell, pageBg, sectionLabel } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
+
+/** Scrollable shell for full-page forms rendered inside the dashboard's fixed viewport. */
+export const FormPageShell: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	children,
+	...props
+}) => (
+	<div
+		className={cn(
+			'min-h-0 flex-1 overflow-y-auto overscroll-y-contain',
+			pageBg,
+			className
+		)}
+		{...props}
+	>
+		<div className="flex justify-center p-4 py-8">{children}</div>
+	</div>
+);
+
+export const FormPageCard: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	children,
+	...props
+}) => (
+	<div
+		className={cn('w-full max-w-2xl self-start p-8 backdrop-blur-sm', modalShell, className)}
+		{...props}
+	>
+		{children}
+	</div>
+);
 
 export const PageShell: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 	className,
