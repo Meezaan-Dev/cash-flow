@@ -6,6 +6,7 @@ import {
 	ACCOUNT_TYPE_LABELS,
 	normalizeAccountType,
 } from '@/domains/accounts/models/AccountModel';
+import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import {
@@ -78,8 +79,8 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 	};
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background p-4">
-			<div className="w-full max-w-lg rounded-2xl border bg-card p-8 shadow-xl">
+		<FormPageShell className="bg-background">
+			<FormPageCard className="max-w-lg rounded-2xl border bg-card shadow-xl backdrop-blur-none">
 				<div className="mb-8 border-b pb-6">
 					<h2 className="text-3xl font-bold tracking-tight">
 						{account ? 'Edit Account' : 'New Account'}
@@ -205,8 +206,8 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 						</Button>
 					</div>
 				</form>
-			</div>
-		</div>
+			</FormPageCard>
+		</FormPageShell>
 	);
 };
 

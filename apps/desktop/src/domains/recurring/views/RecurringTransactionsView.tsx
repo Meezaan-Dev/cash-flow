@@ -573,7 +573,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 
 			{/* Add / Edit Form Dialog */}
 			<Dialog open={isFormOpen} onOpenChange={handleCloseForm}>
-				<DialogContent className="sm:max-w-lg">
+				<DialogContent className="sm:max-w-lg overflow-y-auto">
 					<RecurringTransactionForm transaction={editingTransaction} onClose={handleCloseForm} />
 				</DialogContent>
 			</Dialog>

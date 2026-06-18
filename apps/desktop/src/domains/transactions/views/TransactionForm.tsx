@@ -18,8 +18,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/app/ui/select';
-import { modalShell, pageBg } from '@/styles/marketingStyles';
-import { cn } from '@/lib/utils';
+import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
 
@@ -267,8 +266,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	const availableTransferAccounts = accounts.filter((a) => a.id !== accountId);
 
 	return (
-		<div className={cn('flex min-h-screen items-center justify-center p-4', pageBg)}>
-			<div className={cn('w-full max-w-2xl p-8 backdrop-blur-sm', modalShell)}>
+		<FormPageShell>
+			<FormPageCard>
 				{/* Header */}
 				<div className="mb-8 border-b pb-6">
 					<h2 className="text-3xl font-bold tracking-tight">
@@ -535,8 +534,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 						</Button>
 					</div>
 				</form>
-			</div>
-		</div>
+			</FormPageCard>
+		</FormPageShell>
 	);
 };
 

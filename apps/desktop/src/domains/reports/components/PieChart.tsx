@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { DateRange, PieChartComponentProps } from '@/types';
 import DateRangeFilter from '@/shared/filters/components/DateRangeFilter';
+import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
 import { Button } from '@/components/app/ui/button';
 import { X } from 'lucide-react';
 
@@ -28,8 +29,8 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({
 	}, [data]);
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background p-4 md:p-6">
-			<div className="w-full max-w-4xl rounded-lg border bg-card p-4 md:p-6 shadow-lg">
+		<FormPageShell className="bg-background">
+			<FormPageCard className="max-w-4xl rounded-lg border bg-card p-4 shadow-lg backdrop-blur-none md:p-6">
 				<div className="mb-4 md:mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 					<div>
 						<h2 className="text-xl md:text-2xl font-semibold">Expense Breakdown</h2>
@@ -145,8 +146,8 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({
 						</div>
 					</>
 				)}
-			</div>
-		</div>
+			</FormPageCard>
+		</FormPageShell>
 	);
 };
 

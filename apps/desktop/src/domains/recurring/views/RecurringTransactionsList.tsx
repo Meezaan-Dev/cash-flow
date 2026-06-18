@@ -92,7 +92,7 @@ const RecurringTransactionsList: React.FC = () => {
 			</div>
 
 			<Dialog open={isFormOpen} onOpenChange={(open) => { if (!open) handleCloseForm(); }}>
-				<DialogContent className="sm:max-w-lg">
+				<DialogContent className="sm:max-w-lg overflow-y-auto">
 					<RecurringTransactionForm transaction={editingTransaction} onClose={handleCloseForm} />
 				</DialogContent>
 			</Dialog>

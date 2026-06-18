@@ -3,7 +3,8 @@ import { FiArrowRight } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import Currency from '@/components/marketing/Currency';
-import { cardSurfaceInner, modalShell, pageBg } from '@/styles/marketingStyles';
+import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
+import { cardSurfaceInner } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
@@ -74,8 +75,8 @@ const TransferForm: React.FC<TransferFormProps> = ({ onClose }) => {
 	};
 
 	return (
-		<div className={cn('flex min-h-screen items-center justify-center p-4', pageBg)}>
-			<div className={cn('w-full max-w-lg p-8', modalShell)}>
+		<FormPageShell>
+			<FormPageCard className="max-w-lg">
 				<div className="mb-8 border-b pb-6">
 					<h2 className="text-3xl font-bold tracking-tight">Transfer Money</h2>
 					<p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
@@ -234,8 +235,8 @@ const TransferForm: React.FC<TransferFormProps> = ({ onClose }) => {
 						</Button>
 					</div>
 				</form>
-			</div>
-		</div>
+			</FormPageCard>
+		</FormPageShell>
 	);
 };
 
