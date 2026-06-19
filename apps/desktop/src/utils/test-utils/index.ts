@@ -9,6 +9,7 @@ export const mockUser = {
 	email: 'test@example.com',
 	displayName: 'Test User',
 	photoURL: 'https://example.com/photo.jpg',
+	emailVerified: true,
 };
 
 // Import the mocked auth from setupTests

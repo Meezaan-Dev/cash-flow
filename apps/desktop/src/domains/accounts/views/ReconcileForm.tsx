@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FiCheckCircle } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
-import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
+import { runFinancialCommand } from '@cash-flow/shared/services/financialCommands';
 import { ACCOUNT_TYPE_LABELS } from '@/domains/accounts/models/AccountModel';
 import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -24,7 +24,6 @@ type Step = 'select' | 'reconcile' | 'done';
 
 const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose }) => {
 	const { accounts } = useAccountsContext();
-	const { addTransaction } = useTransactionsContext();
 	const { categoryOptions } = useCategoriesContext();
 
 	const [step, setStep] = useState<Step>('select');
@@ -60,16 +59,12 @@ const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose }) => {
 
 		try {
 			if (Math.abs(discrepancy) > 0.001) {
-				// Create an adjustment transaction
-				const isPositive = discrepancy > 0;
-				await addTransaction({
-					type: isPositive ? 'income' : 'expense',
+				await runFinancialCommand('reconcileAccount', {
 					accountId: selectedAccount.id,
+					targetBalance: Number(statementBalance),
 					title: 'Reconciliation Adjustment',
 					category: reconcileCategory,
-					amount: Math.abs(discrepancy),
-					description: `Reconciled to statement balance of ${formatCurrency(statementBalance)}`,
-					date: date ? new Date(date) : new Date(),
+					date: (date ? new Date(date) : new Date()).toISOString(),
 				});
 			}
 			setStep('done');

@@ -114,7 +114,6 @@ const AIChatbot: React.FC<AIChatbotProps> = ({
 		try {
 			const answer = await askQuestion({
 				question,
-				userId: currentUser.uid,
 			});
 
 			appendMessage(

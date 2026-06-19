@@ -6,6 +6,7 @@ import {
 	signInWithEmailAndPassword,
 	GoogleAuthProvider,
 	signInWithPopup,
+	sendEmailVerification,
 } from 'firebase/auth';
 import { FcGoogle } from 'react-icons/fc';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -22,6 +23,7 @@ import { Label } from '@/components/app/ui/label';
 import { Alert, AlertDescription } from '@/components/app/ui/alert';
 import { Separator } from '@/components/app/ui/separator';
 import { Loader2 } from 'lucide-react';
+import { demoLoginEnabled } from '@/config/runtime';
 
 interface AuthModalsProps {
 	open: boolean;
@@ -57,15 +59,16 @@ const AuthModals: React.FC<AuthModalsProps> = ({ open, onClose, mode, onModeChan
 
 		try {
 			if (mode === 'register') {
-				await createUserWithEmailAndPassword(auth, email, password);
+				const credential = await createUserWithEmailAndPassword(auth, email, password);
+				await sendEmailVerification(credential.user);
 			} else {
 				await signInWithEmailAndPassword(auth, email, password);
 			}
 			handleSuccessfulAuth();
 			setEmail('');
 			setPassword('');
-		} catch (error: unknown) {
-			setError(error instanceof Error ? error.message : 'Something went wrong');
+		} catch {
+			setError('Unable to sign in or create this account. Check your details and try again.');
 		} finally {
 			setLoading(false);
 		}
@@ -85,8 +88,8 @@ const AuthModals: React.FC<AuthModalsProps> = ({ open, onClose, mode, onModeChan
 			const provider = new GoogleAuthProvider();
 			await signInWithPopup(auth, provider);
 			handleSuccessfulAuth();
-		} catch (error: unknown) {
-			setError(error instanceof Error ? error.message : 'Something went wrong');
+		} catch {
+			setError('Unable to continue with Google. Please try again.');
 		} finally {
 			setGoogleLoading(false);
 		}
@@ -200,7 +203,7 @@ const AuthModals: React.FC<AuthModalsProps> = ({ open, onClose, mode, onModeChan
 						</div>
 					</div>
 
-					{mode === 'login' && (
+					{mode === 'login' && demoLoginEnabled && (
 						<Button
 							type="button"
 							variant="secondary"

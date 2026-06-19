@@ -2,6 +2,7 @@ export * from './types';
 export * from './utils/date';
 export * from './utils/formatCurrency';
 export * from './services/firebase';
+export * from './services/financialCommands';
 export * from './transactions/TransactionModel';
 export * from './hooks/useTransactions';
 export * from './hooks/useAccounts';

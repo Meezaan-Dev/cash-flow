@@ -1,5 +1,7 @@
 import { auth } from './firebase';
 import { getIdToken } from 'firebase/auth';
+import { getToken } from 'firebase/app-check';
+import { appCheck } from './firebase';
 import { AskAIRequest, AskAIResponse } from '@/types';
 
 // API response interface
@@ -92,12 +94,14 @@ class ApiService {
 	): Promise<ApiResponse<T>> {
 		try {
 			const token = await this.getAuthToken();
+			const appCheckToken = appCheck ? (await getToken(appCheck, false)).token : undefined;
 
 			const response = await fetch(`${API_BASE_URL}${endpoint}`, {
 				...options,
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`,
+					...(appCheckToken ? { 'X-Firebase-AppCheck': appCheckToken } : {}),
 					...options.headers,
 				},
 			});
@@ -186,21 +190,18 @@ class ApiService {
 			throw new Error('Please enter a question before sending.');
 		}
 
-		if (!payload.userId.trim()) {
-			throw new Error('Please log in to use the AI assistant.');
-		}
-
 		try {
 			const token = await this.getAuthToken();
+			const appCheckToken = appCheck ? (await getToken(appCheck, false)).token : undefined;
 			const response = await fetch(`${API_BASE_URL}/askAI`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`,
+					...(appCheckToken ? { 'X-Firebase-AppCheck': appCheckToken } : {}),
 				},
 				body: JSON.stringify({
 					question: payload.question.trim(),
-					userId: payload.userId,
 				}),
 			});
 

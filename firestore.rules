@@ -2,7 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return request.auth != null &&
+        request.auth.uid == userId &&
+        request.auth.token.email_verified == true;
     }
 
     function requiredString(data, field, maxLength) {
@@ -147,12 +149,8 @@ service cloud.firestore {
       allow write: if false;
 
       match /transactions/{transactionId} {
-        allow read, delete: if isOwner(userId);
-        allow create: if isOwner(userId) && validTransaction(request.resource.data, userId);
-        allow update: if isOwner(userId) &&
-          validTransaction(request.resource.data, userId) &&
-          request.resource.data.userId == resource.data.userId &&
-          request.resource.data.createdAt == resource.data.createdAt;
+        allow read: if isOwner(userId);
+        allow write: if false;
       }
 
       match /recurringTransactions/{id} {
@@ -165,12 +163,8 @@ service cloud.firestore {
       }
 
       match /accounts/{accountId} {
-        allow read, delete: if isOwner(userId);
-        allow create: if isOwner(userId) && validAccount(request.resource.data, userId);
-        allow update: if isOwner(userId) &&
-          validAccount(request.resource.data, userId) &&
-          request.resource.data.userId == resource.data.userId &&
-          request.resource.data.createdAt == resource.data.createdAt;
+        allow read: if isOwner(userId);
+        allow write: if false;
       }
 
       match /budgets/{budgetId} {
@@ -197,11 +191,15 @@ service cloud.firestore {
 
     // Read-only legacy collections retained for migration compatibility.
     match /transactions/{document} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null &&
+        request.auth.token.email_verified == true &&
+        request.auth.uid == resource.data.userId;
     }
 
     match /recurringExpenses/{document} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null &&
+        request.auth.token.email_verified == true &&
+        request.auth.uid == resource.data.userId;
     }
   }
 }

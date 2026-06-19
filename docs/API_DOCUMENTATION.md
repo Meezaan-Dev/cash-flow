@@ -124,8 +124,7 @@ Content-Type: application/json
 
 ```json
 {
-	"question": "How much did I spend this month?",
-	"userId": "user_uid"
+	"question": "How much did I spend this month?"
 }
 ```
 
@@ -141,9 +140,9 @@ Content-Type: application/json
 **Status Codes:**
 
 - `200` - Success (including no-transaction guidance responses)
-- `400` - Missing `question` or `userId`
+- `400` - Missing or oversized `question`
 - `401` - Missing/invalid auth token
-- `403` - Authenticated token user does not match `userId`
+- `403` - Origin, email verification, or App Check policy rejected the request
 - `405` - Method not allowed
 - `500` - Internal server error
 
@@ -194,7 +193,7 @@ The API returns appropriate HTTP status codes and error messages:
 | ----------- | --------------------- | --------------------------------- |
 | `200`       | Success               | -                                 |
 | `401`       | Unauthorized          | "Invalid or expired token"        |
-| `403`       | Forbidden             | "Authenticated user does not match the provided userId" |
+| `403`       | Forbidden             | "Origin not allowed"             |
 | `405`       | Method not allowed    | "Only GET/POST requests are supported" |
 | `500`       | Internal server error | "Internal server error"           |
 
@@ -203,14 +202,14 @@ The API returns appropriate HTTP status codes and error messages:
 The API includes CORS headers to allow cross-origin requests:
 
 ```
-Access-Control-Allow-Origin: *
+Access-Control-Allow-Origin: https://cashflow.meezaan.dev
 Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 Access-Control-Allow-Headers: Content-Type, Authorization
 ```
 
 ## Rate Limiting
 
-Currently, no rate limiting is implemented. Consider implementing rate limiting for production use.
+Financial commands are limited to 60 requests per user per minute. AI requests are limited to 10 requests per user per minute.
 
 ## Security
 

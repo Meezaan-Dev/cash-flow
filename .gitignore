@@ -15,6 +15,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+functions/lib
+coverage
+.firebase
 *.local
 
 # Editor directories and files

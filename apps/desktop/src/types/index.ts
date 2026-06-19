@@ -268,7 +268,6 @@ export interface AIChatMessage {
 
 export interface AskAIRequest {
 	question: string;
-	userId: string;
 }
 
 export interface AskAIResponse {

@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 
 let mockInitialPath = '/';
-let mockAuthUser: unknown = { uid: 'user-1', email: 'test@example.com' };
+let mockAuthUser: unknown = { uid: 'user-1', email: 'test@example.com', emailVerified: true };
 
 const setMobileViewport = (isMobile: boolean) => {
 	Object.defineProperty(window, 'matchMedia', {
@@ -108,7 +108,7 @@ describe('App routing', () => {
 	});
 
 	beforeEach(() => {
-		mockAuthUser = { uid: 'user-1', email: 'test@example.com' };
+		mockAuthUser = { uid: 'user-1', email: 'test@example.com', emailVerified: true };
 		setMobileViewport(false);
 	});
 
@@ -158,6 +158,16 @@ describe('App routing', () => {
 		expect(await screen.findByText('Marketing home')).toBeInTheDocument();
 		expect(screen.queryByText('Desktop dashboard')).not.toBeInTheDocument();
 		expect(screen.queryByTestId('mobisite-frame')).not.toBeInTheDocument();
+	});
+
+	it('blocks protected routes until email verification is complete', async () => {
+		mockInitialPath = '/dashboard';
+		mockAuthUser = { uid: 'user-1', email: 'test@example.com', emailVerified: false };
+
+		render(<App />);
+
+		expect(await screen.findByRole('heading', { name: 'Verify your email' })).toBeInTheDocument();
+		expect(screen.queryByText('Desktop dashboard')).not.toBeInTheDocument();
 	});
 
 	it('renders the mobisite route in its own frame', () => {

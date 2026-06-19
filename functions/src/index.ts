@@ -3,6 +3,19 @@ import * as admin from 'firebase-admin';
 
 admin.initializeApp();
 
+export {
+	createAccount,
+	updateAccount,
+	deleteAccount,
+	createTransaction,
+	updateTransaction,
+	deleteTransaction,
+	createTransfer,
+	reconcileAccount,
+	bulkUpdateTransactionCategories,
+	deleteAllTransactions,
+} from './financial';
+
 const db = admin.firestore();
 
 // Interface for transaction data
@@ -41,7 +54,6 @@ interface ApiResponse {
 
 interface AskAIRequestBody {
 	question?: string;
-	userId?: string;
 }
 
 interface AskAIResponse {
@@ -60,17 +72,52 @@ async function verifyToken(authHeader: string): Promise<admin.auth.DecodedIdToke
 
 	try {
 		const decodedToken = await admin.auth().verifyIdToken(token);
+		if (decodedToken.email_verified !== true) {
+			throw new Error('Email verification required');
+		}
 		return decodedToken;
 	} catch {
 		throw new Error('Invalid or expired token');
 	}
 }
 
-function setCorsHeaders(res: functions.Response<unknown>): void {
-	res.set('Access-Control-Allow-Origin', '*');
+const allowedOrigins = new Set(
+	(process.env.ALLOWED_ORIGINS || 'https://cashflow.meezaan.dev,http://localhost:5173')
+		.split(',')
+		.map((origin) => origin.trim())
+		.filter(Boolean)
+);
+
+function setCorsHeaders(req: functions.https.Request, res: functions.Response<unknown>): boolean {
+	const origin = req.headers.origin;
+	if (origin && !allowedOrigins.has(origin)) return false;
+	if (origin) res.set('Access-Control-Allow-Origin', origin);
+	res.set('Vary', 'Origin');
 	res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-	res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Firebase-AppCheck');
 	res.set('Access-Control-Max-Age', '3600');
+	return true;
+}
+
+async function verifyAppCheck(req: functions.https.Request): Promise<void> {
+	if (process.env.FUNCTIONS_EMULATOR === 'true') return;
+	const token = req.header('X-Firebase-AppCheck');
+	if (!token) throw new Error('Missing App Check token');
+	await admin.appCheck().verifyToken(token);
+}
+
+async function enforceRequestLimit(uid: string, bucket: string, limit: number): Promise<void> {
+	const minute = Math.floor(Date.now() / 60_000);
+	const ref = db.collection('_security').doc(`${bucket}-${uid}-${minute}`);
+	await db.runTransaction(async (transaction) => {
+		const snapshot = await transaction.get(ref);
+		const count = snapshot.exists ? Number(snapshot.get('count') || 0) : 0;
+		if (count >= limit) throw new Error('Rate limit exceeded');
+		transaction.set(ref, {
+			count: count + 1,
+			expiresAt: admin.firestore.Timestamp.fromMillis((minute + 2) * 60_000),
+		});
+	});
 }
 
 function parseDate(value: unknown): Date | null {
@@ -253,29 +300,24 @@ function formatTopBreakdown(
 function createResponse(
 	statusCode: number,
 	body: ApiResponse
-): { statusCode: number; headers: Record<string, string>; body: string } {
+): { statusCode: number; body: string } {
 	return {
 		statusCode,
-		headers: {
-			'Content-Type': 'application/json',
-			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-			'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-		},
 		body: JSON.stringify(body),
 	};
 }
 
 // Main API function to get user transactions
 export const getUserTransactions = functions.https.onRequest(async (req, res) => {
+	if (!setCorsHeaders(req, res)) {
+		res.status(403).json({ success: false, error: 'Origin not allowed' });
+		return;
+	}
 	// Handle CORS preflight requests
 	if (req.method === 'OPTIONS') {
-		setCorsHeaders(res);
 		res.status(204).send('');
 		return;
 	}
-
-	setCorsHeaders(res);
 
 	// Only allow GET requests
 	if (req.method !== 'GET') {
@@ -288,6 +330,7 @@ export const getUserTransactions = functions.https.onRequest(async (req, res) =>
 	}
 
 	try {
+		await verifyAppCheck(req);
 		// Verify JWT token
 		const authHeader = req.headers.authorization;
 		if (!authHeader) {
@@ -301,11 +344,13 @@ export const getUserTransactions = functions.https.onRequest(async (req, res) =>
 
 		const decodedToken = await verifyToken(authHeader);
 		const userId = decodedToken.uid;
+		await enforceRequestLimit(userId, 'transactions', 60);
 
 		// Query Firestore for user's transactions
 		const transactionsRef = db.collection('users').doc(userId).collection('transactions');
 		const snapshot = await transactionsRef
 			.orderBy('date', 'desc')
+			.limit(Math.min(Math.max(Number(req.query.limit) || 100, 1), 200))
 			.get();
 
 		const transactions: Transaction[] = [];
@@ -370,7 +415,10 @@ export const getUserTransactions = functions.https.onRequest(async (req, res) =>
 
 // Health check endpoint
 export const healthCheck = functions.https.onRequest((req, res) => {
-	setCorsHeaders(res);
+	if (!setCorsHeaders(req, res)) {
+		res.status(403).json({ success: false, error: 'Origin not allowed' });
+		return;
+	}
 	res.json({
 		success: true,
 		message: 'API is running',
@@ -379,13 +427,14 @@ export const healthCheck = functions.https.onRequest((req, res) => {
 });
 
 export const askAI = functions.https.onRequest(async (req, res) => {
+	if (!setCorsHeaders(req, res)) {
+		res.status(403).json({ success: false, error: 'Origin not allowed' });
+		return;
+	}
 	if (req.method === 'OPTIONS') {
-		setCorsHeaders(res);
 		res.status(204).send('');
 		return;
 	}
-
-	setCorsHeaders(res);
 
 	if (req.method !== 'POST') {
 		const response: AskAIResponse = {
@@ -397,6 +446,7 @@ export const askAI = functions.https.onRequest(async (req, res) => {
 	}
 
 	try {
+		await verifyAppCheck(req);
 		const authHeader = req.headers.authorization;
 		if (!authHeader) {
 			res.status(401).json({ success: false, error: 'Authorization header is required' });
@@ -406,25 +456,17 @@ export const askAI = functions.https.onRequest(async (req, res) => {
 		const decodedToken = await verifyToken(authHeader);
 		const body = (req.body || {}) as AskAIRequestBody;
 		const question = (body.question || '').trim();
-		const requestedUserId = (body.userId || '').trim();
 
 		if (!question) {
 			res.status(400).json({ success: false, error: 'Question is required' });
 			return;
 		}
-
-		if (!requestedUserId) {
-			res.status(400).json({ success: false, error: 'userId is required' });
+		if (question.length > 500) {
+			res.status(400).json({ success: false, error: 'Question must be 500 characters or fewer' });
 			return;
 		}
 
-		if (decodedToken.uid !== requestedUserId) {
-			res.status(403).json({
-				success: false,
-				error: 'Authenticated user does not match the provided userId',
-			});
-			return;
-		}
+		await enforceRequestLimit(decodedToken.uid, 'ai', 10);
 
 		const userRef = db.collection('users').doc(decodedToken.uid);
 		const [transactionsSnapshot, accountsSnapshot] = await Promise.all([
@@ -730,9 +772,10 @@ export const askAI = functions.https.onRequest(async (req, res) => {
 		});
 	} catch (error) {
 		console.error('Error in askAI:', error);
-		res.status(500).json({
+		const rateLimited = error instanceof Error && error.message === 'Rate limit exceeded';
+		res.status(rateLimited ? 429 : 500).json({
 			success: false,
-			error: 'Internal server error',
+			error: rateLimited ? 'Too many requests. Try again shortly.' : 'Internal server error',
 		});
 	}
 });

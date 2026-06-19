@@ -53,7 +53,6 @@ describe('AIChatbot', () => {
 		await waitFor(() => {
 			expect(mockAskQuestion).toHaveBeenCalledWith({
 				question: 'How much did I spend on food this month?',
-				userId: 'user-123',
 			});
 		});
 

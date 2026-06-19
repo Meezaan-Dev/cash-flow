@@ -18,6 +18,8 @@ This guide provides step-by-step instructions for deploying the Firebase Cloud F
 
 ## Prerequisites
 
+Complete [Security Operations](SECURITY_OPERATIONS.md) before a production deployment. Production Firebase changes should be deployed by `.github/workflows/deploy-firebase.yml` using workload identity federation; local CLI deployment is for development and emergency recovery only.
+
 1. **Firebase CLI**: Install Firebase CLI globally
 
     ```bash
@@ -125,62 +127,14 @@ This guide provides step-by-step instructions for deploying the Firebase Cloud F
 
 ## Step 6: Security Rules (Required)
 
-1. **Update Firestore security rules** to ensure only authenticated users can access their data:
-
-    The `firestore.rules` file should contain:
-
-    ```javascript
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        // User document and subcollections
-        match /users/{userId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-
-          match /transactions/{transactionId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-            allow create: if request.auth != null && request.auth.uid == userId;
-          }
-
-          match /recurringTransactions/{id} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-            allow create: if request.auth != null && request.auth.uid == userId;
-          }
-
-          match /accounts/{accountId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-            allow create: if request.auth != null && request.auth.uid == userId;
-          }
-
-          match /budgets/{budgetId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-            allow create: if request.auth != null && request.auth.uid == userId;
-          }
-
-                    match /categories/{categoryId} {
-                        allow read, write: if request.auth != null && request.auth.uid == userId;
-                        allow create: if request.auth != null && request.auth.uid == userId;
-                    }
-        }
-
-        // Legacy top-level collections (backward compatibility, read-only)
-        match /transactions/{document} {
-          allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-        }
-
-        match /recurringExpenses/{document} {
-          allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-        }
-      }
-    }
-    ```
+1. Treat the checked-in `firestore.rules` as the source of truth. It requires verified owner reads and denies direct account and transaction writes; callable functions use the Admin SDK for trusted mutations. Do not replace it with broad owner `read, write` rules.
 
 2. **Deploy security rules**:
     ```bash
     firebase deploy --only firestore:rules
     ```
 
-**Note:** Security rules are required for the app to function properly. Without them, users will get permission errors when trying to access their data.
+Run `npm run test:rules` through the Firestore emulator before deploying rule changes.
 
 ## Troubleshooting
 

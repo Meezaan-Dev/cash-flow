@@ -2,16 +2,8 @@ import { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
 import {
 	collection,
-	addDoc,
-	deleteDoc,
-	updateDoc,
-	doc,
 	query,
 	onSnapshot,
-	Timestamp,
-	deleteField,
-	increment,
-	type UpdateData,
 } from 'firebase/firestore';
 import { Account } from '../types';
 import { normalizeAccount } from '../accounts/AccountModel';
@@ -21,6 +13,7 @@ import {
 	normalizeOptionalText,
 	normalizeRequiredText,
 } from '../validation';
+import { runFinancialCommand, type FinancialCommandPayloads } from '../services/financialCommands';
 
 const normalizeAccountFields = (
 	account: Partial<Account>,
@@ -33,7 +26,7 @@ const normalizeAccountFields = (
 	if (Object.prototype.hasOwnProperty.call(account, 'bank')) {
 		const bank = normalizeOptionalText(account.bank, 'Bank name', TEXT_LIMITS.bankName);
 		if (bank) normalized.bank = bank;
-		else if (allowFieldDelete) normalized.bank = deleteField();
+		else if (allowFieldDelete) normalized.bank = null;
 	}
 	if (account.type !== undefined) {
 		if (!['debit', 'credit', 'savings', 'cash'].includes(account.type)) {
@@ -58,7 +51,7 @@ const normalizeAccountFields = (
 	if (account.icon !== undefined) {
 		const icon = normalizeOptionalText(account.icon, 'Account icon', 80);
 		if (icon) normalized.icon = icon;
-		else if (allowFieldDelete) normalized.icon = deleteField();
+		else if (allowFieldDelete) normalized.icon = null;
 	}
 	return normalized;
 };
@@ -107,34 +100,39 @@ export const useAccounts = () => {
 			throw new Error('Account name, type, and balance are required.');
 		}
 
-		const col = collection(db, 'users', user.uid, 'accounts');
-		await addDoc(col, {
-			...normalized,
-			userId: user.uid,
-			createdAt: Timestamp.now(),
-		});
+		await runFinancialCommand(
+			'createAccount',
+			normalized as unknown as FinancialCommandPayloads['createAccount']
+		);
 	};
 
 	const updateAccount = async (id: string, updates: Partial<Account>) => {
 		if (!user) throw new Error('User not authenticated');
 		const accountId = normalizeRequiredText(id, 'Account ID', TEXT_LIMITS.documentId);
-		const ref = doc(db, 'users', user.uid, 'accounts', accountId);
-		await updateDoc(ref, normalizeAccountFields(updates, true) as UpdateData<Account>);
+		const normalized = normalizeAccountFields(updates, true);
+		delete normalized.balance;
+		await runFinancialCommand('updateAccount', {
+			accountId,
+			updates: normalized as FinancialCommandPayloads['updateAccount']['updates'],
+		});
 	};
 
 	const deleteAccount = async (id: string) => {
 		if (!user) throw new Error('User not authenticated');
 		const accountId = normalizeRequiredText(id, 'Account ID', TEXT_LIMITS.documentId);
-		const ref = doc(db, 'users', user.uid, 'accounts', accountId);
-		await deleteDoc(ref);
+		await runFinancialCommand('deleteAccount', { accountId });
 	};
 
 	const updateBalance = async (accountId: string, delta: number) => {
 		if (!user) throw new Error('User not authenticated');
 		const normalizedId = normalizeRequiredText(accountId, 'Account ID', TEXT_LIMITS.documentId);
 		const normalizedDelta = assertFiniteMoney(delta, 'Balance change');
-		const ref = doc(db, 'users', user.uid, 'accounts', normalizedId);
-		await updateDoc(ref, { balance: increment(normalizedDelta) });
+		await runFinancialCommand('reconcileAccount', {
+			accountId: normalizedId,
+			balanceDelta: normalizedDelta,
+			category: 'other',
+			title: 'Reconciliation Adjustment',
+		});
 	};
 
 	return {

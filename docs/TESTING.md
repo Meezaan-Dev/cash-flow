@@ -31,6 +31,7 @@ src/
 npm test
 npm run test:watch
 npm run test:coverage
+npx firebase emulators:exec --only firestore "npm run test:rules" --project cash-flow-security-tests
 ```
 
 ## Validation Checklist
@@ -51,6 +52,7 @@ Known current lint output may include existing Fast Refresh warnings for files t
 - `AuthModals` UI flows and validation
 - `formatCurrency` numeric and formatting edge cases
 - `AIChatbot` chat UI flow and API error handling
+- Firestore verified-owner reads and denial of cross-user access, direct balance writes, transaction deletes, and partial transfers
 
 Run `npm test` for the latest exact test count in your environment.
 

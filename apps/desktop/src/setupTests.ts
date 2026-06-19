@@ -1,6 +1,8 @@
 import '@testing-library/jest-dom';
 import React from 'react';
 
+jest.mock('@/config/runtime', () => ({ demoLoginEnabled: false }));
+
 // Mock Firebase for authentication tests
 jest.mock('@/services/firebase', () => ({
 	auth: {

@@ -8,6 +8,7 @@ jest.mock('firebase/auth', () => ({
 	createUserWithEmailAndPassword: jest.fn(),
 	signInWithEmailAndPassword: jest.fn(),
 	signInWithPopup: jest.fn(),
+	sendEmailVerification: jest.fn(),
 	GoogleAuthProvider: jest.fn(),
 }));
 
@@ -16,6 +17,7 @@ import {
 	createUserWithEmailAndPassword,
 	signInWithEmailAndPassword,
 	signInWithPopup,
+	sendEmailVerification,
 	GoogleAuthProvider,
 } from 'firebase/auth';
 
@@ -147,7 +149,7 @@ describe('AuthModals - Authentication', () => {
 
 	it('should handle successful registration', async () => {
 		const user = userEvent.setup();
-		(createUserWithEmailAndPassword as jest.Mock).mockResolvedValue({});
+		(createUserWithEmailAndPassword as jest.Mock).mockResolvedValue({ user: {} });
 
 		render(<AuthModals {...defaultProps} mode="register" />);
 
@@ -166,6 +168,7 @@ describe('AuthModals - Authentication', () => {
 				'password123'
 			);
 		});
+		expect(sendEmailVerification).toHaveBeenCalled();
 
 		expect(defaultProps.onClose).toHaveBeenCalled();
 		expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
@@ -173,8 +176,7 @@ describe('AuthModals - Authentication', () => {
 
 	it('should handle login errors', async () => {
 		const user = userEvent.setup();
-		const errorMessage = 'Invalid email or password';
-		(signInWithEmailAndPassword as jest.Mock).mockRejectedValue(new Error(errorMessage));
+		(signInWithEmailAndPassword as jest.Mock).mockRejectedValue(new Error('Invalid email or password'));
 
 		render(<AuthModals {...defaultProps} />);
 
@@ -187,7 +189,7 @@ describe('AuthModals - Authentication', () => {
 		await user.click(submitButton);
 
 		await waitFor(() => {
-			expect(screen.getByText(errorMessage)).toBeInTheDocument();
+			expect(screen.getByText(/Unable to sign in or create this account/)).toBeInTheDocument();
 		});
 
 		expect(defaultProps.onClose).not.toHaveBeenCalled();
@@ -215,8 +217,7 @@ describe('AuthModals - Authentication', () => {
 
 	it('should handle Google sign-in errors', async () => {
 		const user = userEvent.setup();
-		const errorMessage = 'Google sign-in failed';
-		(signInWithPopup as jest.Mock).mockRejectedValue(new Error(errorMessage));
+		(signInWithPopup as jest.Mock).mockRejectedValue(new Error('Google sign-in failed'));
 
 		render(<AuthModals {...defaultProps} />);
 
@@ -226,7 +227,7 @@ describe('AuthModals - Authentication', () => {
 		await user.click(googleButton);
 
 		await waitFor(() => {
-			expect(screen.getByText(errorMessage)).toBeInTheDocument();
+			expect(screen.getByText(/Unable to continue with Google/)).toBeInTheDocument();
 		});
 
 		expect(defaultProps.onClose).not.toHaveBeenCalled();

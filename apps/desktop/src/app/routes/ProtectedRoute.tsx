@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, sendEmailVerification, signOut, User } from 'firebase/auth';
 import { auth } from '@/services/firebase';
 import AIChatbot from '@/domains/ai/components/AIChatbot';
 import Home from '@/pages/marketing/Home';
@@ -89,6 +89,30 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
 	if (!user) {
 		return <Home />;
+	}
+
+	if (!user.emailVerified) {
+		return (
+			<main className="min-h-screen bg-background px-6 py-20">
+				<section className="mx-auto max-w-md rounded-2xl border bg-card p-8 text-center shadow-lg">
+					<h1 className="text-2xl font-semibold">Verify your email</h1>
+					<p className="mt-3 text-sm text-muted-foreground">
+						We sent a verification link to {user.email ?? 'your email address'}. Financial data stays locked until verification is complete.
+					</p>
+					<div className="mt-6 grid gap-3">
+						<button className="rounded-lg bg-primary px-4 py-2 text-primary-foreground" onClick={() => window.location.reload()}>
+							I have verified my email
+						</button>
+						<button className="rounded-lg border px-4 py-2" onClick={() => void sendEmailVerification(user)}>
+							Resend verification email
+						</button>
+						<button className="px-4 py-2 text-sm text-muted-foreground" onClick={() => void signOut(auth)}>
+							Sign out
+						</button>
+					</div>
+				</section>
+			</main>
+		);
 	}
 
 	if (isMobileViewport && (location.pathname === '/' || isDashboardRoute)) {

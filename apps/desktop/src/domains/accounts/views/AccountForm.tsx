@@ -59,7 +59,6 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 				name: name.trim(),
 				bank: bank.trim() || undefined,
 				type: normalizedType,
-				balance: Number(balance),
 				creditLimit:
 					normalizedType === 'credit' ? Math.max(Number(creditLimit), 0) : 0,
 				color,
@@ -68,7 +67,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 			if (account?.id) {
 				await updateAccount(account.id, data);
 			} else {
-				await addAccount(data);
+				await addAccount({ ...data, balance: Number(balance) });
 			}
 			onClose();
 		} catch (err: unknown) {
@@ -152,6 +151,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 								type="number"
 								step="0.01"
 								value={balance}
+								disabled={Boolean(account)}
 								onChange={(e) => setBalance(Number(e.target.value))}
 								placeholder="0.00"
 							/>
