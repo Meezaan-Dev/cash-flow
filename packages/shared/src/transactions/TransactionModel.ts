@@ -14,6 +14,8 @@ type TransactionDoc = {
 	subcategory?: string;
 	description?: string;
 	transferAccountId?: string;
+	transferId?: string;
+	transferDirection?: string;
 	recurringTransactionId?: string;
 	recurringOccurrenceDate?: string;
 	date?: unknown;
@@ -33,6 +35,11 @@ export const normalizeTransaction = (doc: TransactionDoc): Transaction => {
 		subcategory: doc.subcategory || undefined,
 		description: doc.description,
 		transferAccountId: doc.transferAccountId,
+		transferId: doc.transferId,
+		transferDirection:
+			doc.transferDirection === 'out' || doc.transferDirection === 'in'
+				? doc.transferDirection
+				: undefined,
 		recurringTransactionId: doc.recurringTransactionId,
 		recurringOccurrenceDate: doc.recurringOccurrenceDate,
 	};

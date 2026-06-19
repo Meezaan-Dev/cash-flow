@@ -87,6 +87,35 @@ describe('transaction import/export', () => {
 		expect(result.errors).toContain('Row 1: Missing category');
 	});
 
+	it.each([0, -10, Number.POSITIVE_INFINITY])(
+		'rejects non-positive or non-finite imported amount %s',
+		async (amount) => {
+			const file = createFile(
+				JSON.stringify([{ title: 'Bad amount', amount, type: 'expense', category: 'food' }]),
+				'transactions.json',
+				'application/json'
+			);
+
+			const result = await importTransactionsFromFile(
+				file,
+				[],
+				jest.fn().mockResolvedValue(undefined),
+				'account-1'
+			);
+
+			expect(result.importedCount).toBe(0);
+			expect(result.errors).toContain('Row 1: Amount must be greater than zero');
+		}
+	);
+
+	it('rejects JSON objects instead of transaction arrays', async () => {
+		const file = createFile('{}', 'transactions.json', 'application/json');
+
+		await expect(
+			importTransactionsFromFile(file, [], jest.fn(), 'account-1')
+		).rejects.toThrow('Import file must contain a list of transactions.');
+	});
+
 	it('exports subcategory in csv output', () => {
 		const csv = exportTransactionsToCsv([
 			{
@@ -102,5 +131,21 @@ describe('transaction import/export', () => {
 
 		expect(csv.split('\n')[0]).toContain('subcategory');
 		expect(csv).toContain('"groceries"');
+	});
+
+	it('neutralizes spreadsheet formulas in user-controlled CSV fields', () => {
+		const csv = exportTransactionsToCsv([
+			{
+				id: 'tx-1',
+				accountId: 'account-1',
+				title: '=HYPERLINK("https://example.invalid")',
+				amount: 300,
+				type: 'expense',
+				category: '+SUM(A1:A2)',
+			},
+		]);
+
+		expect(csv).toContain('"\'=HYPERLINK(""https://example.invalid"")"');
+		expect(csv).toContain('"\'+SUM(A1:A2)"');
 	});
 });

@@ -16,14 +16,51 @@ import {
 	normalizeRecurringTransactions,
 	RecurringTransaction,
 } from '@/domains/recurring/models/RecurringTransactionModel';
+import {
+	TEXT_LIMITS,
+	assertPositiveMoney,
+	normalizeOptionalText,
+	normalizeRequiredText,
+} from '@cash-flow/shared/validation';
 
 const sanitizeRecurringPayload = (
 	payload: Partial<RecurringTransaction>,
 	allowExpectedDateDelete: boolean,
 ) => {
-	const sanitized: Record<string, unknown> = Object.fromEntries(
-		Object.entries(payload).filter(([, value]) => value !== undefined)
-	);
+	const sanitized: Record<string, unknown> = {};
+
+	if (payload.title !== undefined) {
+		sanitized.title = normalizeRequiredText(payload.title, 'Title', TEXT_LIMITS.title);
+	}
+	if (payload.amount !== undefined) sanitized.amount = assertPositiveMoney(payload.amount);
+	if (payload.type !== undefined) {
+		if (payload.type !== 'income' && payload.type !== 'expense') {
+			throw new Error('Recurring transaction type must be income or expense.');
+		}
+		sanitized.type = payload.type;
+	}
+	if (payload.frequency !== undefined) {
+		if (!['daily', 'weekly', 'monthly', 'yearly'].includes(payload.frequency)) {
+			throw new Error('Recurring frequency is invalid.');
+		}
+		sanitized.frequency = payload.frequency;
+	}
+	if (payload.accountId !== undefined) {
+		sanitized.accountId = normalizeRequiredText(
+			payload.accountId,
+			'Account',
+			TEXT_LIMITS.documentId
+		);
+	}
+	if (Object.prototype.hasOwnProperty.call(payload, 'description')) {
+		const description = normalizeOptionalText(
+			payload.description,
+			'Description',
+			TEXT_LIMITS.description
+		);
+		if (description) sanitized.description = description;
+		else if (allowExpectedDateDelete) sanitized.description = deleteField();
+	}
 
 	if (payload.expectedDate !== undefined) {
 		if (
@@ -33,7 +70,7 @@ const sanitizeRecurringPayload = (
 		) {
 			sanitized.expectedDate = payload.expectedDate;
 		} else {
-			delete sanitized.expectedDate;
+			throw new Error('Expected date must be a day between 1 and 31.');
 		}
 	}
 
@@ -45,25 +82,22 @@ const sanitizeRecurringPayload = (
 		sanitized.expectedDate = deleteField();
 	}
 
-	if (typeof payload.category === 'string') {
-		sanitized.category = payload.category.trim();
+	if (payload.category !== undefined) {
+		sanitized.category = normalizeRequiredText(
+			payload.category,
+			'Category',
+			TEXT_LIMITS.category
+		);
 	}
 
-	if (typeof payload.subcategory === 'string') {
-		const trimmedSubcategory = payload.subcategory.trim();
-		if (trimmedSubcategory) {
-			sanitized.subcategory = trimmedSubcategory;
-		} else {
-			delete sanitized.subcategory;
-		}
-	}
-
-	if (
-		allowExpectedDateDelete &&
-		Object.prototype.hasOwnProperty.call(payload, 'subcategory') &&
-		payload.subcategory === undefined
-	) {
-		sanitized.subcategory = deleteField();
+	if (Object.prototype.hasOwnProperty.call(payload, 'subcategory')) {
+		const subcategory = normalizeOptionalText(
+			payload.subcategory,
+			'Subcategory',
+			TEXT_LIMITS.subcategory
+		);
+		if (subcategory) sanitized.subcategory = subcategory;
+		else if (allowExpectedDateDelete) sanitized.subcategory = deleteField();
 	}
 
 	return sanitized;
@@ -117,7 +151,6 @@ export const useRecurringTransactions = () => {
 		transaction: Omit<RecurringTransaction, 'id' | 'createdAt' | 'userId'>
 	) => {
 		if (!user) throw new Error('User not authenticated');
-		if (!transaction.category.trim()) throw new Error('Category is required.');
 
 		const col = collection(db, 'users', user.uid, 'recurringTransactions');
 		const sanitizedTransaction = sanitizeRecurringPayload(transaction, false);
@@ -144,12 +177,6 @@ export const useRecurringTransactions = () => {
 	) => {
 		if (!user) throw new Error('User not authenticated');
 		try {
-			if (
-				Object.prototype.hasOwnProperty.call(updates, 'category') &&
-				!updates.category?.trim()
-			) {
-				throw new Error('Category is required.');
-			}
 			const ref = doc(db, 'users', user.uid, 'recurringTransactions', id);
 			const sanitizedUpdates = sanitizeRecurringPayload(updates, true);
 			await updateDoc(ref, sanitizedUpdates as UpdateData<RecurringTransaction>);

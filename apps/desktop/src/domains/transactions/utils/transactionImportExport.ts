@@ -2,6 +2,11 @@ import { ImportResult, SerializableTransaction, Transaction } from '@/types';
 import { parseDbDateOrNull } from '@/utils/date';
 
 const REQUIRED_FIELDS = ['title', 'amount', 'type', 'category'] as const;
+const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 5_000;
+const MAX_TITLE_LENGTH = 200;
+const MAX_CATEGORY_LENGTH = 80;
+const MAX_DESCRIPTION_LENGTH = 2_000;
 
 const normalizeIsoDate = (value: unknown): string => {
 	const parsed = parseDbDateOrNull(value);
@@ -40,15 +45,27 @@ const validateImportRow = (row: Record<string, unknown>, rowIndex: number): stri
 	if (missing.length) {
 		errors.push(`Row ${rowIndex}: Missing ${missing.join(', ')}`);
 	}
+	if (typeof row.title !== 'string' || !row.title.trim()) {
+		errors.push(`Row ${rowIndex}: Missing title`);
+	} else if (row.title.trim().length > MAX_TITLE_LENGTH) {
+		errors.push(`Row ${rowIndex}: Title is too long`);
+	}
 	if ('category' in row && typeof row.category === 'string' && !row.category.trim()) {
 		errors.push(`Row ${rowIndex}: Missing category`);
+	} else if (typeof row.category !== 'string') {
+		errors.push(`Row ${rowIndex}: Invalid category`);
+	} else if (row.category.trim().length > MAX_CATEGORY_LENGTH) {
+		errors.push(`Row ${rowIndex}: Category is too long`);
 	}
 	const amountNum = Number(row.amount);
-	if (!isFinite(amountNum)) {
-		errors.push(`Row ${rowIndex}: Invalid amount`);
+	if (!Number.isFinite(amountNum) || amountNum <= 0) {
+		errors.push(`Row ${rowIndex}: Amount must be greater than zero`);
 	}
 	if (row.type !== 'income' && row.type !== 'expense') {
 		errors.push(`Row ${rowIndex}: Invalid type (transfers cannot be imported)`);
+	}
+	if (row.description != null && String(row.description).length > MAX_DESCRIPTION_LENGTH) {
+		errors.push(`Row ${rowIndex}: Description is too long`);
 	}
 	return errors;
 };
@@ -61,6 +78,9 @@ export const importTransactionsFromFile = async (
 ): Promise<ImportResult> => {
 	if (!defaultAccountId) {
 		throw new Error('Create an account before importing transactions.');
+	}
+	if (typeof file.size === 'number' && file.size > MAX_IMPORT_BYTES) {
+		throw new Error('Import file must be 5 MB or smaller.');
 	}
 
 	const text = await file.text();
@@ -76,6 +96,12 @@ export const importTransactionsFromFile = async (
 		records = parseCsv(text);
 	} else {
 		throw new Error('Unsupported file type. Use CSV or JSON.');
+	}
+	if (!Array.isArray(records)) {
+		throw new Error('Import file must contain a list of transactions.');
+	}
+	if (records.length > MAX_IMPORT_ROWS) {
+		throw new Error(`Import files can contain at most ${MAX_IMPORT_ROWS} transactions.`);
 	}
 
 	const existingSignatures = new Set(existingTransactions.map(buildTransactionSignature));
@@ -109,7 +135,7 @@ export const importTransactionsFromFile = async (
 				? String(row.accountId)
 				: defaultAccountId;
 			await addTransaction({
-				title: String(row.title),
+				title: String(row.title).trim(),
 				amount: amountNum,
 				type: row.type as 'income' | 'expense',
 				category: String(row.category).trim(),
@@ -142,7 +168,10 @@ export const exportTransactionsToCsv = (transactions: Transaction[]): string => 
 	];
 	const safe = (value: unknown) => {
 		if (value == null) return '';
-		const str = String(value).replace(/"/g, '""');
+		const raw = String(value);
+		const spreadsheetSafe =
+			typeof value === 'string' && /^\s*[=+\-@]/.test(raw) ? `'${raw}` : raw;
+		const str = spreadsheetSafe.replace(/"/g, '""');
 		return `"${str}"`;
 	};
 

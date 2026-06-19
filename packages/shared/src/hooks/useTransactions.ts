@@ -16,6 +16,13 @@ import {
 } from 'firebase/firestore';
 import { Transaction } from '../types';
 import { normalizeTransaction } from '../transactions/TransactionModel';
+import {
+	TEXT_LIMITS,
+	assertPositiveMoney,
+	assertValidDate,
+	normalizeOptionalText,
+	normalizeRequiredText,
+} from '../validation';
 
 export interface AddTransactionData {
 	type: 'income' | 'expense';
@@ -47,6 +54,27 @@ const chunkArray = <T,>(items: T[], size: number): T[][] => {
 	}
 
 	return chunks;
+};
+
+const getDateMillis = (value: Transaction['createdAt']): number | null => {
+	if (value instanceof Date) return value.getTime();
+	if (value && typeof value === 'object' && 'toDate' in value) {
+		return value.toDate().getTime();
+	}
+	return null;
+};
+
+const isLegacyTransferPartner = (left: Transaction, right: Transaction): boolean => {
+	const leftCreatedAt = getDateMillis(left.createdAt);
+	const rightCreatedAt = getDateMillis(right.createdAt);
+	return (
+		left.accountId === right.transferAccountId &&
+		left.transferAccountId === right.accountId &&
+		left.amount === right.amount &&
+		left.title === right.title &&
+		leftCreatedAt !== null &&
+		leftCreatedAt === rightCreatedAt
+	);
 };
 
 export const useTransactions = () => {
@@ -88,19 +116,64 @@ export const useTransactions = () => {
 
 	const addTransaction = async (data: AddTransactionData) => {
 		if (!user) throw new Error('User not authenticated');
-		if (!data.category.trim()) throw new Error('Category is required.');
+		if (data.type !== 'income' && data.type !== 'expense') {
+			throw new Error('Transaction type must be income or expense.');
+		}
+
+		const accountId = normalizeRequiredText(
+			data.accountId,
+			'Account',
+			TEXT_LIMITS.documentId
+		);
+		const title = normalizeRequiredText(data.title, 'Title', TEXT_LIMITS.title);
+		const category = normalizeRequiredText(data.category, 'Category', TEXT_LIMITS.category);
+		const subcategory = normalizeOptionalText(
+			data.subcategory,
+			'Subcategory',
+			TEXT_LIMITS.subcategory
+		);
+		const description = normalizeOptionalText(
+			data.description,
+			'Description',
+			TEXT_LIMITS.description
+		);
+		const amount = assertPositiveMoney(data.amount);
+		const date = assertValidDate(data.date);
+		const recurringOccurrenceDate = normalizeOptionalText(
+			data.recurringOccurrenceDate,
+			'Recurring occurrence date',
+			10
+		);
+		if (recurringOccurrenceDate && !/^\d{4}-\d{2}-\d{2}$/.test(recurringOccurrenceDate)) {
+			throw new Error('Recurring occurrence date is invalid.');
+		}
 
 		const batch = writeBatch(db);
-		const accountRef = doc(db, 'users', user.uid, 'accounts', data.accountId);
+		const accountRef = doc(db, 'users', user.uid, 'accounts', accountId);
 
 		const txCol = collection(db, 'users', user.uid, 'transactions');
 		const txRef = doc(txCol);
 
-		const { date, subcategory, ...rest } = data;
 		const txData: DocumentData = {
-			...rest,
-			category: rest.category.trim(),
-			...(subcategory?.trim() ? { subcategory: subcategory.trim() } : {}),
+			accountId,
+			title,
+			amount,
+			type: data.type,
+			category,
+			...(subcategory ? { subcategory } : {}),
+			...(description ? { description } : {}),
+			...(data.recurringTransactionId
+				? {
+					recurringTransactionId: normalizeRequiredText(
+						data.recurringTransactionId,
+						'Recurring transaction ID',
+						TEXT_LIMITS.documentId
+					),
+				}
+				: {}),
+			...(recurringOccurrenceDate
+				? { recurringOccurrenceDate }
+				: {}),
 			createdAt: Timestamp.now(),
 			userId: user.uid,
 		};
@@ -112,7 +185,7 @@ export const useTransactions = () => {
 		batch.set(txRef, txData);
 
 		// Update account balance
-		const balanceDelta = data.type === 'income' ? data.amount : -data.amount;
+		const balanceDelta = data.type === 'income' ? amount : -amount;
 		batch.update(accountRef, { balance: increment(balanceDelta) });
 
 		await batch.commit();
@@ -120,49 +193,70 @@ export const useTransactions = () => {
 
 	const addTransfer = async (data: AddTransferData) => {
 		if (!user) throw new Error('User not authenticated');
+		const fromAccountId = normalizeRequiredText(
+			data.fromAccountId,
+			'Source account',
+			TEXT_LIMITS.documentId
+		);
+		const toAccountId = normalizeRequiredText(
+			data.toAccountId,
+			'Destination account',
+			TEXT_LIMITS.documentId
+		);
+		if (fromAccountId === toAccountId) {
+			throw new Error('Source and destination accounts must be different.');
+		}
+		const title = normalizeRequiredText(data.title, 'Title', TEXT_LIMITS.title);
+		const description = normalizeOptionalText(
+			data.description,
+			'Description',
+			TEXT_LIMITS.description
+		);
+		const amount = assertPositiveMoney(data.amount);
+		const date = assertValidDate(data.date);
 
-		const fromRef = doc(db, 'users', user.uid, 'accounts', data.fromAccountId);
-		const toRef = doc(db, 'users', user.uid, 'accounts', data.toAccountId);
+		const fromRef = doc(db, 'users', user.uid, 'accounts', fromAccountId);
+		const toRef = doc(db, 'users', user.uid, 'accounts', toAccountId);
 		const batch = writeBatch(db);
 		const txCol = collection(db, 'users', user.uid, 'transactions');
 		const now = Timestamp.now();
-		const txDate = data.date ? Timestamp.fromDate(data.date) : now;
+		const txDate = date ? Timestamp.fromDate(date) : now;
 
 		// Expense on source account
 		const expenseRef = doc(txCol);
-		batch.set(expenseRef, {
+		const transferId = expenseRef.id;
+		const sharedTransferData = {
 			userId: user.uid,
-			accountId: data.fromAccountId,
-			transferAccountId: data.toAccountId,
-			title: data.title,
-			amount: data.amount,
+			transferId,
+			title,
+			amount,
 			type: 'transfer',
 			category: 'transfer',
-			description: data.description ?? '',
+			...(description ? { description } : {}),
 			date: txDate,
 			createdAt: now,
+		};
+		batch.set(expenseRef, {
+			...sharedTransferData,
+			accountId: fromAccountId,
+			transferAccountId: toAccountId,
+			transferDirection: 'out',
 		});
 
 		// Income on destination account
 		const incomeRef = doc(txCol);
 		batch.set(incomeRef, {
-			userId: user.uid,
-			accountId: data.toAccountId,
-			transferAccountId: data.fromAccountId,
-			title: data.title,
-			amount: data.amount,
-			type: 'transfer',
-			category: 'transfer',
-			description: data.description ?? '',
-			date: txDate,
-			createdAt: now,
+			...sharedTransferData,
+			accountId: toAccountId,
+			transferAccountId: fromAccountId,
+			transferDirection: 'in',
 		});
 
 		// Debit source account balance
-		batch.update(fromRef, { balance: increment(-data.amount) });
+		batch.update(fromRef, { balance: increment(-amount) });
 
 		// Credit destination account balance
-		batch.update(toRef, { balance: increment(data.amount) });
+		batch.update(toRef, { balance: increment(amount) });
 
 		await batch.commit();
 	};
@@ -170,82 +264,101 @@ export const useTransactions = () => {
 	const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
 		if (!user) throw new Error('User not authenticated');
 		try {
-			const txRef = doc(db, 'users', user.uid, 'transactions', id);
+			const transactionId = normalizeRequiredText(id, 'Transaction ID', TEXT_LIMITS.documentId);
+			const txRef = doc(db, 'users', user.uid, 'transactions', transactionId);
 
 			// Read current state so we can compute balance delta
 			const snap = await getDoc(txRef);
 			const old: DocumentData | null = snap.exists() ? snap.data() : null;
-
-			if (
-				updates.type !== 'transfer' &&
-				Object.prototype.hasOwnProperty.call(updates, 'category') &&
-				!updates.category?.trim()
-			) {
-				throw new Error('Category is required.');
+			if (!old) throw new Error('Transaction not found.');
+			if (old.type === 'transfer' || updates.type === 'transfer') {
+				throw new Error('Transfers cannot be edited. Delete and recreate the transfer instead.');
+			}
+			if (updates.type && updates.type !== 'income' && updates.type !== 'expense') {
+				throw new Error('Transaction type must be income or expense.');
 			}
 
-			const updateData: DocumentData = Object.fromEntries(
-				Object.entries(updates).filter(([, value]) => value !== undefined)
-			);
-			if (typeof updates.category === 'string') {
-				updateData.category = updates.category.trim();
+			const updateData: DocumentData = { updatedAt: Timestamp.now() };
+			if (updates.title !== undefined) {
+				updateData.title = normalizeRequiredText(updates.title, 'Title', TEXT_LIMITS.title);
 			}
-			if (typeof updates.subcategory === 'string') {
-				const trimmedSubcategory = updates.subcategory.trim();
-				if (trimmedSubcategory) {
-					updateData.subcategory = trimmedSubcategory;
-				} else {
-					updateData.subcategory = deleteField();
-				}
+			if (updates.amount !== undefined) updateData.amount = assertPositiveMoney(updates.amount);
+			if (updates.type !== undefined) updateData.type = updates.type;
+			if (updates.accountId !== undefined) {
+				updateData.accountId = normalizeRequiredText(
+					updates.accountId,
+					'Account',
+					TEXT_LIMITS.documentId
+				);
 			}
-			if (
-				Object.prototype.hasOwnProperty.call(updates, 'subcategory') &&
-				updates.subcategory === undefined
-			) {
-				updateData.subcategory = deleteField();
+			if (updates.category !== undefined) {
+				updateData.category = normalizeRequiredText(
+					updates.category,
+					'Category',
+					TEXT_LIMITS.category
+				);
 			}
-			if (updates.date instanceof Date) {
-				updateData.date = Timestamp.fromDate(updates.date);
+			if (Object.prototype.hasOwnProperty.call(updates, 'subcategory')) {
+				updateData.subcategory =
+					normalizeOptionalText(
+						updates.subcategory,
+						'Subcategory',
+						TEXT_LIMITS.subcategory
+					) ?? deleteField();
+			}
+			if (Object.prototype.hasOwnProperty.call(updates, 'description')) {
+				updateData.description =
+					normalizeOptionalText(
+						updates.description,
+						'Description',
+						TEXT_LIMITS.description
+					) ?? deleteField();
+			}
+			if (updates.date !== undefined) {
+				const date = assertValidDate(updates.date);
+				if (date) updateData.date = Timestamp.fromDate(date);
 			}
 
 			const batch = writeBatch(db);
 			batch.update(txRef, updateData as UpdateData<Transaction>);
 
 			// Adjust account balances when amount, type, or accountId changes
-			if (old && old.type !== 'transfer') {
-				const oldAccountId: string = old.accountId;
-				const newAccountId: string = updates.accountId ?? oldAccountId;
-				const oldAmount: number = old.amount;
-				const newAmount: number = updates.amount ?? oldAmount;
-				const oldType: string = old.type;
-				const newType: string = updates.type ?? oldType;
+			const oldAccountId = normalizeRequiredText(
+				old.accountId,
+				'Existing account',
+				TEXT_LIMITS.documentId
+			);
+			const newAccountId: string = updateData.accountId ?? oldAccountId;
+			const oldAmount = assertPositiveMoney(old.amount, 'Existing amount');
+			const newAmount: number = updateData.amount ?? oldAmount;
+			if (old.type !== 'income' && old.type !== 'expense') {
+				throw new Error('Existing transaction type is invalid.');
+			}
+			const oldType: 'income' | 'expense' = old.type;
+			const newType: 'income' | 'expense' = updateData.type ?? oldType;
 
-				const oldDelta = oldType === 'income' ? oldAmount : -oldAmount;
-				const newDelta = newType === 'income' ? newAmount : -newAmount;
+			const oldDelta = oldType === 'income' ? oldAmount : -oldAmount;
+			const newDelta = newType === 'income' ? newAmount : -newAmount;
 
-				if (oldAccountId !== newAccountId) {
-					// Reverse old balance on old account, apply new balance on new account
-					const oldAccountRef = doc(db, 'users', user.uid, 'accounts', oldAccountId);
-					const newAccountRef = doc(db, 'users', user.uid, 'accounts', newAccountId);
-					const [oldAcctSnap, newAcctSnap] = await Promise.all([
-						getDoc(oldAccountRef),
-						getDoc(newAccountRef),
-					]);
-					if (oldAcctSnap.exists()) {
-						batch.update(oldAccountRef, { balance: increment(-oldDelta) });
-					}
-					if (newAcctSnap.exists()) {
-						batch.update(newAccountRef, { balance: increment(newDelta) });
-					}
-				} else {
-					const balanceChange = newDelta - oldDelta;
-					if (balanceChange !== 0) {
-						const accountRef = doc(db, 'users', user.uid, 'accounts', oldAccountId);
-						const acctSnap = await getDoc(accountRef);
-						if (acctSnap.exists()) {
-							batch.update(accountRef, { balance: increment(balanceChange) });
-						}
-					}
+			if (oldAccountId !== newAccountId) {
+				const oldAccountRef = doc(db, 'users', user.uid, 'accounts', oldAccountId);
+				const newAccountRef = doc(db, 'users', user.uid, 'accounts', newAccountId);
+				const [oldAcctSnap, newAcctSnap] = await Promise.all([
+					getDoc(oldAccountRef),
+					getDoc(newAccountRef),
+				]);
+				if (!oldAcctSnap.exists() || !newAcctSnap.exists()) {
+					throw new Error('Selected account could not be found.');
+				}
+				batch.update(oldAccountRef, { balance: increment(-oldDelta) });
+				batch.update(newAccountRef, { balance: increment(newDelta) });
+			} else {
+				const balanceChange = newDelta - oldDelta;
+				if (balanceChange !== 0) {
+					const accountRef = doc(db, 'users', user.uid, 'accounts', oldAccountId);
+					const acctSnap = await getDoc(accountRef);
+					if (!acctSnap.exists()) throw new Error('Selected account could not be found.');
+					batch.update(accountRef, { balance: increment(balanceChange) });
 				}
 			}
 
@@ -263,13 +376,17 @@ export const useTransactions = () => {
 	) => {
 		if (!user) throw new Error('User not authenticated');
 
-		const trimmedCategory = category.trim();
-		const trimmedSubcategory = subcategory?.trim() ?? '';
-		const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
-
-		if (!trimmedCategory) {
-			throw new Error('Category is required.');
-		}
+		const trimmedCategory = normalizeRequiredText(category, 'Category', TEXT_LIMITS.category);
+		const trimmedSubcategory = normalizeOptionalText(
+			subcategory,
+			'Subcategory',
+			TEXT_LIMITS.subcategory
+		);
+		const uniqueIds = Array.from(
+			new Set(
+				ids.map((id) => normalizeRequiredText(id, 'Transaction ID', TEXT_LIMITS.documentId))
+			)
+		);
 
 		if (uniqueIds.length === 0) {
 			return;
@@ -282,7 +399,7 @@ export const useTransactions = () => {
 				const txRef = doc(db, 'users', user.uid, 'transactions', id);
 				batch.update(txRef, {
 					category: trimmedCategory,
-					subcategory: trimmedSubcategory || deleteField(),
+					subcategory: trimmedSubcategory ?? deleteField(),
 				});
 			}
 
@@ -293,37 +410,39 @@ export const useTransactions = () => {
 	const deleteTransaction = async (id: string) => {
 		if (!user) throw new Error('User not authenticated');
 		try {
-			const tx = transactions.find((t) => t.id === id);
+			const transactionId = normalizeRequiredText(id, 'Transaction ID', TEXT_LIMITS.documentId);
+			const tx = transactions.find((t) => t.id === transactionId);
+			if (!tx) throw new Error('Transaction not found.');
 			const batch = writeBatch(db);
-
-			const txRef = doc(db, 'users', user.uid, 'transactions', id);
-			batch.delete(txRef);
 
 			if (tx && tx.accountId) {
 				if (tx.type === 'transfer' && tx.transferAccountId) {
-					// Find and delete the paired transfer record, reverse both balances
 					const partner = transactions.find(
 						(t) =>
 							t.id !== id &&
-							t.accountId === tx.transferAccountId &&
-							t.transferAccountId === tx.accountId
+							t.type === 'transfer' &&
+							(tx.transferId
+								? t.transferId === tx.transferId
+								: isLegacyTransferPartner(tx, t))
 					);
-					if (partner?.id) {
-						const partnerRef = doc(db, 'users', user.uid, 'transactions', partner.id);
-						batch.delete(partnerRef);
-						// Reverse credit on destination account if it exists
-						const partnerAccountRef = doc(db, 'users', user.uid, 'accounts', partner.accountId);
-						const partnerAcctSnap = await getDoc(partnerAccountRef);
-						if (partnerAcctSnap.exists()) {
-							batch.update(partnerAccountRef, { balance: increment(-partner.amount) });
-						}
+					if (!partner?.id) throw new Error('Paired transfer transaction could not be found.');
+					if (!tx.transferDirection || !partner.transferDirection) {
+						throw new Error('This legacy transfer cannot be deleted safely. Reconcile the accounts instead.');
 					}
-					// Reverse debit on source account if it exists
-					const sourceAccountRef = doc(db, 'users', user.uid, 'accounts', tx.accountId);
-					const sourceAcctSnap = await getDoc(sourceAccountRef);
-					if (sourceAcctSnap.exists()) {
-						batch.update(sourceAccountRef, { balance: increment(tx.amount) });
+					const outgoing = tx.transferDirection === 'out' ? tx : partner;
+					const incoming = tx.transferDirection === 'in' ? tx : partner;
+					const outgoingAccountRef = doc(db, 'users', user.uid, 'accounts', outgoing.accountId);
+					const incomingAccountRef = doc(db, 'users', user.uid, 'accounts', incoming.accountId);
+					const [outgoingAccount, incomingAccount] = await Promise.all([
+						getDoc(outgoingAccountRef),
+						getDoc(incomingAccountRef),
+					]);
+					if (!outgoingAccount.exists() || !incomingAccount.exists()) {
+						throw new Error('A transfer account could not be found.');
 					}
+					batch.delete(doc(db, 'users', user.uid, 'transactions', partner.id));
+					batch.update(outgoingAccountRef, { balance: increment(outgoing.amount) });
+					batch.update(incomingAccountRef, { balance: increment(-incoming.amount) });
 				} else {
 					const accountRef = doc(db, 'users', user.uid, 'accounts', tx.accountId);
 					const acctSnap = await getDoc(accountRef);
@@ -336,6 +455,7 @@ export const useTransactions = () => {
 					}
 				}
 			}
+			batch.delete(doc(db, 'users', user.uid, 'transactions', transactionId));
 
 			await batch.commit();
 		} catch (error) {
@@ -355,10 +475,16 @@ export const useTransactions = () => {
 				getDocs(query(acctCol)),
 			]);
 
-			const batch = writeBatch(db);
-			txSnapshot.docs.forEach((d) => batch.delete(d.ref));
-			acctSnapshot.docs.forEach((d) => batch.update(d.ref, { balance: 0 }));
-			await batch.commit();
+			for (const docs of chunkArray(txSnapshot.docs, 400)) {
+				const batch = writeBatch(db);
+				docs.forEach((transactionDoc) => batch.delete(transactionDoc.ref));
+				await batch.commit();
+			}
+			for (const docs of chunkArray(acctSnapshot.docs, 400)) {
+				const batch = writeBatch(db);
+				docs.forEach((accountDoc) => batch.update(accountDoc.ref, { balance: 0 }));
+				await batch.commit();
+			}
 		} catch (error) {
 			console.error('Error deleting all transactions:', error);
 			throw error;
