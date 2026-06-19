@@ -67,6 +67,8 @@ export interface Transaction {
 	date?: Date | { toDate: () => Date };
 	createdAt?: Date | { toDate: () => Date };
 	transferAccountId?: string;
+	transferId?: string;
+	transferDirection?: 'out' | 'in';
 	recurringTransactionId?: string;
 	recurringOccurrenceDate?: string;
 }

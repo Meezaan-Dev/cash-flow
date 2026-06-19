@@ -264,6 +264,26 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	};
 
 	const availableTransferAccounts = accounts.filter((a) => a.id !== accountId);
+	const transactionTypes: TransactionType[] = transaction
+		? ['income', 'expense']
+		: ['income', 'expense', 'transfer'];
+
+	if (transaction?.type === 'transfer') {
+		return (
+			<FormPageShell>
+				<FormPageCard>
+					<h2 className="text-3xl font-bold tracking-tight">Transfer details</h2>
+					<p className="mt-3 text-sm text-muted-foreground">
+						Transfers cannot be edited because both linked records and account balances must stay in
+						sync. Delete this transfer and create it again to make changes.
+					</p>
+					<Button type="button" variant="outline" onClick={onClose} className="mt-6">
+						Close
+					</Button>
+				</FormPageCard>
+			</FormPageShell>
+		);
+	}
 
 	return (
 		<FormPageShell>
@@ -319,8 +339,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					{/* Transaction Type — 3 buttons */}
 					<div className="space-y-1.5">
 						<Label className="text-sm font-medium">Transaction type *</Label>
-						<div className="grid grid-cols-3 gap-3">
-							{(['income', 'expense', 'transfer'] as TransactionType[]).map((t) => (
+						<div className={`grid ${transaction ? 'grid-cols-2' : 'grid-cols-3'} gap-3`}>
+							{transactionTypes.map((t) => (
 								<Button
 									key={t}
 									type="button"

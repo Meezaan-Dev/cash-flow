@@ -1,42 +1,201 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User document and subcollections
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function requiredString(data, field, maxLength) {
+      return field in data && data[field] is string &&
+        data[field].size() > 0 && data[field].size() <= maxLength;
+    }
+
+    function optionalString(data, field, maxLength) {
+      return !(field in data) ||
+        (data[field] is string && data[field].size() <= maxLength);
+    }
+
+    function optionalNullableString(data, field, maxLength) {
+      return !(field in data) || data[field] == null ||
+        (data[field] is string && data[field].size() <= maxLength);
+    }
+
+    function validMoney(value) {
+      return value is number && value > 0 && value <= 1000000000000;
+    }
+
+    function validSignedMoney(value) {
+      return value is number && value >= -1000000000000 && value <= 1000000000000;
+    }
+
+    function optionalTimestamp(data, field) {
+      return !(field in data) || data[field] is timestamp;
+    }
+
+    function validTransaction(data, userId) {
+      return data.keys().hasOnly([
+          'userId', 'accountId', 'title', 'amount', 'type', 'category',
+          'subcategory', 'description', 'date', 'createdAt', 'updatedAt',
+          'transferAccountId', 'transferId', 'transferDirection',
+          'recurringTransactionId', 'recurringOccurrenceDate'
+        ]) &&
+        data.userId == userId &&
+        requiredString(data, 'accountId', 1500) &&
+        requiredString(data, 'title', 200) &&
+        validMoney(data.amount) &&
+        data.type in ['income', 'expense', 'transfer'] &&
+        requiredString(data, 'category', 80) &&
+        optionalString(data, 'subcategory', 80) &&
+        optionalString(data, 'description', 2000) &&
+        optionalTimestamp(data, 'date') &&
+        data.createdAt is timestamp &&
+        optionalTimestamp(data, 'updatedAt') &&
+        optionalString(data, 'recurringTransactionId', 1500) &&
+        optionalString(data, 'recurringOccurrenceDate', 10) &&
+        (data.type == 'transfer'
+          ? data.category == 'transfer' &&
+            requiredString(data, 'transferAccountId', 1500) &&
+            requiredString(data, 'transferId', 1500) &&
+            data.transferDirection in ['out', 'in']
+          : !('transferAccountId' in data) &&
+            !('transferId' in data) &&
+            !('transferDirection' in data));
+    }
+
+    function validRecurringTransaction(data, userId) {
+      return data.keys().hasOnly([
+          'userId', 'accountId', 'title', 'amount', 'type', 'category',
+          'subcategory', 'description', 'frequency', 'expectedDate',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.userId == userId &&
+        optionalString(data, 'accountId', 1500) &&
+        requiredString(data, 'title', 200) &&
+        validMoney(data.amount) &&
+        data.type in ['income', 'expense'] &&
+        requiredString(data, 'category', 80) &&
+        optionalString(data, 'subcategory', 80) &&
+        optionalString(data, 'description', 2000) &&
+        (!('frequency' in data) || data.frequency in ['daily', 'weekly', 'monthly', 'yearly']) &&
+        (!('expectedDate' in data) ||
+          (data.expectedDate is int && data.expectedDate >= 1 && data.expectedDate <= 31)) &&
+        data.createdAt is timestamp &&
+        optionalTimestamp(data, 'updatedAt');
+    }
+
+    function validAccount(data, userId) {
+      return data.keys().hasOnly([
+          'userId', 'name', 'bank', 'type', 'currency', 'balance',
+          'creditLimit', 'color', 'icon', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId == userId &&
+        requiredString(data, 'name', 120) &&
+        optionalString(data, 'bank', 120) &&
+        data.type in ['debit', 'credit', 'savings', 'cash'] &&
+        optionalString(data, 'currency', 3) &&
+        validSignedMoney(data.balance) &&
+        (!('creditLimit' in data) ||
+          (data.creditLimit is number && data.creditLimit >= 0 && data.creditLimit <= 1000000000000)) &&
+        optionalString(data, 'color', 7) &&
+        optionalString(data, 'icon', 80) &&
+        data.createdAt is timestamp &&
+        optionalTimestamp(data, 'updatedAt');
+    }
+
+    function validBudget(data, userId) {
+      return data.keys().hasOnly([
+          'userId', 'accountId', 'categoryId', 'subCategoryId', 'category',
+          'subcategory', 'amount', 'period', 'month', 'cycleDay', 'startDay',
+          'endDay', 'startDate', 'endDate', 'lifecycleStatus', 'displayOrder',
+          'status', 'plannedStartDate', 'plannedEndDate', 'actualStartDate',
+          'actualEndDate', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId == userId &&
+        optionalNullableString(data, 'accountId', 1500) &&
+        (requiredString(data, 'categoryId', 80) || requiredString(data, 'category', 80)) &&
+        optionalNullableString(data, 'subCategoryId', 80) &&
+        optionalString(data, 'subcategory', 80) &&
+        validMoney(data.amount) &&
+        (!('period' in data) || data.period in ['monthly', 'custom']) &&
+        optionalNullableString(data, 'month', 7) &&
+        (!('cycleDay' in data) ||
+          (data.cycleDay is int && data.cycleDay >= 1 && data.cycleDay <= 31)) &&
+        (!('startDay' in data) ||
+          (data.startDay is int && data.startDay >= 1 && data.startDay <= 31)) &&
+        (!('endDay' in data) ||
+          (data.endDay is int && data.endDay >= 1 && data.endDay <= 31)) &&
+        optionalString(data, 'startDate', 10) &&
+        optionalString(data, 'endDate', 10) &&
+        (!('lifecycleStatus' in data) || data.lifecycleStatus in ['draft', 'published']) &&
+        (!('displayOrder' in data) || data.displayOrder is int) &&
+        optionalTimestamp(data, 'createdAt') &&
+        optionalTimestamp(data, 'updatedAt');
+    }
+
+    function validCategory(data) {
+      return data.keys().hasOnly(['value', 'label', 'subcategories', 'createdAt', 'updatedAt']) &&
+        requiredString(data, 'value', 80) &&
+        requiredString(data, 'label', 120) &&
+        (!('subcategories' in data) ||
+          (data.subcategories is list && data.subcategories.size() <= 100)) &&
+        data.createdAt is timestamp &&
+        optionalTimestamp(data, 'updatedAt');
+    }
+
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+      allow write: if false;
 
-      // Transactions subcollection
       match /transactions/{transactionId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        allow create: if request.auth != null && request.auth.uid == userId;
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validTransaction(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          validTransaction(request.resource.data, userId) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.createdAt == resource.data.createdAt;
       }
 
-      // Recurring transactions subcollection
       match /recurringTransactions/{id} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        allow create: if request.auth != null && request.auth.uid == userId;
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validRecurringTransaction(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          validRecurringTransaction(request.resource.data, userId) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.createdAt == resource.data.createdAt;
       }
 
-      // Accounts subcollection
       match /accounts/{accountId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        allow create: if request.auth != null && request.auth.uid == userId;
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validAccount(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          validAccount(request.resource.data, userId) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.createdAt == resource.data.createdAt;
       }
 
-      // Budgets subcollection
       match /budgets/{budgetId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        allow create: if request.auth != null && request.auth.uid == userId;
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validBudget(request.resource.data, userId) &&
+          request.resource.data.period in ['monthly', 'custom'] &&
+          request.resource.data.lifecycleStatus in ['draft', 'published'] &&
+          requiredString(request.resource.data, 'startDate', 10) &&
+          requiredString(request.resource.data, 'endDate', 10) &&
+          request.resource.data.createdAt is timestamp;
+        allow update: if isOwner(userId) && validBudget(request.resource.data, userId) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.createdAt == resource.data.createdAt;
       }
 
-      // Categories subcollection
       match /categories/{categoryId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        allow create: if request.auth != null && request.auth.uid == userId;
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validCategory(request.resource.data);
+        allow update: if isOwner(userId) &&
+          validCategory(request.resource.data) &&
+          request.resource.data.createdAt == resource.data.createdAt;
       }
     }
 
-    // Legacy top-level collections (backward compatibility)
+    // Read-only legacy collections retained for migration compatibility.
     match /transactions/{document} {
       allow read: if request.auth != null && request.auth.uid == resource.data.userId;
     }

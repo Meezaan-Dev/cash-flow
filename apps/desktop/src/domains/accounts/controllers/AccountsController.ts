@@ -1,4 +1,4 @@
-import { useAccounts } from '@/domains/accounts/hooks/useAccounts';
+import { useAccounts } from '@cash-flow/shared/hooks/useAccounts';
 import { Account, AccountType, NetWorthData } from '@/types';
 import {
 	calculateAvailableBalance,

@@ -81,7 +81,12 @@ export const validateRecurringTransaction = (transaction: Partial<RecurringTrans
 		errors.push('Title is required');
 	}
 
-	if (transaction.amount === undefined || transaction.amount === null || transaction.amount <= 0) {
+	if (
+		transaction.amount === undefined ||
+		transaction.amount === null ||
+		!Number.isFinite(transaction.amount) ||
+		transaction.amount <= 0
+	) {
 		errors.push('Amount must be greater than 0');
 	}
 
