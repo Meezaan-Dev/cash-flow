@@ -4,6 +4,7 @@ import {
 	FiChevronLeft,
 	FiGrid,
 	FiList,
+	FiMessageCircle,
 	FiPlus,
 	FiRefreshCw,
 	FiSettings,
@@ -13,9 +14,6 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '@/domains/auth/hooks/useAuth';
 import { Transaction, ViewType } from '@/types';
-import logoDark from '@/assets/images/logos/cflow-transparent-dark.png';
-import logoLight from '@/assets/images/logos/cflow-transparent-light.png';
-import { useTheme } from '@/app/theme/context/ThemeContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { Button } from '@/components/app/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/app/ui/avatar';
@@ -56,6 +54,7 @@ const NAV_ITEMS: NavItem[] = [
 	{ id: 'budgets', label: 'Budgets', icon: FiTarget },
 	{ id: 'recurring', label: 'Recurring', icon: FiRefreshCw },
 	{ id: 'reports', label: 'Reports', icon: FiBarChart2 },
+	{ id: 'assistant', label: 'Assistant', icon: FiMessageCircle },
 	{ id: 'mobisite', label: 'View Mobisite', icon: FiSmartphone },
 ];
 
@@ -71,7 +70,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 	activeView,
 }) => {
 	const { currentUser } = useAuth();
-	const { theme } = useTheme();
 	const { accounts, calculateAvailableBalance, loading: accountsLoading } = useAccountsContext();
 	const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -81,7 +79,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 		return () => window.removeEventListener('resize', handleResize);
 	}, []);
 
-	const logo = theme === 'dark' ? logoLight : logoDark;
 	const availableBalance = calculateAvailableBalance();
 	const hasNoAccounts = !accountsLoading && accounts.length === 0;
 
@@ -140,11 +137,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 				>
 					<div className="flex items-center justify-between border-b border-gray-200/80 bg-gray-50/40 p-4 dark:border-gray-800/80 dark:bg-gray-800/20">
 						<div className="flex min-w-0 flex-1 items-center gap-2">
-							<img
-								src={logo}
-								alt="CashFlow Logo"
-								className="h-8 flex-shrink-0 md:h-10"
-							/>
 							<div className="min-w-0 flex-1">
 								<h3 className="text-lg font-semibold leading-tight tracking-tight text-gray-900 dark:text-gray-50 md:text-xl">
 									CashFlow

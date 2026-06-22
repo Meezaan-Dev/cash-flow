@@ -1,11 +1,11 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { GoogleGenAI } from '@google/genai';
+import { randomUUID } from 'crypto';
 
 admin.initializeApp();
-
 const db = admin.firestore();
 
-// Interface for transaction data
 interface Transaction {
 	id: string;
 	userId: string;
@@ -31,7 +31,6 @@ interface Account {
 	currency: string;
 }
 
-// Interface for API response
 interface ApiResponse {
 	success: boolean;
 	data?: Transaction[];
@@ -39,28 +38,31 @@ interface ApiResponse {
 	message?: string;
 }
 
+interface ErrorPayload {
+	success: false;
+	error: string;
+	code: string;
+	details: string;
+	retryable: boolean;
+	requestId: string;
+}
+
 interface AskAIRequestBody {
 	question?: string;
 	userId?: string;
+	history?: Array<{ role?: string; content?: string }>;
 }
 
-interface AskAIResponse {
-	success: boolean;
-	answer?: string;
-	error?: string;
-}
+const MAX_QUESTION_LENGTH = 2_000;
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_HISTORY_CONTENT_LENGTH = 2_000;
 
-// Helper function to verify JWT token
 async function verifyToken(authHeader: string): Promise<admin.auth.DecodedIdToken> {
 	if (!authHeader || !authHeader.startsWith('Bearer ')) {
 		throw new Error('Missing or invalid Authorization header');
 	}
-
-	const token = authHeader.split('Bearer ')[1];
-
 	try {
-		const decodedToken = await admin.auth().verifyIdToken(token);
-		return decodedToken;
+		return await admin.auth().verifyIdToken(authHeader.slice('Bearer '.length));
 	} catch {
 		throw new Error('Invalid or expired token');
 	}
@@ -73,187 +75,28 @@ function setCorsHeaders(res: functions.Response<unknown>): void {
 	res.set('Access-Control-Max-Age', '3600');
 }
 
+function sendError(
+	res: functions.Response<unknown>,
+	status: number,
+	payload: Omit<ErrorPayload, 'success'>
+): void {
+	res.status(status).json({ success: false, ...payload });
+}
+
 function parseDate(value: unknown): Date | null {
-	if (!value) {
-		return null;
-	}
-
-	if (value instanceof Date) {
-		return Number.isNaN(value.getTime()) ? null : value;
-	}
-
-	if (value instanceof admin.firestore.Timestamp) {
-		return value.toDate();
-	}
-
+	if (!value) return null;
+	if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+	if (value instanceof admin.firestore.Timestamp) return value.toDate();
 	if (typeof value === 'object' && value !== null && 'toDate' in value) {
 		const candidate = (value as { toDate: () => Date }).toDate();
 		return Number.isNaN(candidate.getTime()) ? null : candidate;
 	}
-
-	if (typeof value !== 'string') {
-		return null;
-	}
-
+	if (typeof value !== 'string') return null;
 	const parsed = new Date(value);
-	if (Number.isNaN(parsed.getTime())) {
-		return null;
-	}
-	return parsed;
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function formatCurrency(value: number, currency = 'ZAR'): string {
-	return new Intl.NumberFormat('en-US', {
-		style: 'currency',
-		currency,
-		minimumFractionDigits: 2,
-	}).format(value);
-}
-
-function normalizeText(value: string): string {
-	return value
-		.toLowerCase()
-		.replace(/[^a-z0-9\s]/g, ' ')
-		.replace(/\s+/g, ' ')
-		.trim();
-}
-
-function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-	return count === 1 ? singular : plural;
-}
-
-function getTransactionSearchText(transaction: Transaction): string {
-	return normalizeText(
-		`${transaction.title} ${transaction.description || ''} ${transaction.category} ${
-			transaction.subcategory || ''
-		}`
-	);
-}
-
-function extractMerchantQuery(question: string): string | null {
-	const patterns = [
-		/how many times did i (?:eat|buy|spend|shop) (?:at )?(.+?)(?:\?|$)/i,
-		/how often did i (?:eat|buy|spend|shop) (?:at )?(.+?)(?:\?|$)/i,
-		/how many transactions (?:were )?(?:for|at|with) (.+?)(?:\?|$)/i,
-	];
-
-	for (const pattern of patterns) {
-		const match = question.match(pattern);
-		if (match?.[1]) {
-			return match[1].trim();
-		}
-	}
-
-	return null;
-}
-
-function findMostRelevantCategory(question: string, transactions: Transaction[]): string | null {
-	const questionText = normalizeText(question);
-	const categories = Array.from(
-		new Set(
-			transactions
-				.map((transaction) => transaction.category.trim())
-				.filter(Boolean)
-		)
-	);
-
-	for (const category of categories) {
-		const normalizedCategory = normalizeText(category);
-		if (normalizedCategory && questionText.includes(normalizedCategory)) {
-			return category;
-		}
-	}
-
-	const keywordMap: Record<string, string[]> = {
-		food: ['food', 'grocer', 'grocery', 'restaurant', 'dining', 'eat', 'meal'],
-		transport: ['transport', 'uber', 'bolt', 'taxi', 'fuel', 'petrol', 'gas'],
-		entertainment: ['entertainment', 'movie', 'cinema', 'netflix'],
-		shopping: ['shopping', 'shop', 'retail', 'mall'],
-	};
-
-	for (const [category, keywords] of Object.entries(keywordMap)) {
-		if (keywords.some((keyword) => questionText.includes(keyword))) {
-			return category;
-		}
-	}
-
-	return null;
-}
-
-function formatTransactionDate(transaction: Transaction): string | null {
-	const parsedDate = parseDate(transaction.date) ?? parseDate(transaction.createdAt);
-	if (!parsedDate) {
-		return null;
-	}
-
-	return parsedDate.toLocaleDateString('en-US', {
-		year: 'numeric',
-		month: 'short',
-		day: 'numeric',
-	});
-}
-
-function sortTransactionsByNewest(transactions: Transaction[]): Transaction[] {
-	return transactions.slice().sort((left, right) => {
-		const leftDate =
-			parseDate(left.date)?.getTime() ?? parseDate(left.createdAt)?.getTime() ?? 0;
-		const rightDate =
-			parseDate(right.date)?.getTime() ?? parseDate(right.createdAt)?.getTime() ?? 0;
-		return rightDate - leftDate;
-	});
-}
-
-function formatTransactionLabel(transaction: Transaction): string {
-	const dateLabel = formatTransactionDate(transaction);
-	const categoryLabel = transaction.subcategory
-		? `${transaction.category} / ${transaction.subcategory}`
-		: transaction.category;
-	const parts = [transaction.title || categoryLabel || 'Transaction'];
-	if (dateLabel) {
-		parts.push(dateLabel);
-	}
-	return parts.join(' on ');
-}
-
-function formatTransactionList(
-	transactions: Transaction[],
-	currency: string,
-	limit = 3
-): string {
-	return sortTransactionsByNewest(transactions)
-		.slice(0, limit)
-		.map(
-			(transaction) =>
-				`${formatTransactionLabel(transaction)} (${formatCurrency(Math.abs(transaction.amount), currency)})`
-		)
-		.join(', ');
-}
-
-function getMonthlyAverage(total: number, count: number): number {
-	if (count === 0) {
-		return 0;
-	}
-	return total / count;
-}
-
-function formatTopBreakdown(
-	items: Array<{ label: string; amount: number }>,
-	currency: string,
-	limit = 3
-): string {
-	return items
-		.slice()
-		.sort((left, right) => right.amount - left.amount)
-		.slice(0, limit)
-		.map((item) => `${item.label} (${formatCurrency(item.amount, currency)})`)
-		.join(', ');
-}
-
-// Helper function to create API response
-function createResponse(
-	statusCode: number,
-	body: ApiResponse
-): { statusCode: number; headers: Record<string, string>; body: string } {
+function createResponse(statusCode: number, body: ApiResponse) {
 	return {
 		statusCode,
 		headers: {
@@ -266,473 +109,272 @@ function createResponse(
 	};
 }
 
-// Main API function to get user transactions
+function toTransaction(doc: admin.firestore.QueryDocumentSnapshot): Transaction {
+	const data = doc.data();
+	return {
+		id: doc.id,
+		userId: String(data.userId || ''),
+		accountId: data.accountId ? String(data.accountId) : undefined,
+		transferAccountId: data.transferAccountId ? String(data.transferAccountId) : undefined,
+		amount: Number(data.amount || 0),
+		title: String(data.title || data.description || 'Untitled transaction'),
+		category: String(data.category || 'Uncategorized'),
+		subcategory: data.subcategory ? String(data.subcategory) : undefined,
+		description: data.description ? String(data.description) : undefined,
+		type: data.type === 'income' || data.type === 'transfer' ? data.type : 'expense',
+		date: parseDate(data.date)?.toISOString(),
+		createdAt: parseDate(data.createdAt)?.toISOString(),
+		updatedAt: parseDate(data.updatedAt)?.toISOString(),
+	};
+}
+
+function toAccount(doc: admin.firestore.QueryDocumentSnapshot): Account {
+	const data = doc.data();
+	return {
+		id: doc.id,
+		name: String(data.name || 'Unnamed account'),
+		type: String(data.type || 'account'),
+		balance: Number(data.balance || 0),
+		creditLimit: data.creditLimit == null ? undefined : Number(data.creditLimit),
+		currency: String(data.currency || 'ZAR'),
+	};
+}
+
+export function buildGeminiPrompt(
+	question: string,
+	history: Array<{ role: 'user' | 'assistant'; content: string }>,
+	accounts: Account[],
+	transactions: Transaction[]
+): string {
+	return [
+		'You are CashFlow, a concise personal-finance data assistant.',
+		'Answer only from the supplied account and transaction data. Never invent records or balances.',
+		'Use transaction date, falling back to createdAt. Treat amounts as absolute values when totaling income or expenses.',
+		'Transfers are not income or expenses unless the user explicitly asks about transfers.',
+		'When data is insufficient, say so. Do not provide investment, tax, legal, or credit advice.',
+		`Today is ${new Date().toISOString().slice(0, 10)}.`,
+		`Accounts JSON: ${JSON.stringify(accounts)}`,
+		`Transactions JSON: ${JSON.stringify(transactions)}`,
+		`Recent conversation JSON: ${JSON.stringify(history)}`,
+		`Current question: ${question}`,
+	].join('\n\n');
+}
+
 export const getUserTransactions = functions.https.onRequest(async (req, res) => {
-	// Handle CORS preflight requests
 	if (req.method === 'OPTIONS') {
 		setCorsHeaders(res);
 		res.status(204).send('');
 		return;
 	}
-
 	setCorsHeaders(res);
-
-	// Only allow GET requests
 	if (req.method !== 'GET') {
-		const response = createResponse(405, {
-			success: false,
-			error: 'Method not allowed. Only GET requests are supported.',
-		});
+		const response = createResponse(405, { success: false, error: 'Method not allowed. Only GET requests are supported.' });
 		res.status(response.statusCode).send(response.body);
 		return;
 	}
 
 	try {
-		// Verify JWT token
-		const authHeader = req.headers.authorization;
-		if (!authHeader) {
-			const response = createResponse(401, {
-				success: false,
-				error: 'Authorization header is required',
-			});
-			res.status(response.statusCode).send(response.body);
-			return;
-		}
-
-		const decodedToken = await verifyToken(authHeader);
-		const userId = decodedToken.uid;
-
-		// Query Firestore for user's transactions
-		const transactionsRef = db.collection('users').doc(userId).collection('transactions');
-		const snapshot = await transactionsRef
-			.orderBy('date', 'desc')
-			.get();
-
-		const transactions: Transaction[] = [];
-		snapshot.forEach((doc) => {
-			const data = doc.data();
-			transactions.push({
-				id: doc.id,
-				userId: data.userId,
-				accountId: data.accountId,
-				transferAccountId: data.transferAccountId,
-				amount: data.amount,
-				title: data.title,
-				category: data.category,
-				subcategory: data.subcategory,
-				type: data.type,
-				description: data.description,
-				date:
-					parseDate(data.date)?.toISOString() ??
-					parseDate(data.createdAt)?.toISOString() ??
-					'',
-				createdAt: parseDate(data.createdAt)?.toISOString(),
-				updatedAt: parseDate(data.updatedAt)?.toISOString(),
-			});
-		});
-
-		// Return successful response
-		const response = createResponse(200, {
-			success: true,
-			data: transactions,
-			message: `Successfully retrieved ${transactions.length} transactions`,
-		});
-		res.status(response.statusCode).send(response.body);
-	} catch (error) {
-		console.error('Error in getUserTransactions:', error);
-
-		let statusCode = 500;
-		let errorMessage = 'Internal server error';
-
-		if (error instanceof Error) {
-			if (
-				error.message.includes('Authorization header') ||
-				error.message.includes('Bearer')
-			) {
-				statusCode = 401;
-				errorMessage = 'Invalid Authorization header format';
-			} else if (error.message.includes('Invalid or expired token')) {
-				statusCode = 401;
-				errorMessage = 'Invalid or expired token';
-			} else if (error.message.includes('Missing or invalid')) {
-				statusCode = 401;
-				errorMessage = 'Missing or invalid Authorization header';
-			}
-		}
-
-		const response = createResponse(statusCode, {
-			success: false,
-			error: errorMessage,
-		});
-		res.status(response.statusCode).send(response.body);
-	}
-});
-
-// Health check endpoint
-export const healthCheck = functions.https.onRequest((req, res) => {
-	setCorsHeaders(res);
-	res.json({
-		success: true,
-		message: 'API is running',
-		timestamp: new Date().toISOString(),
-	});
-});
-
-export const askAI = functions.https.onRequest(async (req, res) => {
-	if (req.method === 'OPTIONS') {
-		setCorsHeaders(res);
-		res.status(204).send('');
-		return;
-	}
-
-	setCorsHeaders(res);
-
-	if (req.method !== 'POST') {
-		const response: AskAIResponse = {
-			success: false,
-			error: 'Method not allowed. Only POST requests are supported.',
-		};
-		res.status(405).json(response);
-		return;
-	}
-
-	try {
-		const authHeader = req.headers.authorization;
-		if (!authHeader) {
+		if (!req.headers.authorization) {
 			res.status(401).json({ success: false, error: 'Authorization header is required' });
 			return;
 		}
-
-		const decodedToken = await verifyToken(authHeader);
-		const body = (req.body || {}) as AskAIRequestBody;
-		const question = (body.question || '').trim();
-		const requestedUserId = (body.userId || '').trim();
-
-		if (!question) {
-			res.status(400).json({ success: false, error: 'Question is required' });
-			return;
-		}
-
-		if (!requestedUserId) {
-			res.status(400).json({ success: false, error: 'userId is required' });
-			return;
-		}
-
-		if (decodedToken.uid !== requestedUserId) {
-			res.status(403).json({
-				success: false,
-				error: 'Authenticated user does not match the provided userId',
-			});
-			return;
-		}
-
-		const userRef = db.collection('users').doc(decodedToken.uid);
-		const [transactionsSnapshot, accountsSnapshot] = await Promise.all([
-			userRef.collection('transactions').limit(2000).get(),
-			userRef.collection('accounts').get(),
-		]);
-
-		const transactions: Transaction[] = [];
-		transactionsSnapshot.forEach((doc) => {
-			const data = doc.data();
-			transactions.push({
-				id: doc.id,
-				userId: String(data.userId || decodedToken.uid),
-				accountId: data.accountId ? String(data.accountId) : undefined,
-				transferAccountId: data.transferAccountId
-					? String(data.transferAccountId)
-					: undefined,
-				amount: Number(data.amount || 0),
-				title: String(data.title || data.description || 'Untitled transaction'),
-				description: data.description ? String(data.description) : '',
-				category: String(data.category || 'Uncategorized'),
-				subcategory: data.subcategory ? String(data.subcategory) : undefined,
-				type:
-					data.type === 'income' || data.type === 'transfer'
-						? data.type
-						: 'expense',
-				date: parseDate(data.date)?.toISOString(),
-				createdAt: parseDate(data.createdAt)?.toISOString(),
-				updatedAt: parseDate(data.updatedAt)?.toISOString(),
-			});
-		});
-
-		const accounts: Account[] = [];
-		accountsSnapshot.forEach((doc) => {
-			const data = doc.data();
-			accounts.push({
-				id: doc.id,
-				name: String(data.name || 'Unnamed account'),
-				type: String(data.type || 'account'),
-				balance: Number(data.balance || 0),
-				creditLimit: Number(data.creditLimit || 0),
-				currency: String(data.currency || 'ZAR'),
-			});
-		});
-
-		const accountNameById = new Map<string, Account>(
-			accounts.map((account) => [account.id, account])
-		);
-		const preferredCurrency = accounts[0]?.currency || 'ZAR';
-
-		if (transactions.length === 0) {
-			res.status(200).json({
-				success: true,
-				answer:
-					'I could not find any transactions yet. Add a few transactions first, then ask me about spending, merchants, categories, or accounts.',
-			});
-			return;
-		}
-
-		const now = new Date();
-		const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-		const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-		const inThisMonth = (transaction: Transaction): boolean => {
-			const parsedDate = parseDate(transaction.date) ?? parseDate(transaction.createdAt);
-			if (!parsedDate) {
-				return false;
-			}
-			return parsedDate >= monthStart && parsedDate < nextMonthStart;
-		};
-
-		const expensesThisMonth = transactions.filter(
-			(transaction) => transaction.type === 'expense' && inThisMonth(transaction)
-		);
-		const allExpenses = transactions.filter((transaction) => transaction.type === 'expense');
-		const incomeThisMonth = transactions.filter(
-			(transaction) => transaction.type === 'income' && inThisMonth(transaction)
-		);
-
-		const totalSpentThisMonth = expensesThisMonth.reduce(
-			(sum, transaction) => sum + Math.abs(transaction.amount),
-			0
-		);
-		const totalIncomeThisMonth = incomeThisMonth.reduce(
-			(sum, transaction) => sum + Math.abs(transaction.amount),
-			0
-		);
-
-		const normalizedQuestion = normalizeText(question);
-		const merchantQuery = extractMerchantQuery(question);
-
-		if (merchantQuery) {
-			const merchantSearch = normalizeText(merchantQuery);
-			const merchantTransactions = allExpenses.filter((transaction) =>
-				getTransactionSearchText(transaction).includes(merchantSearch)
-			);
-
-			const merchantSpend = merchantTransactions.reduce(
-				(sum, transaction) => sum + Math.abs(transaction.amount),
-				0
-			);
-			const sortedMerchantTransactions = sortTransactionsByNewest(merchantTransactions);
-			const latestMatch = sortedMerchantTransactions[0];
-			const averageMerchantSpend = getMonthlyAverage(
-				merchantSpend,
-				merchantTransactions.length
-			);
-
-			if (merchantTransactions.length === 0) {
-				res.status(200).json({
-					success: true,
-					answer: `I could not find any transactions that match "${merchantQuery}".`,
-				});
-				return;
-			}
-
-			const lastSeen = formatTransactionDate(latestMatch);
-			res.status(200).json({
-				success: true,
-				answer:
-					`I found ${merchantTransactions.length} ${pluralize(merchantTransactions.length, 'transaction')} for ${merchantQuery}, totaling ${formatCurrency(merchantSpend, preferredCurrency)}.\n` +
-					`Average spend per visit: ${formatCurrency(averageMerchantSpend, preferredCurrency)}.` +
-					(lastSeen ? ` Latest visit: ${lastSeen}.` : '') +
-					(sortedMerchantTransactions.length > 0
-						? ` Recent matches: ${formatTransactionList(sortedMerchantTransactions, preferredCurrency)}.`
-						: ''),
-			});
-			return;
-		}
-
-		if (
-			normalizedQuestion.includes('which account') &&
-			(normalizedQuestion.includes('spending the most') ||
-				normalizedQuestion.includes('spent the most') ||
-				normalizedQuestion.includes('most from'))
-		) {
-			const spendByAccount = new Map<string, number>();
-			for (const transaction of allExpenses) {
-				const accountId = transaction.accountId || 'unknown';
-				spendByAccount.set(
-					accountId,
-					(spendByAccount.get(accountId) || 0) + Math.abs(transaction.amount)
-				);
-			}
-
-			const highestSpendAccount = Array.from(spendByAccount.entries()).sort(
-				(left, right) => right[1] - left[1]
-			)[0];
-
-			if (!highestSpendAccount) {
-				res.status(200).json({
-					success: true,
-					answer: 'I could not find any expense transactions tied to an account yet.',
-				});
-				return;
-			}
-
-			const [accountId, totalSpend] = highestSpendAccount;
-			const account = accountNameById.get(accountId);
-			const accountName = account?.name || 'your account';
-			const accountExpenseTransactions = allExpenses.filter(
-				(transaction) => transaction.accountId === accountId
-			);
-			const transactionCount = accountExpenseTransactions.length;
-			const averageExpense = getMonthlyAverage(totalSpend, transactionCount);
-			const spendByAccountItems = Array.from(spendByAccount.entries()).map(
-				([entryAccountId, amount]) => ({
-					label: accountNameById.get(entryAccountId)?.name || 'Unknown account',
-					amount,
-				})
-			);
-			const leadingShare = allExpenses.length
-				? (totalSpend / allExpenses.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0)) * 100
-				: 0;
-
-			res.status(200).json({
-				success: true,
-				answer:
-					`${accountName} has the highest spend so far at ${formatCurrency(totalSpend, account?.currency || preferredCurrency)} across ` +
-					`${transactionCount} ${pluralize(transactionCount, 'expense')}.\n` +
-					`Average expense from this account: ${formatCurrency(averageExpense, account?.currency || preferredCurrency)}. ` +
-					`It represents ${leadingShare.toFixed(1)}% of all recorded expense spend.\n` +
-					`Top accounts by spend: ${formatTopBreakdown(spendByAccountItems, preferredCurrency)}.\n` +
-					`Recent expenses from ${accountName}: ${formatTransactionList(accountExpenseTransactions, account?.currency || preferredCurrency)}.`,
-			});
-			return;
-		}
-
-		const matchedCategory = findMostRelevantCategory(question, allExpenses);
-		if (matchedCategory) {
-			const normalizedCategory = normalizeText(matchedCategory);
-			const categoryTransactions = expensesThisMonth.filter((transaction) => {
-				const searchText = getTransactionSearchText(transaction);
-				return (
-					normalizeText(transaction.category) === normalizedCategory ||
-					searchText.includes(normalizedCategory)
-				);
-			});
-
-			const categorySpend = categoryTransactions.reduce(
-				(sum, transaction) => sum + Math.abs(transaction.amount),
-				0
-			);
-			const averageCategorySpend = getMonthlyAverage(
-				categorySpend,
-				categoryTransactions.length
-			);
-			const biggestCategoryTransaction = categoryTransactions
-				.slice()
-				.sort((left, right) => Math.abs(right.amount) - Math.abs(left.amount))[0];
-
-			const answer =
-				categoryTransactions.length > 0
-					? `You spent ${formatCurrency(categorySpend, preferredCurrency)} on ${matchedCategory} this month across ${categoryTransactions.length} ${pluralize(categoryTransactions.length, 'transaction')}.\n` +
-						`Average ${matchedCategory} transaction: ${formatCurrency(averageCategorySpend, preferredCurrency)}.` +
-						(biggestCategoryTransaction
-							? ` Largest one was ${formatTransactionLabel(biggestCategoryTransaction)} for ${formatCurrency(Math.abs(biggestCategoryTransaction.amount), preferredCurrency)}.`
-							: '') +
-						` Recent ${matchedCategory} transactions: ${formatTransactionList(categoryTransactions, preferredCurrency)}.`
-					: `I could not find any ${matchedCategory} expense transactions for this month.`;
-
-			res.status(200).json({ success: true, answer });
-			return;
-		}
-
-		if (
-			normalizedQuestion.includes('this month') &&
-			(normalizedQuestion.includes('spend') || normalizedQuestion.includes('spent'))
-		) {
-			const spendByCategory = new Map<string, number>();
-			for (const transaction of expensesThisMonth) {
-				const category = transaction.category || 'Uncategorized';
-				spendByCategory.set(
-					category,
-					(spendByCategory.get(category) || 0) + Math.abs(transaction.amount)
-				);
-			}
-
-			const topCategoryBreakdown = Array.from(spendByCategory.entries()).map(
-				([label, amount]) => ({
-					label,
-					amount,
-				})
-			);
-			const averageExpenseThisMonth = getMonthlyAverage(
-				totalSpentThisMonth,
-				expensesThisMonth.length
-			);
-
-			res.status(200).json({
-				success: true,
-				answer:
-					`You spent ${formatCurrency(totalSpentThisMonth, preferredCurrency)} this month across ${expensesThisMonth.length} ${pluralize(expensesThisMonth.length, 'expense')}.\n` +
-					`Average expense: ${formatCurrency(averageExpenseThisMonth, preferredCurrency)}. Income this month: ${formatCurrency(totalIncomeThisMonth, preferredCurrency)}.\n` +
-					(topCategoryBreakdown.length > 0
-						? `Top categories: ${formatTopBreakdown(topCategoryBreakdown, preferredCurrency)}.\n`
-						: '') +
-					`Most recent expenses: ${formatTransactionList(expensesThisMonth, preferredCurrency)}.`,
-			});
-			return;
-		}
-
-		const spendByCategory = new Map<string, number>();
-		for (const transaction of expensesThisMonth) {
-			const category = transaction.category || 'Uncategorized';
-			spendByCategory.set(
-				category,
-				(spendByCategory.get(category) || 0) + Math.abs(transaction.amount)
-			);
-		}
-
-		const spendByAccountSummary = new Map<string, number>();
-		for (const transaction of expensesThisMonth) {
-			const label =
-				accountNameById.get(transaction.accountId || '')?.name || 'Unknown account';
-			spendByAccountSummary.set(
-				label,
-				(spendByAccountSummary.get(label) || 0) + Math.abs(transaction.amount)
-			);
-		}
-
-		res.status(200).json({
-			success: true,
-			answer:
-				`I analyzed ${expensesThisMonth.length} expense transactions for this month.\n` +
-				`Total spend: ${formatCurrency(totalSpentThisMonth, preferredCurrency)}. Total income: ${formatCurrency(totalIncomeThisMonth, preferredCurrency)}.\n` +
-				`Top categories: ${formatTopBreakdown(
-					Array.from(spendByCategory.entries()).map(([label, amount]) => ({
-						label,
-						amount,
-					})),
-					preferredCurrency
-				)}.\n` +
-				`Top accounts: ${formatTopBreakdown(
-					Array.from(spendByAccountSummary.entries()).map(([label, amount]) => ({
-						label,
-						amount,
-					})),
-					preferredCurrency
-				)}.\n` +
-				`Recent expenses: ${formatTransactionList(expensesThisMonth, preferredCurrency)}.\n` +
-				'Ask about a category, merchant, or an account for a more focused breakdown.',
-		});
+		const { uid } = await verifyToken(req.headers.authorization);
+		const snapshot = await db.collection('users').doc(uid).collection('transactions').orderBy('date', 'desc').get();
+		const transactions = snapshot.docs.map(toTransaction);
+		res.status(200).json({ success: true, data: transactions, message: `Successfully retrieved ${transactions.length} transactions` });
 	} catch (error) {
-		console.error('Error in askAI:', error);
-		res.status(500).json({
-			success: false,
-			error: 'Internal server error',
-		});
+		console.error('Error in getUserTransactions:', error);
+		const unauthorized = error instanceof Error && (error.message.includes('Authorization') || error.message.includes('token'));
+		res.status(unauthorized ? 401 : 500).json({ success: false, error: unauthorized ? 'Invalid or expired token' : 'Internal server error' });
 	}
 });
+
+export const healthCheck = functions.https.onRequest((_req, res) => {
+	setCorsHeaders(res);
+	res.json({ success: true, message: 'API is running', timestamp: new Date().toISOString() });
+});
+
+export const askAI = functions
+	.runWith({ secrets: ['GEMINI_API_KEY'] })
+	.https.onRequest(async (req, res) => {
+		const requestId = req.get('function-execution-id') || randomUUID();
+		if (req.method === 'OPTIONS') {
+			setCorsHeaders(res);
+			res.status(204).send('');
+			return;
+		}
+		setCorsHeaders(res);
+		if (req.method !== 'POST') {
+			sendError(res, 405, {
+				error: 'The AI endpoint only accepts POST requests.',
+				code: 'METHOD_NOT_ALLOWED',
+				details: `Received ${req.method}. Send a JSON POST request to /askAI.`,
+				retryable: false,
+				requestId,
+			});
+			return;
+		}
+
+		try {
+			if (!req.headers.authorization) {
+				sendError(res, 401, {
+					error: 'You must be signed in to use the AI assistant.',
+					code: 'AUTH_HEADER_MISSING',
+					details: 'The request did not include a Firebase ID token. Sign in again and retry.',
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+			const decodedToken = await verifyToken(req.headers.authorization);
+			const body = (req.body || {}) as AskAIRequestBody;
+			const question = String(body.question || '').trim();
+			const requestedUserId = String(body.userId || '').trim();
+			if (!question) {
+				sendError(res, 400, {
+					error: 'Enter a question before sending.',
+					code: 'QUESTION_REQUIRED',
+					details: 'The question field was empty after whitespace was removed.',
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+			if (question.length > MAX_QUESTION_LENGTH) {
+				sendError(res, 400, {
+					error: `Your question is too long (${question.length} characters).`,
+					code: 'QUESTION_TOO_LONG',
+					details: `Shorten it to ${MAX_QUESTION_LENGTH} characters or fewer and send again.`,
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+			if (!requestedUserId) {
+				sendError(res, 400, {
+					error: 'The signed-in user could not be identified.',
+					code: 'USER_ID_REQUIRED',
+					details: 'Refresh the app and sign in again before retrying.',
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+			if (decodedToken.uid !== requestedUserId) {
+				sendError(res, 403, {
+					error: 'The request user does not match the signed-in account.',
+					code: 'USER_MISMATCH',
+					details: 'Sign out, sign back in, and retry. No financial data was sent to Gemini.',
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+
+			const rawHistory = Array.isArray(body.history) ? body.history : [];
+			if (rawHistory.length > MAX_HISTORY_MESSAGES) {
+				sendError(res, 400, {
+					error: 'The conversation history is too large.',
+					code: 'HISTORY_TOO_LARGE',
+					details: `Only the ${MAX_HISTORY_MESSAGES} most recent messages can be sent. Clear the chat and retry.`,
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+			const history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+			for (const message of rawHistory) {
+				if ((message.role !== 'user' && message.role !== 'assistant') || typeof message.content !== 'string' || !message.content.trim() || message.content.length > MAX_HISTORY_CONTENT_LENGTH) {
+					sendError(res, 400, {
+						error: 'The conversation history contains an invalid message.',
+						code: 'HISTORY_INVALID',
+						details: `Each message needs a user/assistant role and 1-${MAX_HISTORY_CONTENT_LENGTH} characters. Clear the chat and retry.`,
+						retryable: false,
+						requestId,
+					});
+					return;
+				}
+				history.push({ role: message.role, content: message.content.trim() });
+			}
+
+			const userRef = db.collection('users').doc(decodedToken.uid);
+			const [transactionsSnapshot, accountsSnapshot] = await Promise.all([
+				userRef.collection('transactions').limit(2000).get(),
+				userRef.collection('accounts').get(),
+			]);
+			const transactions = transactionsSnapshot.docs.map(toTransaction);
+			const accounts = accountsSnapshot.docs.map(toAccount);
+			const apiKey = process.env.GEMINI_API_KEY;
+			if (!apiKey) throw new Error('Gemini API key is not configured');
+			const ai = new GoogleGenAI({ apiKey });
+			const response = await ai.models.generateContent({
+				model: 'gemini-2.5-flash',
+				contents: buildGeminiPrompt(question, history, accounts, transactions),
+				config: { temperature: 0.2, maxOutputTokens: 1200 },
+			});
+			const answer = response.text?.trim();
+			if (!answer) throw new Error('Gemini returned an empty response');
+			res.status(200).json({ success: true, answer });
+		} catch (error) {
+			console.error('Error in askAI:', { requestId, error });
+			const status = typeof error === 'object' && error !== null && 'status' in error ? Number(error.status) : 0;
+			const message = error instanceof Error ? error.message : '';
+			if (message.includes('Invalid or expired token')) {
+				sendError(res, 401, {
+					error: 'Your session token is invalid or expired.',
+					code: 'AUTH_TOKEN_INVALID',
+					details: 'Sign out and sign back in to obtain a fresh Firebase session, then retry.',
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+			if (message.includes('API key is not configured')) {
+				sendError(res, 503, {
+					error: 'The AI assistant is not configured on the server.',
+					code: 'GEMINI_CONFIG_MISSING',
+					details: 'Set GEMINI_API_KEY in functions/.secret.local for emulation or Firebase Secret Manager for production, then restart or redeploy the function.',
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+			if (status === 429) {
+				sendError(res, 429, {
+					error: 'Gemini rejected the request because its rate or quota limit was reached.',
+					code: 'GEMINI_RATE_LIMITED',
+					details: 'Wait 30-60 seconds before retrying. If it continues, review the Gemini API project quota and billing status.',
+					retryable: true,
+					requestId,
+				});
+				return;
+			}
+			if (status === 401 || status === 403) {
+				sendError(res, 503, {
+					error: 'Gemini rejected the server API key.',
+					code: 'GEMINI_AUTH_FAILED',
+					details: 'Verify that GEMINI_API_KEY is valid, enabled for the Gemini API, and attached to the deployed function.',
+					retryable: false,
+					requestId,
+				});
+				return;
+			}
+			if (/fetch failed|network|timed? out|econn/i.test(message) || status >= 500) {
+				sendError(res, 503, {
+					error: 'The server could not complete its request to Gemini.',
+					code: 'GEMINI_UNAVAILABLE',
+					details: 'The provider or network is temporarily unavailable. Retry in a moment; your chat history remains in this browser session.',
+					retryable: true,
+					requestId,
+				});
+				return;
+			}
+			sendError(res, 502, {
+				error: 'Gemini did not return a usable answer.',
+				code: 'GEMINI_RESPONSE_INVALID',
+				details: 'Retry with a shorter, more specific question. If it repeats, use the request reference when checking Function logs.',
+				retryable: true,
+				requestId,
+			});
+		}
+	});

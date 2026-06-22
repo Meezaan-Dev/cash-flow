@@ -44,22 +44,6 @@ let mockRecurringTransactions = [
 	},
 ];
 
-jest.mock('@/domains/ai/components/AIChatbot', () => ({
-	__esModule: true,
-	default: ({
-		alwaysDocked,
-		variant,
-	}: {
-		alwaysDocked?: boolean;
-		variant?: string;
-	}) => (
-		<div data-testid="assistant-variant">
-			{variant}
-			{alwaysDocked ? ':always-docked' : ''}
-		</div>
-	),
-}));
-
 jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 	useTransactionsContext: () => ({
 		transactions: mockTransactions,
@@ -174,7 +158,7 @@ describe('DashboardOverview', () => {
 		];
 	});
 
-	it('renders the cockpit dashboard with digest, accounts, transactions, and docked AI', () => {
+	it('renders the cockpit dashboard with digest, accounts, and transactions', () => {
 		render(
 			<DashboardOverview
 				onOpenAccounts={mockOnOpenAccounts}
@@ -196,9 +180,7 @@ describe('DashboardOverview', () => {
 		expect(screen.getByText('Accounts')).toBeInTheDocument();
 		expect(screen.getByText('Recent')).toBeInTheDocument();
 		expect(screen.getByText('Latest transactions')).toBeInTheDocument();
-		expect(screen.getByTestId('assistant-variant')).toHaveTextContent(
-			'docked:always-docked'
-		);
+		expect(screen.queryByRole('region', { name: /ai assistant/i })).not.toBeInTheDocument();
 
 		fireEvent.click(screen.getByRole('button', { name: /income/i }));
 		expect(mockOnOpenTransactions).toHaveBeenCalledWith(

@@ -17,7 +17,8 @@ export type ViewType =
 	| 'budgets'
 	| 'transfer'
 	| 'reconcile'
-	| 'recurring';
+	| 'recurring'
+	| 'assistant';
 
 // Category
 export interface Category {
@@ -269,6 +270,7 @@ export interface AIChatMessage {
 export interface AskAIRequest {
 	question: string;
 	userId: string;
+	history?: Array<Pick<AIChatMessage, 'role' | 'content'>>;
 }
 
 export interface AskAIResponse {

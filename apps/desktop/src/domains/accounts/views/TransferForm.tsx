@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { FiArrowRight } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
@@ -66,9 +67,7 @@ const TransferForm: React.FC<TransferFormProps> = ({ onClose }) => {
 			});
 			onClose();
 		} catch (err: unknown) {
-			setError(
-				err instanceof Error ? err.message : 'Failed to complete transfer. Please try again.'
-			);
+			setError(getAppErrorMessage(err, { operation: 'Transfer' }));
 		} finally {
 			setLoading(false);
 		}

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import {
 	ArrowDownCircle,
 	ArrowUpCircle,
@@ -61,7 +62,9 @@ const AuthPanel = () => {
 				await signInWithEmailAndPassword(auth, email, password);
 			}
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Could not sign in.');
+			setError(getAppErrorMessage(err, {
+				operation: mode === 'register' ? 'Account creation' : 'Sign in',
+			}));
 		} finally {
 			setLoading(false);
 		}
@@ -198,7 +201,7 @@ const AddTransactionView = () => {
 			setSubcategory('');
 			setDate(new Date().toISOString().split('T')[0]);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Could not save transaction.');
+			setError(getAppErrorMessage(err, { operation: 'Save transaction' }));
 		} finally {
 			setSaving(false);
 		}

@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FiCheck, FiPlus, FiRefreshCw, FiSettings } from 'react-icons/fi';
 import { getDueRecurringDrafts } from '@cash-flow/shared/recurring/dueRecurringDrafts';
 import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
-import AIChatbot from '@/domains/ai/components/AIChatbot';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
@@ -246,10 +245,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 					</MotionReveal>
 				)}
 
-				<MotionReveal delay={0.32} className="min-h-[28rem]">
-					<AIChatbot variant="docked" alwaysDocked />
-				</MotionReveal>
-			</div>
+				</div>
 		</PageShell>
 	);
 };

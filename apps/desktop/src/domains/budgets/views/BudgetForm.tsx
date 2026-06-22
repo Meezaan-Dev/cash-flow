@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { FiCalendar, FiDollarSign, FiTarget } from 'react-icons/fi';
 import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
@@ -187,11 +188,7 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 			});
 			onClose();
 		} catch (saveError) {
-			setFormError(
-				saveError instanceof Error
-					? saveError.message
-					: 'Failed to save budget. Please try again.'
-			);
+			setFormError(getAppErrorMessage(saveError, { operation: 'Save budget' }));
 		} finally {
 			setSaving(false);
 		}

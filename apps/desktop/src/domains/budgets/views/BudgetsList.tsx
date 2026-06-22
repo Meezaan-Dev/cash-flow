@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { useNavigate } from 'react-router-dom';
 import {
 	FiCalendar,
@@ -419,9 +420,7 @@ const BudgetsList: React.FC = () => {
 				});
 			}
 		} catch (error) {
-			setActionError(
-				error instanceof Error ? error.message : 'Unable to update this budget.'
-			);
+			setActionError(getAppErrorMessage(error, { operation: 'Update budget' }));
 		} finally {
 			setActionId(undefined);
 		}
@@ -454,9 +453,7 @@ const BudgetsList: React.FC = () => {
 			await reorderBudgets(nextOrderIds);
 		} catch (error) {
 			setLocalOrderIds(serverOrderedBudgets.map((budget) => budget.id));
-			setActionError(
-				error instanceof Error ? error.message : 'Unable to save the budget order.'
-			);
+			setActionError(getAppErrorMessage(error, { operation: 'Reorder budgets' }));
 		}
 	};
 

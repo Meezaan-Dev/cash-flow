@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { FiPlus, FiSearch, FiSettings, FiTrash2 } from 'react-icons/fi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
@@ -331,11 +332,10 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 			});
 		} catch (error) {
 			toast({
-				title: 'Update failed',
-				description:
-					error instanceof Error
-						? error.message
-						: 'Could not update the selected transactions.',
+				title: 'Categories were not updated',
+				description: getAppErrorMessage(error, {
+					operation: 'Bulk category update',
+				}),
 				variant: 'destructive',
 			});
 		} finally {

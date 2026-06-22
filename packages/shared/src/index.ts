@@ -14,3 +14,4 @@ export * from './categories/categoryColors';
 export * from './categories/categories.constants';
 export * from './recurring/dueRecurringDrafts';
 export * from './validation';
+export * from './errors';

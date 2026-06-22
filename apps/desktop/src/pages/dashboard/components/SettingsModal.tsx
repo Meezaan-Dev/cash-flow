@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import {
 	FiChevronDown,
 	FiChevronRight,
@@ -34,13 +35,15 @@ import { useFilterPreferences, FilterPreferences } from '@/shared/filters/contex
 import { modalShell, navItemActive, navItemInactive } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
+import TransactionExportDialog from '@/domains/transactions/views/TransactionExportDialog';
+import { Transaction } from '@/types';
+import { useToast } from '@/components/app/ui/use-toast';
 
 interface SettingsModalProps {
 	open: boolean;
 	onClose: () => void;
 	onImport?: (file: File) => Promise<void> | void;
-	onExportCSV?: () => void;
-	onExportJSON?: () => void;
+	onExport?: (format: 'csv' | 'json', transactions: Transaction[]) => void;
 	initialTab?: 'general' | 'data' | 'filters' | 'categories';
 }
 
@@ -48,11 +51,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	open,
 	onClose,
 	onImport,
-	onExportCSV,
-	onExportJSON,
+	onExport,
 	initialTab,
 }) => {
-	const { deleteAllTransactions } = useTransactionsContext();
+	const { toast } = useToast();
+	const { transactions, deleteAllTransactions } = useTransactionsContext();
 	const { accounts } = useAccountsContext();
 	const { mainAccountId, setMainAccountId } = useMainAccountPreference();
 	const {
@@ -71,6 +74,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	const { currentUser } = useAuth();
 	const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 	const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
+	const [exportDialogOpen, setExportDialogOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<'general' | 'data' | 'filters' | 'categories'>(
 		initialTab ?? 'general'
 	);
@@ -125,10 +129,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	};
 
 	const confirmLogout = async () => {
-		await signOut(auth);
-		localStorage.removeItem('token');
-		setLogoutConfirmOpen(false);
-		onClose();
+		try {
+			await signOut(auth);
+			localStorage.removeItem('token');
+			setLogoutConfirmOpen(false);
+			onClose();
+		} catch (error) {
+			toast({
+				title: 'Sign out did not complete',
+				description: getAppErrorMessage(error, { operation: 'Sign out' }),
+				variant: 'destructive',
+			});
+		}
 	};
 
 	const handleDeleteAllClick = () => {
@@ -136,9 +148,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	};
 
 	const confirmDeleteAllTransactions = async () => {
-		await deleteAllTransactions();
-		setDeleteAllConfirmOpen(false);
-		onClose();
+		try {
+			await deleteAllTransactions();
+			setDeleteAllConfirmOpen(false);
+			onClose();
+		} catch (error) {
+			toast({
+				title: 'Transactions were not deleted',
+				description: getAppErrorMessage(error, { operation: 'Delete all transactions' }),
+				variant: 'destructive',
+			});
+		}
 	};
 
 	const handleAddCategory = async () => {
@@ -447,22 +467,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 												>
 													Import
 												</Button>
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={onExportCSV}
-													className="w-full sm:w-auto"
-												>
-													Export CSV
-												</Button>
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={onExportJSON}
-													className="w-full sm:w-auto"
-												>
-													Export JSON
-												</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => setExportDialogOpen(true)}
+									className="w-full sm:w-auto"
+								>
+									Export
+								</Button>
 											</div>
 											<p className="text-sm text-gray-500 dark:text-gray-400">
 												Delete all transactions from your account. This
@@ -970,6 +982,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			<TransactionExportDialog
+				open={exportDialogOpen}
+				onOpenChange={setExportDialogOpen}
+				transactions={transactions}
+				accounts={accounts}
+				categories={categories}
+				onExport={(format, filteredTransactions) =>
+					onExport?.(format, filteredTransactions)
+				}
+			/>
 		</>
 	);
 };
