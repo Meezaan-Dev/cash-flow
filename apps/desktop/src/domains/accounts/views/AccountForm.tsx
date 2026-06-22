@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { Account } from '@/types';
 import {
@@ -72,7 +73,7 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 			}
 			onClose();
 		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : 'Failed to save account. Please try again.');
+			setError(getAppErrorMessage(err, { operation: 'Save account' }));
 		} finally {
 			setLoading(false);
 		}

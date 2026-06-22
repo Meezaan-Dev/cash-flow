@@ -1,6 +1,7 @@
 import {
 	buildTransactionSignature,
 	exportTransactionsToCsv,
+	filterTransactionsForExport,
 	importTransactionsFromFile,
 } from '../transactionImportExport';
 import { Transaction } from '@/types';
@@ -147,5 +148,38 @@ describe('transaction import/export', () => {
 
 		expect(csv).toContain('"\'=HYPERLINK(""https://example.invalid"")"');
 		expect(csv).toContain('"\'+SUM(A1:A2)"');
+	});
+
+	it('filters exports by multiple accounts and categories', () => {
+		const transactions: Transaction[] = [
+			{ id: '1', accountId: 'a', title: 'Food', amount: 10, type: 'expense', category: 'food' },
+			{ id: '2', accountId: 'b', title: 'Fuel', amount: 20, type: 'expense', category: 'transport' },
+			{ id: '3', accountId: 'c', title: 'Rent', amount: 30, type: 'expense', category: 'home' },
+		];
+		expect(filterTransactionsForExport(transactions, {
+			accountIds: ['a', 'b'], categories: ['food', 'transport'], type: 'overall',
+		})).toHaveLength(2);
+	});
+
+	it('includes transfers in overall and filters income or expenses exactly', () => {
+		const transactions: Transaction[] = [
+			{ accountId: 'a', title: 'Salary', amount: 100, type: 'income', category: 'income' },
+			{ accountId: 'a', title: 'Lunch', amount: 10, type: 'expense', category: 'food' },
+			{ accountId: 'a', title: 'Move', amount: 20, type: 'transfer', category: 'transfer' },
+		];
+		const base = { accountIds: [], categories: [] };
+		expect(filterTransactionsForExport(transactions, { ...base, type: 'overall' })).toHaveLength(3);
+		expect(filterTransactionsForExport(transactions, { ...base, type: 'income' })).toHaveLength(1);
+		expect(filterTransactionsForExport(transactions, { ...base, type: 'expense' })).toHaveLength(1);
+	});
+
+	it('uses inclusive export date boundaries and rejects reversed ranges', () => {
+		const transactions: Transaction[] = [
+			{ accountId: 'a', title: 'Start', amount: 10, type: 'expense', category: 'food', date: new Date(2026, 5, 1) },
+			{ accountId: 'a', title: 'End', amount: 10, type: 'expense', category: 'food', date: new Date(2026, 5, 30) },
+		];
+		const base = { accountIds: [], categories: [], type: 'overall' as const };
+		expect(filterTransactionsForExport(transactions, { ...base, startDate: '2026-06-01', endDate: '2026-06-30' })).toHaveLength(2);
+		expect(filterTransactionsForExport(transactions, { ...base, startDate: '2026-07-01', endDate: '2026-06-01' })).toEqual([]);
 	});
 });

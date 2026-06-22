@@ -1,4 +1,9 @@
 .env
+.env.*
+!.env.example
+functions/.env
+functions/.env.*
+functions/.secret.local
 
 # Astro dev cache
 .astro/

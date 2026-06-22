@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { Eye, EyeOff } from 'lucide-react';
 import { auth } from '@/services/firebase';
 import {
@@ -65,7 +66,9 @@ const AuthModals: React.FC<AuthModalsProps> = ({ open, onClose, mode, onModeChan
 			setEmail('');
 			setPassword('');
 		} catch (error: unknown) {
-			setError(error instanceof Error ? error.message : 'Something went wrong');
+			setError(getAppErrorMessage(error, {
+				operation: mode === 'register' ? 'Account creation' : 'Sign in',
+			}));
 		} finally {
 			setLoading(false);
 		}
@@ -86,7 +89,7 @@ const AuthModals: React.FC<AuthModalsProps> = ({ open, onClose, mode, onModeChan
 			await signInWithPopup(auth, provider);
 			handleSuccessfulAuth();
 		} catch (error: unknown) {
-			setError(error instanceof Error ? error.message : 'Something went wrong');
+			setError(getAppErrorMessage(error, { operation: 'Google sign-in' }));
 		} finally {
 			setGoogleLoading(false);
 		}

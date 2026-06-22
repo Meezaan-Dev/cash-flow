@@ -2,7 +2,6 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/services/firebase';
-import AIChatbot from '@/domains/ai/components/AIChatbot';
 import Home from '@/pages/marketing/Home';
 
 const MOBILE_DASHBOARD_QUERY = '(max-width: 767px)';
@@ -45,8 +44,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 	const isMobileViewport = useIsMobileDashboardViewport();
 	const isDashboardRoute =
 		location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/');
-	const shouldRenderFloatingAssistant =
-		isDashboardRoute && location.pathname !== '/dashboard';
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -95,10 +92,5 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 		return <Navigate to="/mobisite" replace />;
 	}
 
-	return (
-		<>
-			{children}
-			{shouldRenderFloatingAssistant && <AIChatbot />}
-		</>
-	);
+	return children;
 }

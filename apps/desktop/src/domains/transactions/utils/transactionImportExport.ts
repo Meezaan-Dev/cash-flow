@@ -1,6 +1,48 @@
 import { ImportResult, SerializableTransaction, Transaction } from '@/types';
 import { parseDbDateOrNull } from '@/utils/date';
 
+export type TransactionExportType = 'overall' | 'income' | 'expense';
+
+export interface TransactionExportFilters {
+	accountIds: string[];
+	categories: string[];
+	type: TransactionExportType;
+	startDate?: string;
+	endDate?: string;
+}
+
+const toLocalDateKey = (transaction: Transaction): string | null => {
+	const date = parseDbDateOrNull(transaction.date) ?? parseDbDateOrNull(transaction.createdAt);
+	if (!date) return null;
+	return [
+		date.getFullYear(),
+		String(date.getMonth() + 1).padStart(2, '0'),
+		String(date.getDate()).padStart(2, '0'),
+	].join('-');
+};
+
+export const filterTransactionsForExport = (
+	transactions: Transaction[],
+	filters: TransactionExportFilters
+): Transaction[] => {
+	if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) return [];
+	const accountIds = new Set(filters.accountIds);
+	const categories = new Set(filters.categories);
+
+	return transactions.filter((transaction) => {
+		if (accountIds.size > 0 && !accountIds.has(transaction.accountId)) return false;
+		if (categories.size > 0 && !categories.has(transaction.category)) return false;
+		if (filters.type !== 'overall' && transaction.type !== filters.type) return false;
+		if (filters.startDate || filters.endDate) {
+			const dateKey = toLocalDateKey(transaction);
+			if (!dateKey) return false;
+			if (filters.startDate && dateKey < filters.startDate) return false;
+			if (filters.endDate && dateKey > filters.endDate) return false;
+		}
+		return true;
+	});
+};
+
 const REQUIRED_FIELDS = ['title', 'amount', 'type', 'category'] as const;
 const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 const MAX_IMPORT_ROWS = 5_000;

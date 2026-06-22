@@ -238,6 +238,20 @@ This guide provides step-by-step instructions for deploying the Firebase Cloud F
 | ------------------- | ---------------------------- | -------------------------------------------------------- |
 | `VITE_API_BASE_URL` | Base URL for Cloud Functions | `https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net` |
 
+The AI assistant also requires a server-side Firebase secret. Set it before deploying
+the `askAI` function:
+
+```bash
+firebase functions:secrets:set GEMINI_API_KEY
+firebase deploy --only functions:askAI
+```
+
+For local emulation, copy `functions/.secret.local.example` to
+`functions/.secret.local` and put the
+real key there. The repository-level `.env.example` documents the variable name
+only; never commit a real API key or prefix it with `VITE_`, because `VITE_*`
+variables are bundled into browser JavaScript.
+
 ## Security Considerations
 
 1. **JWT Token Validation**: The API validates Firebase ID tokens

@@ -123,6 +123,11 @@ jest.mock('@/domains/recurring/views/RecurringTransactionsView', () => ({
 	default: () => <div>Recurring transactions</div>,
 }));
 
+jest.mock('@/domains/ai/components/AIChatbot', () => ({
+	__esModule: true,
+	default: () => <div>AI assistant</div>,
+}));
+
 jest.mock('@/domains/auth/components/AuthModals', () => ({
 	__esModule: true,
 	default: () => null,

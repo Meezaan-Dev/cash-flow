@@ -15,6 +15,7 @@ import ReconcileForm from '@/domains/accounts/views/ReconcileForm';
 import BudgetsList from '@/domains/budgets/views/BudgetsList';
 import ReportsView from '@/domains/reports/views/ReportsView';
 import RecurringTransactionsView from '@/domains/recurring/views/RecurringTransactionsView';
+import AIChatbot from '@/domains/ai/components/AIChatbot';
 import AuthModals from '@/domains/auth/components/AuthModals';
 import {
 	Dialog,
@@ -38,6 +39,7 @@ import {
 	TransactionFilterDescriptor,
 	transactionFiltersToSearch,
 } from '@/shared/filters/utils/transactionFilters';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 
 const routeToView = (pathname: string, isMobile: boolean): ViewType => {
 	if (pathname.startsWith('/dashboard/transactions')) return isMobile ? 'list' : 'table';
@@ -45,6 +47,7 @@ const routeToView = (pathname: string, isMobile: boolean): ViewType => {
 	if (pathname.startsWith('/dashboard/budgets')) return 'budgets';
 	if (pathname.startsWith('/dashboard/recurring')) return 'recurring';
 	if (pathname.startsWith('/dashboard/reports')) return 'reports';
+	if (pathname.startsWith('/dashboard/assistant')) return 'assistant';
 	return 'dashboard';
 };
 
@@ -61,6 +64,8 @@ const viewToRoute = (view: ViewType): string => {
 			return '/dashboard/recurring';
 		case 'reports':
 			return '/dashboard/reports';
+		case 'assistant':
+			return '/dashboard/assistant';
 		default:
 			return '/dashboard';
 	}
@@ -181,10 +186,10 @@ const Dashboard: React.FC = () => {
 					setSelectedTransactionId(null);
 				}
 				toast({ title: 'Success', description: 'Transaction deleted successfully' });
-			} catch {
+			} catch (error) {
 				toast({
-					title: 'Error',
-					description: 'Failed to delete transaction. Please try again.',
+					title: 'Transaction was not deleted',
+					description: getAppErrorMessage(error, { operation: 'Delete transaction' }),
 					variant: 'destructive',
 				});
 			}
@@ -292,6 +297,8 @@ const Dashboard: React.FC = () => {
 				return <RecurringTransactionsView onOpenSettings={() => handleOpenSettings('filters')} />;
 			case 'reports':
 				return <ReportsView onOpenSettings={() => handleOpenSettings('filters')} />;
+			case 'assistant':
+				return <AIChatbot />;
 			default:
 				return (
 					<DashboardOverview
@@ -391,39 +398,30 @@ const Dashboard: React.FC = () => {
 					} catch (e: unknown) {
 						toast({
 							title: 'Import failed',
-							description:
-								e instanceof Error ? e.message : 'Failed to import file.',
+							description: getAppErrorMessage(e, { operation: 'Import transactions' }),
 							variant: 'destructive',
 						});
 					}
 				}}
-				onExportCSV={() => {
-					const csv = exportTransactionsToCsv(transactions);
-					const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+				onExport={(format, filteredTransactions) => {
+					const content = format === 'csv'
+						? exportTransactionsToCsv(filteredTransactions)
+						: exportTransactionsToJson(filteredTransactions);
+					const mimeType = format === 'csv'
+						? 'text/csv;charset=utf-8'
+						: 'application/json;charset=utf-8';
+					const blob = new Blob([content], { type: mimeType });
 					const url = URL.createObjectURL(blob);
 					const a = document.createElement('a');
 					a.href = url;
-					a.download = 'transactions.csv';
-					document.body.appendChild(a);
-					a.click();
-					a.remove();
-					URL.revokeObjectURL(url);
-					toast({ title: 'Export successful', description: 'Transactions exported to CSV' });
-				}}
-				onExportJSON={() => {
-					const json = exportTransactionsToJson(transactions);
-					const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
-					const url = URL.createObjectURL(blob);
-					const a = document.createElement('a');
-					a.href = url;
-					a.download = 'transactions.json';
+					a.download = `transactions-${new Date().toISOString().slice(0, 10)}.${format}`;
 					document.body.appendChild(a);
 					a.click();
 					a.remove();
 					URL.revokeObjectURL(url);
 					toast({
 						title: 'Export successful',
-						description: 'Transactions exported to JSON',
+						description: `${filteredTransactions.length} transactions exported to ${format.toUpperCase()}`,
 					});
 				}}
 			/>

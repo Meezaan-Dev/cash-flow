@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { FiCheckCircle } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
@@ -74,9 +75,7 @@ const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose }) => {
 			}
 			setStep('done');
 		} catch (err: unknown) {
-			setError(
-				err instanceof Error ? err.message : 'Failed to reconcile account. Please try again.'
-			);
+			setError(getAppErrorMessage(err, { operation: 'Account reconciliation' }));
 		} finally {
 			setLoading(false);
 		}

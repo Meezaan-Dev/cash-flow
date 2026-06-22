@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { FiDollarSign, FiTag, FiInfo, FiSave, FiX, FiRefreshCw, FiArrowUpCircle, FiArrowDownCircle } from 'react-icons/fi';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
@@ -142,7 +143,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			onClose();
 		} catch (error) {
 			console.error('Error saving recurring transaction:', error);
-			setError(error instanceof Error ? error.message : 'Failed to save recurring transaction.');
+			setError(getAppErrorMessage(error, { operation: 'Save recurring transaction' }));
 		} finally {
 			setIsSubmitting(false);
 		}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiRefreshCw } from 'react-icons/fi';
 import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { Transaction } from '@/domains/transactions/models/TransactionModel';
@@ -256,7 +257,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 			onClose();
 		} catch (error) {
 			console.error('Failed to submit transaction:', error);
-			setError(error instanceof Error ? error.message : 'Failed to submit transaction.');
+			setError(getAppErrorMessage(error, { operation: 'Save transaction' }));
 		} finally {
 			submitInFlightRef.current = false;
 			setIsSubmitting(false);

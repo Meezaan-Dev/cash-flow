@@ -23,19 +23,10 @@ describe('AIChatbot', () => {
 		});
 	});
 
-	it('opens and closes the chat panel', async () => {
-		const user = userEvent.setup();
+	it('renders the assistant workspace immediately', () => {
 		render(<AIChatbot />);
-
-		const openButton = screen.getByRole('button', { name: /open ai assistant/i });
-		await user.click(openButton);
-
+		expect(screen.getByRole('region', { name: /ai assistant/i })).toBeInTheDocument();
 		expect(screen.getByText('AI Assistant')).toBeInTheDocument();
-
-		const closeButton = screen.getAllByRole('button', { name: /close ai assistant/i })[0];
-		await user.click(closeButton);
-
-		expect(screen.queryByText('AI Assistant')).not.toBeInTheDocument();
 	});
 
 	it('sends a suggestion and renders user + assistant messages', async () => {
@@ -43,7 +34,6 @@ describe('AIChatbot', () => {
 		mockAskQuestion.mockResolvedValue('You spent R1,200 on food this month.');
 
 		render(<AIChatbot />);
-		await user.click(screen.getByRole('button', { name: /open ai assistant/i }));
 
 		const suggestion = screen.getByRole('button', {
 			name: /how much did i spend on food this month/i,
@@ -54,6 +44,7 @@ describe('AIChatbot', () => {
 			expect(mockAskQuestion).toHaveBeenCalledWith({
 				question: 'How much did I spend on food this month?',
 				userId: 'user-123',
+				history: [],
 			});
 		});
 
@@ -74,13 +65,12 @@ describe('AIChatbot', () => {
 		);
 
 		render(<AIChatbot />);
-		await user.click(screen.getByRole('button', { name: /open ai assistant/i }));
 
 		const input = screen.getByPlaceholderText(/ask a question about your finances/i);
 		await user.type(input, 'Which account has most spending?');
 		await user.click(screen.getByRole('button', { name: /send message/i }));
 
-		expect(screen.getByText('AI is thinking...')).toBeInTheDocument();
+		expect(screen.getByText('Gemini is thinking...')).toBeInTheDocument();
 
 		resolveRequest?.('Your credit account has the highest spending.');
 
@@ -96,7 +86,6 @@ describe('AIChatbot', () => {
 		mockAskQuestion.mockRejectedValue(new Error('Network error. Please try again.'));
 
 		render(<AIChatbot />);
-		await user.click(screen.getByRole('button', { name: /open ai assistant/i }));
 
 		const input = screen.getByPlaceholderText(/ask a question about your finances/i);
 		await user.type(input, 'How many times did I eat KFC?');
@@ -112,7 +101,6 @@ describe('AIChatbot', () => {
 		mockAskQuestion.mockResolvedValue('You visited KFC 3 times.');
 
 		render(<AIChatbot />);
-		await user.click(screen.getByRole('button', { name: /open ai assistant/i }));
 
 		const input = screen.getByPlaceholderText(/ask a question about your finances/i);
 		await user.type(input, 'How many times did I eat KFC?');
@@ -127,30 +115,32 @@ describe('AIChatbot', () => {
 		expect(screen.getByText('Try asking')).toBeInTheDocument();
 	});
 
-	it('disables sending and shows auth-required hint when user is missing', async () => {
-		const user = userEvent.setup();
+	it('disables sending and shows auth-required hint when user is missing', () => {
 		mockUseAuth.mockReturnValue({ currentUser: null });
 
 		render(<AIChatbot />);
-		await user.click(screen.getByRole('button', { name: /open ai assistant/i }));
 
 		expect(screen.getAllByText('Please log in to use the AI assistant.').length).toBeGreaterThan(0);
 		expect(screen.getByRole('button', { name: /send message/i })).toBeDisabled();
 	});
 
-	it('renders docked mode inline on desktop without the floating launcher', () => {
-		Object.defineProperty(window, 'innerWidth', {
-			configurable: true,
-			writable: true,
-			value: 1440,
-		});
-
-		render(<AIChatbot variant="docked" />);
-
-		expect(screen.getByRole('region', { name: /ai assistant/i })).toBeInTheDocument();
-		expect(screen.getByText('AI Assistant')).toBeInTheDocument();
-		expect(
-			screen.queryByRole('button', { name: /open ai assistant/i })
-		).not.toBeInTheDocument();
+	it('sends recent session messages as follow-up history', async () => {
+		const user = userEvent.setup();
+		mockAskQuestion.mockResolvedValueOnce('First answer').mockResolvedValueOnce('Follow-up answer');
+		render(<AIChatbot />);
+		const input = screen.getByPlaceholderText(/ask a question about your finances/i);
+		await user.type(input, 'First question');
+		await user.click(screen.getByRole('button', { name: /send message/i }));
+		await screen.findByText('First answer');
+		await user.type(input, 'And after that?');
+		await user.click(screen.getByRole('button', { name: /send message/i }));
+		await waitFor(() => expect(mockAskQuestion).toHaveBeenLastCalledWith({
+			question: 'And after that?',
+			userId: 'user-123',
+			history: [
+				{ role: 'user', content: 'First question' },
+				{ role: 'assistant', content: 'First answer' },
+			],
+		}));
 	});
 });
