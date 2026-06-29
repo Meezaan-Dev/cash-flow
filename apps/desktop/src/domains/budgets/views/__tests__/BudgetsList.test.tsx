@@ -2,17 +2,22 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import BudgetsList from '../BudgetsList';
 import {
-	getCurrentBudgetMonth,
 	getMonthDateRange,
 } from '@/domains/budgets/models/BudgetModel';
 
-const mockMonth = getCurrentBudgetMonth();
+const mockMonth = '2026-06';
 const mockRange = getMonthDateRange(mockMonth);
 const mockPublishBudget = jest.fn();
 const mockRepeatBudget = jest.fn();
 const mockDeleteBudget = jest.fn();
 const mockReorderBudgets = jest.fn();
 const mockNavigate = jest.fn();
+const categoryLabels: Record<string, string> = {
+	bills: 'Bills',
+	food: 'Food',
+	petrol: 'Petrol',
+	travel: 'Travel',
+};
 
 jest.mock('react-router-dom', () => ({
 	...jest.requireActual('react-router-dom'),
@@ -25,6 +30,11 @@ const renderBudgets = () =>
 			<BudgetsList />
 		</MemoryRouter>
 	);
+
+const textContentMatches = (expected: RegExp) => (
+	_content: string,
+	element: Element | null
+) => Boolean(element?.textContent?.replace(/\s/g, ' ').match(expected));
 
 jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 	useBudgetsContext: () => ({
@@ -91,6 +101,18 @@ jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 				lifecycleStatus: 'draft',
 				displayOrder: 4,
 			},
+			{
+				id: 'cycle-bills',
+				userId: 'user-1',
+				categoryId: 'bills',
+				amount: 1000,
+				period: 'custom',
+				cycleDay: 26,
+				startDate: '2026-05-26',
+				endDate: '2026-06-26',
+				lifecycleStatus: 'published',
+				displayOrder: 5,
+			},
 		],
 		deleteBudget: mockDeleteBudget,
 		publishBudget: mockPublishBudget,
@@ -134,6 +156,36 @@ jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 				category: 'petrol',
 				date: new Date(`${mockMonth}-12T12:00:00`),
 			},
+			{
+				id: 'old-cycle-bill',
+				userId: 'user-1',
+				accountId: 'account-1',
+				title: 'Old bill',
+				amount: 700,
+				type: 'expense',
+				category: 'bills',
+				date: new Date('2026-06-25T12:00:00'),
+			},
+			{
+				id: 'current-cycle-bill',
+				userId: 'user-1',
+				accountId: 'account-1',
+				title: 'Current bill',
+				amount: 500,
+				type: 'expense',
+				category: 'bills',
+				date: new Date('2026-06-26T12:00:00'),
+			},
+			{
+				id: 'renewal-boundary-bill',
+				userId: 'user-1',
+				accountId: 'account-1',
+				title: 'Next bill',
+				amount: 900,
+				type: 'expense',
+				category: 'bills',
+				date: new Date('2026-07-26T12:00:00'),
+			},
 		],
 	}),
 }));
@@ -162,17 +214,31 @@ jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 				label: 'Travel',
 				subcategories: [],
 			},
+			{
+				id: 'bills',
+				value: 'bills',
+				label: 'Bills',
+				subcategories: [],
+			},
 		],
-		getCategoryLabel: (category: string) =>
-			category === 'food' ? 'Food' : category === 'travel' ? 'Travel' : 'Petrol',
+		getCategoryLabel: (category: string) => categoryLabels[category] ?? 'Petrol',
 		getSubcategoryLabel: (_category: string, subcategory?: string) =>
 			subcategory === 'groceries' ? 'Groceries' : 'Takeaways',
 	}),
 }));
 
 describe('BudgetsList', () => {
+	beforeAll(() => {
+		jest.useFakeTimers();
+	});
+
+	afterAll(() => {
+		jest.useRealTimers();
+	});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.setSystemTime(new Date('2026-06-27T12:00:00'));
 	});
 
 	it('separates drafts and active budgets with explicit titles', () => {
@@ -185,7 +251,7 @@ describe('BudgetsList', () => {
 		expect(screen.getAllByText('Tracks all Petrol expenses').length).toBeGreaterThan(0);
 		expect(screen.getByText('Other budget periods')).toBeInTheDocument();
 		expect(screen.getByText('Travel')).toBeInTheDocument();
-		expect(screen.getByText('5 of 8 budgets created')).toBeInTheDocument();
+		expect(screen.getByText('6 of 8 budgets created')).toBeInTheDocument();
 	});
 
 	it('shows concise dates, sentence metrics, and status states', () => {
@@ -196,7 +262,7 @@ describe('BudgetsList', () => {
 		);
 		expect(screen.getAllByText(monthLabel).length).toBeGreaterThan(0);
 		expect(screen.getAllByText(/spent of/).length).toBeGreaterThan(0);
-		expect(screen.getByText('On track')).toBeInTheDocument();
+		expect(screen.getAllByText('On track').length).toBeGreaterThan(0);
 		expect(screen.getByText('Watch spending')).toBeInTheDocument();
 		expect(screen.getByText('Over budget')).toBeInTheDocument();
 		expect(screen.getByRole('img', { name: '61 percent used' })).toBeInTheDocument();
@@ -233,6 +299,7 @@ describe('BudgetsList', () => {
 				'over-petrol',
 				'warning-food',
 				'next-month-travel',
+				'cycle-bills',
 			])
 		);
 	});
@@ -256,6 +323,36 @@ describe('BudgetsList', () => {
 		);
 		expect(mockNavigate).toHaveBeenCalledWith(
 			expect.stringContaining(`to=${mockRange.endDate}`)
+		);
+	});
+
+	it('uses the active rolling cycle for custom budget display and history links', () => {
+		renderBudgets();
+
+		expect(screen.getByText('Bills')).toBeInTheDocument();
+		expect(screen.getByText('26 Jun – 26 Jul 2026')).toBeInTheDocument();
+		expect(
+			screen.getByText(textContentMatches(/^R 500,00 spent of R 1 000,00$/))
+		).toBeInTheDocument();
+		expect(screen.getByRole('img', { name: '50 percent used' })).toBeInTheDocument();
+
+		fireEvent.click(
+			screen.getByRole('button', {
+				name: 'View transactions for Bills',
+			})
+		);
+
+		expect(mockNavigate).toHaveBeenCalledWith(
+			expect.stringContaining('/dashboard/transactions?category=bills&type=expense')
+		);
+		expect(mockNavigate).toHaveBeenCalledWith(
+			expect.stringContaining('from=2026-06-26')
+		);
+		expect(mockNavigate).toHaveBeenCalledWith(
+			expect.stringContaining('to=2026-07-26')
+		);
+		expect(mockNavigate).toHaveBeenCalledWith(
+			expect.stringContaining('endExclusive=1')
 		);
 	});
 });

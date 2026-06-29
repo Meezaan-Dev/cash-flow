@@ -27,6 +27,7 @@ import {
 } from '@/shared/filters/utils/transactionFilters';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { cn } from '@/lib/utils';
+import { useCurrentDate } from '@/hooks/useCurrentDate';
 
 interface BudgetSummaryProps {
 	onOpenBudgets: () => void;
@@ -55,7 +56,7 @@ const BudgetSummary: React.FC<BudgetSummaryProps> = ({
 	const { budgets } = useBudgetsContext();
 	const { transactions } = useTransactionsContext();
 	const { getCategoryLabel, getSubcategoryLabel } = useCategoriesContext();
-	const referenceDate = useMemo(() => new Date(), []);
+	const referenceDate = useCurrentDate();
 	const progress = useMemo(() => {
 		const month = getCurrentBudgetMonth(referenceDate);
 		return sortBudgetsByDisplayOrder(budgets)
