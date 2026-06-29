@@ -56,6 +56,7 @@ import {
 } from '@/components/app/ui/dialog';
 import { cn } from '@/lib/utils';
 import { modalShell } from '@/styles/marketingStyles';
+import { useCurrentDate } from '@/hooks/useCurrentDate';
 import {
 	getBudgetTransactionFilters,
 	transactionFiltersToSearch,
@@ -316,6 +317,7 @@ const BudgetsList: React.FC = () => {
 	const [actionId, setActionId] = useState<string>();
 	const [draggingBudgetId, setDraggingBudgetId] = useState<string>();
 	const [actionError, setActionError] = useState('');
+	const referenceDate = useCurrentDate();
 	const serverOrderedBudgets = useMemo(
 		() => sortBudgetsByDisplayOrder(budgets),
 		[budgets]
@@ -352,13 +354,9 @@ const BudgetsList: React.FC = () => {
 			orderedBudgets
 				.filter((budget) => Boolean(budget.categoryId))
 				.map((budget) =>
-					calculateBudgetProgress(
-						budget,
-						transactions,
-						new Date(`${selectedMonth}-15T12:00:00`)
-					)
+					calculateBudgetProgress(budget, transactions, referenceDate)
 				),
-		[orderedBudgets, selectedMonth, transactions]
+		[orderedBudgets, referenceDate, transactions]
 	);
 	const progress = useMemo(
 		() =>
@@ -481,7 +479,7 @@ const BudgetsList: React.FC = () => {
 					getCategoryLabel={getCategoryLabel}
 					getSubcategoryLabel={getSubcategoryLabel}
 					actionId={actionId}
-					referenceDate={new Date(`${selectedMonth}-15T12:00:00`)}
+					referenceDate={referenceDate}
 					onEdit={openEdit}
 					onDelete={setBudgetToDelete}
 					onPublish={(budget) =>
@@ -505,10 +503,7 @@ const BudgetsList: React.FC = () => {
 					onViewTransactions={(budget) =>
 						navigate(
 							`/dashboard/transactions${transactionFiltersToSearch(
-								getBudgetTransactionFilters(
-									budget,
-									new Date(`${selectedMonth}-15T12:00:00`)
-								)
+								getBudgetTransactionFilters(budget, referenceDate)
 							)}`
 						)
 					}

@@ -1,6 +1,7 @@
 import {
 	budgetOverlapsMonth,
 	buildRepeatedBudget,
+	calculateBudgetProgress,
 	calculateBudgetRemaining,
 	calculateBudgetSpent,
 	calculateBudgetUsedPercentage,
@@ -88,6 +89,20 @@ describe('BudgetModel', () => {
 		});
 	});
 
+	it.each([
+		['2026-05-18T12:00:00', '2026-04-26', '2026-05-26'],
+		['2026-05-26T12:00:00', '2026-05-26', '2026-06-26'],
+		['2026-06-27T12:00:00', '2026-06-26', '2026-07-26'],
+	] as const)(
+		'resolves a day 26 cycle around %s',
+		(referenceDate, startDate, endDate) => {
+			expect(getBudgetCycleDateRange(26, new Date(referenceDate))).toEqual({
+				startDate,
+				endDate,
+			});
+		}
+	);
+
 	it('includes the cycle start and excludes the renewal boundary', () => {
 		const budget = makeBudget({
 			period: 'custom',
@@ -133,6 +148,15 @@ describe('BudgetModel', () => {
 			).toEqual({ startDate, endDate });
 		}
 	);
+
+	it('handles a recurring cycle across December and January', () => {
+		expect(
+			getBudgetCycleDateRange(26, new Date('2026-01-02T12:00:00'))
+		).toEqual({
+			startDate: '2025-12-26',
+			endDate: '2026-01-26',
+		});
+	});
 
 	it('normalizes legacy cycle fields into the canonical renewal day', () => {
 		expect(
@@ -214,6 +238,49 @@ describe('BudgetModel', () => {
 		expect(calculateBudgetSpent(transactions, budget)).toBe(450);
 		expect(calculateBudgetRemaining(400, 450)).toBe(-50);
 		expect(calculateBudgetUsedPercentage(400, 450)).toBe(112.5);
+	});
+
+	it('calculates progress only from transactions inside the active cycle', () => {
+		const budget = makeBudget({
+			amount: 1000,
+			period: 'custom',
+			month: undefined,
+			cycleDay: 26,
+			startDate: '2026-04-26',
+			endDate: '2026-05-26',
+		});
+		const transactions = [
+			makeTransaction({
+				id: 'previous-cycle',
+				amount: 100,
+				date: new Date('2026-05-25T12:00:00'),
+			}),
+			makeTransaction({
+				id: 'cycle-start',
+				amount: 200,
+				date: new Date('2026-05-26T12:00:00'),
+			}),
+			makeTransaction({
+				id: 'inside-cycle',
+				amount: 300,
+				date: new Date('2026-06-10T12:00:00'),
+			}),
+			makeTransaction({
+				id: 'renewal-boundary',
+				amount: 400,
+				date: new Date('2026-06-26T12:00:00'),
+			}),
+		];
+
+		const progress = calculateBudgetProgress(
+			budget,
+			transactions,
+			new Date('2026-06-13T12:00:00')
+		);
+
+		expect(progress.spent).toBe(500);
+		expect(progress.remaining).toBe(500);
+		expect(progress.usedPercentage).toBe(50);
 	});
 
 	it.each([
