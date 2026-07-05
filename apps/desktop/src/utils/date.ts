@@ -36,8 +36,12 @@ export const compareTransactionsByDateDesc = <
 	left: T,
 	right: T
 ): number => {
-	return (
-		getTransactionDateOrEpoch(right.date, right.createdAt).getTime() -
-		getTransactionDateOrEpoch(left.date, left.createdAt).getTime()
-	);
+	const leftDate = getTransactionDateOrEpoch(left.date, left.createdAt).getTime();
+	const rightDate = getTransactionDateOrEpoch(right.date, right.createdAt).getTime();
+	const diff = rightDate - leftDate;
+	if (diff !== 0) return diff;
+
+	const leftCreated = parseDbDateOrNull(left.createdAt)?.getTime() ?? 0;
+	const rightCreated = parseDbDateOrNull(right.createdAt)?.getTime() ?? 0;
+	return rightCreated - leftCreated;
 };

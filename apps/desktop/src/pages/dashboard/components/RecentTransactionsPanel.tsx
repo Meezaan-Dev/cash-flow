@@ -11,7 +11,7 @@ import {
 } from '@/styles/marketingStyles';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { cn } from '@/lib/utils';
-import { parseDbDate } from '@/utils/date';
+import { parseDbDate, parseDbDateOrNull } from '@/utils/date';
 
 interface RecentTransactionsPanelProps {
 	transactions: Transaction[];
@@ -33,9 +33,14 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 		() =>
 			[...transactions]
 				.sort((left, right) => {
-					const leftDate = parseDbDate(left.date ?? left.createdAt);
-					const rightDate = parseDbDate(right.date ?? right.createdAt);
-					return rightDate.getTime() - leftDate.getTime();
+					const leftDate = parseDbDate(left.date ?? left.createdAt).getTime();
+					const rightDate = parseDbDate(right.date ?? right.createdAt).getTime();
+					const diff = rightDate - leftDate;
+					if (diff !== 0) return diff;
+
+					const leftCreated = parseDbDateOrNull(left.createdAt)?.getTime() ?? 0;
+					const rightCreated = parseDbDateOrNull(right.createdAt)?.getTime() ?? 0;
+					return rightCreated - leftCreated;
 				})
 				.slice(0, compact ? 5 : 6),
 		[compact, transactions]
