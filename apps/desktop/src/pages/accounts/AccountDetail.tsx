@@ -31,7 +31,7 @@ import {
 } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { parseDbDate } from '@/utils/date';
+import { parseDbDate, parseDbDateOrNull } from '@/utils/date';
 
 type SubView = 'detail' | 'edit' | 'transfer' | 'reconcile';
 
@@ -54,9 +54,14 @@ const AccountDetailPage: React.FC = () => {
 			[...transactions]
 				.filter((t) => t.accountId === accountId)
 				.sort((a, b) => {
-					const da = parseDbDate(a.date ?? a.createdAt);
-					const db = parseDbDate(b.date ?? b.createdAt);
-					return db.getTime() - da.getTime();
+					const da = parseDbDate(a.date ?? a.createdAt).getTime();
+					const db = parseDbDate(b.date ?? b.createdAt).getTime();
+					const diff = db - da;
+					if (diff !== 0) return diff;
+
+					const createdA = parseDbDateOrNull(a.createdAt)?.getTime() ?? 0;
+					const createdB = parseDbDateOrNull(b.createdAt)?.getTime() ?? 0;
+					return createdB - createdA;
 				}),
 		[transactions, accountId]
 	);

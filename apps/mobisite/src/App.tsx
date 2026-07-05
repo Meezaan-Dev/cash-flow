@@ -21,6 +21,7 @@ import {
 	formatCurrency,
 	getTransactionDateOrEpoch,
 	mergeCategoryOptions,
+	parseDbDateOrNull,
 	Transaction,
 	useAccounts,
 	useCategoryOptions,
@@ -363,11 +364,16 @@ const TransactionListView = () => {
 	const { getCategoryPathLabel } = useCategoryOptions();
 
 	const grouped = useMemo(() => {
-		const sorted = [...transactions].sort(
-			(left, right) =>
-				getTransactionDateOrEpoch(right.date, right.createdAt).getTime() -
-				getTransactionDateOrEpoch(left.date, left.createdAt).getTime()
-		);
+		const sorted = [...transactions].sort((left, right) => {
+			const leftDate = getTransactionDateOrEpoch(left.date, left.createdAt).getTime();
+			const rightDate = getTransactionDateOrEpoch(right.date, right.createdAt).getTime();
+			const diff = rightDate - leftDate;
+			if (diff !== 0) return diff;
+
+			const leftCreated = parseDbDateOrNull(left.createdAt)?.getTime() ?? 0;
+			const rightCreated = parseDbDateOrNull(right.createdAt)?.getTime() ?? 0;
+			return rightCreated - leftCreated;
+		});
 
 		return sorted.reduce<Record<string, Transaction[]>>((groups, transaction) => {
 			const dateKey = formatDateKey(transaction);

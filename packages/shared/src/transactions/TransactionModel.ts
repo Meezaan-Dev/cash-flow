@@ -114,6 +114,11 @@ export const sortByDateDesc = (transactions: Transaction[]): Transaction[] => {
 			parseDbDateOrNull(a.date) ?? parseDbDateOrNull(a.createdAt) ?? new Date(0);
 		const dateB =
 			parseDbDateOrNull(b.date) ?? parseDbDateOrNull(b.createdAt) ?? new Date(0);
-		return dateB.getTime() - dateA.getTime();
+		const diff = dateB.getTime() - dateA.getTime();
+		if (diff !== 0) return diff;
+
+		const createdA = parseDbDateOrNull(a.createdAt)?.getTime() ?? 0;
+		const createdB = parseDbDateOrNull(b.createdAt)?.getTime() ?? 0;
+		return createdB - createdA;
 	});
 };
