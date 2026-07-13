@@ -14,6 +14,7 @@ Cash Flow is one deployed SPA. `apps/desktop/src/App.tsx` owns routing for both 
 | `/dashboard/budgets` | Desktop budget management. |
 | `/dashboard/recurring` | Desktop recurring transaction management. |
 | `/dashboard/reports` | Desktop reports. |
+| `/dashboard/random` | Desktop freeform private notes area. |
 | `/dashboard/assistant` | Gemini-powered financial assistant workspace. |
 | `/dashboard/settings` | Desktop settings modal route. |
 | `/mobisite` | Mobile capture experience. On desktop/tablet it is shown inside a mobile browser-style frame; on actual small screens it renders full-screen. |

@@ -144,6 +144,12 @@ describe('App routing', () => {
 		expect(screen.getByText('Desktop dashboard')).toBeInTheDocument();
 	});
 
+	it('renders the desktop shell at /dashboard/random', () => {
+		mockInitialPath = '/dashboard/random';
+		render(<App />);
+		expect(screen.getByText('Desktop dashboard')).toBeInTheDocument();
+	});
+
 	it('redirects authenticated mobile dashboard routes to mobisite', async () => {
 		mockInitialPath = '/dashboard/reports';
 		setMobileViewport(true);

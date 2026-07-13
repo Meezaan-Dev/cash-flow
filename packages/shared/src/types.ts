@@ -18,6 +18,7 @@ export type ViewType =
 	| 'transfer'
 	| 'reconcile'
 	| 'recurring'
+	| 'random'
 	| 'assistant';
 
 // Category

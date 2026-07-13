@@ -142,6 +142,15 @@ service cloud.firestore {
         optionalTimestamp(data, 'updatedAt');
     }
 
+    function validRandomNote(data, userId) {
+      return data.keys().hasOnly(['userId', 'content', 'createdAt', 'updatedAt']) &&
+        data.userId == userId &&
+        data.content is string &&
+        data.content.size() <= 10000 &&
+        data.createdAt is timestamp &&
+        optionalTimestamp(data, 'updatedAt');
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow write: if false;
@@ -191,6 +200,15 @@ service cloud.firestore {
         allow create: if isOwner(userId) && validCategory(request.resource.data);
         allow update: if isOwner(userId) &&
           validCategory(request.resource.data) &&
+          request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      match /random/{noteId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validRandomNote(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          validRandomNote(request.resource.data, userId) &&
+          request.resource.data.userId == resource.data.userId &&
           request.resource.data.createdAt == resource.data.createdAt;
       }
     }
