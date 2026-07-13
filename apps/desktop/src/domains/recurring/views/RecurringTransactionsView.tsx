@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FiEdit, FiTrash2, FiPlus, FiDollarSign, FiX, FiSettings } from 'react-icons/fi';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
+import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
 import { Button } from '@/components/app/ui/button';
 import { Badge } from '@/components/app/ui/badge';
@@ -110,6 +111,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 	const { recurringTransactions, deleteRecurringTransaction, recurringTransactionsLoading } =
 		useTransactionsContext();
 	const { categoryOptions, getCategoryPathLabel } = useCategoriesContext();
+	const { accounts } = useAccountsContext();
 
 	const { prefs } = useFilterPreferences();
 	const recurringPrefs = prefs.recurring;
@@ -119,8 +121,14 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 	const [typeFilter, setTypeFilter] = useState('all');
 	const [expectedDateFilter, setExpectedDateFilter] = useState('all');
 	const [sortBy, setSortBy] = useState<SortBy>('default');
-	const [viewMode, setViewMode] = useState<ViewMode>('list');
-	const [isDesktopCalendarAllowed, setIsDesktopCalendarAllowed] = useState(false);
+	const [viewMode, setViewMode] = useState<ViewMode>(() => {
+		if (typeof window === 'undefined') return 'list';
+		const stored = window.localStorage.getItem(RECURRING_VIEW_MODE_STORAGE_KEY);
+		return stored === 'list' || stored === 'calendar' ? stored : 'list';
+	});
+	const [isDesktopCalendarAllowed, setIsDesktopCalendarAllowed] = useState(
+		() => typeof window !== 'undefined' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+	);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [editingTransaction, setEditingTransaction] = useState<RecurringTransaction | undefined>(undefined);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -136,6 +144,8 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 		[categoryOptions, recurringTransactions]
 	);
 
+	const isHydrated = useRef(false);
+
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
 		const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
@@ -143,7 +153,6 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 			setIsDesktopCalendarAllowed(event.matches);
 		};
 
-		setIsDesktopCalendarAllowed(mediaQuery.matches);
 		mediaQuery.addEventListener('change', handleViewportChange);
 
 		return () => {
@@ -153,21 +162,26 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
-		const storedMode = window.localStorage.getItem(RECURRING_VIEW_MODE_STORAGE_KEY);
-		if (storedMode === 'list' || (storedMode === 'calendar' && isDesktopCalendarAllowed)) {
-			setViewMode(storedMode);
-		} else if (!isDesktopCalendarAllowed) {
-			setViewMode('list');
-		}
+
+		const readViewMode = () => {
+			const storedMode = window.localStorage.getItem(RECURRING_VIEW_MODE_STORAGE_KEY);
+			if (storedMode === 'list' || (storedMode === 'calendar' && isDesktopCalendarAllowed)) {
+				setViewMode(storedMode);
+			} else if (!isDesktopCalendarAllowed) {
+				setViewMode('list');
+			}
+		};
+
+		readViewMode();
+		isHydrated.current = true;
+		window.addEventListener('recurring-view-mode-changed', readViewMode);
+		return () => window.removeEventListener('recurring-view-mode-changed', readViewMode);
 	}, [isDesktopCalendarAllowed]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
-		if (!isDesktopCalendarAllowed && viewMode === 'calendar') {
-			setViewMode('list');
-			window.localStorage.setItem(RECURRING_VIEW_MODE_STORAGE_KEY, 'list');
-			return;
-		}
+		if (!isHydrated.current) return;
+		if (!isDesktopCalendarAllowed) return;
 		window.localStorage.setItem(RECURRING_VIEW_MODE_STORAGE_KEY, viewMode);
 	}, [viewMode, isDesktopCalendarAllowed]);
 
@@ -531,6 +545,18 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 									</span>
 									<span>•</span>
 									<span>{getCategoryPathLabel(expense.category, expense.subcategory)}</span>
+									{expense.accountId && (() => {
+										const acct = accounts.find((a) => a.id === expense.accountId);
+										return acct ? (
+											<>
+												<span>•</span>
+												<span className="flex items-center gap-1">
+													<span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: acct.color ?? '#6366f1' }} />
+													{acct.name}
+												</span>
+											</>
+										) : null;
+									})()}
 									{expense.description && (
 										<>
 											<span>•</span>
