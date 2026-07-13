@@ -92,9 +92,9 @@ const RandomView: React.FC = () => {
 	return (
 		<PageShell className="flex flex-col">
 			<PageHeader
-				eyebrow="Random"
+				badge="Random"
 				title="Write anything down"
-				description="A private place for brain dumps, reminders, rough thoughts, or anything that helps with mental clarity."
+				subtitle="A private place for brain dumps, reminders, rough thoughts, or anything that helps with mental clarity."
 			/>
 
 			<section className={cn('flex min-h-[60vh] flex-1 flex-col overflow-hidden', cardSurface)}>
