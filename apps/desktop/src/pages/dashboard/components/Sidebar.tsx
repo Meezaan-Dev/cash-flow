@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
 	FiBarChart2,
 	FiChevronLeft,
+	FiEdit3,
 	FiGrid,
 	FiList,
 	FiMessageCircle,
@@ -54,6 +55,7 @@ const NAV_ITEMS: NavItem[] = [
 	{ id: 'budgets', label: 'Budgets', icon: FiTarget },
 	{ id: 'recurring', label: 'Recurring', icon: FiRefreshCw },
 	{ id: 'reports', label: 'Reports', icon: FiBarChart2 },
+	{ id: 'random', label: 'Random', icon: FiEdit3 },
 	{ id: 'assistant', label: 'Assistant', icon: FiMessageCircle },
 	{ id: 'mobisite', label: 'View Mobisite', icon: FiSmartphone },
 ];
@@ -176,9 +178,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 					</div>
 
 					{!collapsed && (
-						<div className="border-b border-gray-200/80 p-3 dark:border-gray-800/80">
+						<div className="flex flex-1 flex-col border-b border-gray-200/80 p-3 dark:border-gray-800/80">
 							<p className={cn(sectionLabel, 'px-3 pb-2 pt-1')}>Admin</p>
-							<div className="space-y-1">
+							<div className="flex flex-1 flex-col gap-1.5">
 								{NAV_ITEMS.map(({ id, label, icon: Icon }) => {
 									const isActive =
 										id === 'history'
@@ -189,7 +191,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 											key={id}
 											onClick={() => handleViewClick(id)}
 											className={cn(
-												'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+												'flex min-h-10 w-full flex-1 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
 												isActive ? navItemActive : navItemInactive
 											)}
 										>
@@ -201,8 +203,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 							</div>
 						</div>
 					)}
-
-					<div className="flex-1" />
 
 					{!collapsed && (
 						<div className="border-t border-gray-200/80 p-3 dark:border-gray-800/80">

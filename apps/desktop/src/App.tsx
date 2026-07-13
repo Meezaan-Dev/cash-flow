@@ -85,6 +85,14 @@ function App() {
 											}
 										/>
 										<Route
+											path="/dashboard/random"
+											element={
+												<ProtectedRoute>
+													<Dashboard />
+												</ProtectedRoute>
+											}
+										/>
+										<Route
 											path="/dashboard/assistant"
 											element={
 												<ProtectedRoute>
