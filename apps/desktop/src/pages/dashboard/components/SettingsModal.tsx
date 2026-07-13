@@ -91,6 +91,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	const [categoryError, setCategoryError] = useState('');
 	const [categoryBusy, setCategoryBusy] = useState(false);
 	const selectedMainAccountExists = accounts.some((account) => account.id === mainAccountId);
+	const [recurringViewMode, setRecurringViewMode] = useState<'list' | 'calendar'>(() => {
+		const stored = window.localStorage.getItem('recurringTransactions.viewMode');
+		return stored === 'list' || stored === 'calendar' ? stored : 'list';
+	});
+
+	useEffect(() => {
+		if (open) {
+			const stored = window.localStorage.getItem('recurringTransactions.viewMode');
+			if (stored === 'list' || stored === 'calendar') {
+				setRecurringViewMode(stored);
+			}
+		}
+	}, [open]);
+
+	useEffect(() => {
+		window.localStorage.setItem('recurringTransactions.viewMode', recurringViewMode);
+		window.dispatchEvent(new Event('recurring-view-mode-changed'));
+	}, [recurringViewMode]);
 
 	useEffect(() => {
 		setLocalTheme(theme);
@@ -425,6 +443,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 													Used as the default account in desktop and mobisite
 													transaction capture. You can still pick another account
 													per transaction.
+												</p>
+											</div>
+											<div className="space-y-2">
+												<Label htmlFor="recurring-view-mode">
+													Default recurring view
+												</Label>
+												<select
+													id="recurring-view-mode"
+													value={recurringViewMode}
+													onChange={(event) =>
+														setRecurringViewMode(event.target.value as 'list' | 'calendar')
+													}
+													className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+												>
+													<option value="list">List</option>
+													<option value="calendar">Calendar</option>
+												</select>
+												<p className="text-xs text-gray-500 dark:text-gray-400">
+													Calendar view is only available on screens wider than 1024px.
 												</p>
 											</div>
 										</div>

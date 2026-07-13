@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FiEdit, FiTrash2, FiPlus, FiDollarSign } from 'react-icons/fi';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
+import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
 import { Button } from '@/components/app/ui/button';
 import RecurringTransactionForm from './RecurringTransactionForm';
@@ -19,6 +20,7 @@ const RecurringTransactionsList: React.FC = () => {
 	const { recurringTransactions, deleteRecurringTransaction, recurringTransactionsLoading } =
 		useTransactionsContext();
 	const { getCategoryPathLabel } = useCategoriesContext();
+	const { accounts } = useAccountsContext();
 	const [editingTransaction, setEditingTransaction] = useState<RecurringTransaction | undefined>(undefined);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -128,6 +130,18 @@ const RecurringTransactionsList: React.FC = () => {
 											transaction.subcategory
 										)}
 									</span>
+									{transaction.accountId && (() => {
+										const acct = accounts.find((a) => a.id === transaction.accountId);
+										return acct ? (
+											<>
+												<span className="hidden sm:inline">•</span>
+												<span className="flex items-center gap-1">
+													<span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: acct.color ?? '#6366f1' }} />
+													{acct.name}
+												</span>
+											</>
+										) : null;
+									})()}
 									{transaction.description && (
 										<>
 											<span className="hidden sm:inline">•</span>

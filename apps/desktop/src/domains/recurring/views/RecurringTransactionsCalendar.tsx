@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FiChevronLeft, FiChevronRight, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
 import { Button } from '@/components/app/ui/button';
 import { Badge } from '@/components/app/ui/badge';
@@ -36,6 +37,8 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 	onDelete,
 	getCategoryPathLabel,
 }) => {
+	const { accounts } = useAccountsContext();
+
 	const [visibleMonth, setVisibleMonth] = useState(() => {
 		const now = new Date();
 		return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -285,6 +288,10 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 												transaction.subcategory
 											)} •{' '}
 											{getRecurringFrequencyLabel(transaction.frequency)}
+											{transaction.accountId && (() => {
+												const acct = accounts.find((a) => a.id === transaction.accountId);
+												return acct ? <> • {acct.name}</> : null;
+											})()}
 										</p>
 										<p className="mt-1 text-sm font-medium">
 											{formatCurrency(transaction.amount)}

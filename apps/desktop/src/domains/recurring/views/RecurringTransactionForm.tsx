@@ -3,6 +3,8 @@ import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { FiDollarSign, FiTag, FiInfo, FiSave, FiX, FiRefreshCw, FiArrowUpCircle, FiArrowDownCircle } from 'react-icons/fi';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
+import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
+import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
 import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
@@ -17,6 +19,7 @@ import {
 } from '@/components/app/ui/select';
 import { Loader2 } from 'lucide-react';
 import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface RecurringTransactionFormProps {
 	onClose: () => void;
@@ -33,6 +36,8 @@ const FREQUENCIES = [
 const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onClose, transaction: expense }) => {
 	const { addRecurringTransaction, updateRecurringTransaction } = useTransactionsContext();
 	const { categories, categoryOptions } = useCategoriesContext();
+	const { accounts } = useAccountsContext();
+	const { mainAccountId } = useMainAccountPreference();
 	const [title, setTitle] = useState('');
 	const [amount, setAmount] = useState(0);
 	const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
@@ -43,6 +48,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 		'monthly'
 	);
 	const [expectedDate, setExpectedDate] = useState<number | ''>('');
+	const [accountId, setAccountId] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const availableCategories = React.useMemo(
@@ -61,6 +67,13 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			),
 		[selectedCategory, subcategory]
 	);
+	const defaultAccountId = React.useMemo(
+		() => {
+			const mainAccount = accounts.find((account) => account.id === mainAccountId);
+			return mainAccount?.id ?? accounts[0]?.id ?? '';
+		},
+		[accounts, mainAccountId]
+	);
 
 	const handleCategoryChange = (value: string) => {
 		setCategory(value);
@@ -78,6 +91,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			setDescription(expense.description ?? '');
 			setFrequency(expense.frequency ?? 'monthly');
 			setExpectedDate(expense.expectedDate ?? '');
+			setAccountId(expense.accountId ?? '');
 			setError('');
 		} else {
 			setTitle('');
@@ -88,6 +102,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			setDescription('');
 			setFrequency('monthly');
 			setExpectedDate('');
+			setAccountId('');
 			setError('');
 		}
 	}, [expense]);
@@ -99,6 +114,12 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			setSubcategory('');
 		}
 	}, [availableSubcategories, subcategory]);
+
+	useEffect(() => {
+		if (!accountId && defaultAccountId) {
+			setAccountId(defaultAccountId);
+		}
+	}, [accountId, defaultAccountId]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -124,6 +145,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 				| 'description'
 				| 'frequency'
 				| 'expectedDate'
+				| 'accountId'
 			> = {
 				title,
 				amount: Number(amount),
@@ -131,6 +153,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 				category: categoryForSubmit,
 				subcategory: subcategory || undefined,
 				description,
+				accountId: accountId || undefined,
 				frequency,
 				expectedDate: normalizedExpectedDate,
 			};
@@ -211,6 +234,33 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 						</button>
 					</div>
 				</div>
+
+				{/* Account selector */}
+				{accounts.length > 0 && (
+					<div className="space-y-2">
+						<Label htmlFor="re-account" className="text-sm font-medium">
+							Account
+						</Label>
+						<Select value={accountId} onValueChange={setAccountId}>
+							<SelectTrigger id="re-account" className="h-10 rounded-lg border-2 transition-all focus:border-primary">
+								<SelectValue placeholder="Select account" />
+							</SelectTrigger>
+							<SelectContent>
+								{accounts.map((a) => (
+									<SelectItem key={a.id} value={a.id!}>
+										<span className="flex items-center gap-2">
+											<span
+												className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+												style={{ backgroundColor: a.color ?? '#6366f1' }}
+											/>
+											{a.name} ({formatCurrency(a.balance)})
+										</span>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				)}
 
 				{/* Title and Amount */}
 				<div className="grid gap-5 md:grid-cols-2">
