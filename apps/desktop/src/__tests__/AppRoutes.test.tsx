@@ -3,6 +3,21 @@ import { render, screen } from '@testing-library/react';
 
 let mockInitialPath = '/';
 let mockAuthUser: unknown = { uid: 'user-1', email: 'test@example.com' };
+const makeProviderMock = () => jest.fn(({ children }: { children: React.ReactNode }) => (
+	<>{children}</>
+));
+const mockFilterPreferencesProvider = makeProviderMock();
+const mockCategoriesProvider = makeProviderMock();
+const mockTransactionsProvider = makeProviderMock();
+const mockAccountsProvider = makeProviderMock();
+const mockBudgetsProvider = makeProviderMock();
+const providerMocks = [
+	mockFilterPreferencesProvider,
+	mockCategoriesProvider,
+	mockTransactionsProvider,
+	mockAccountsProvider,
+	mockBudgetsProvider,
+];
 
 const setMobileViewport = (isMobile: boolean) => {
 	Object.defineProperty(window, 'matchMedia', {
@@ -38,25 +53,23 @@ jest.mock('@/app/theme/context/ThemeContext', () => ({
 }));
 
 jest.mock('@/shared/filters/context/FilterPreferencesContext', () => ({
-	FilterPreferencesProvider: ({ children }: { children: React.ReactNode }) => (
-		<>{children}</>
-	),
+	FilterPreferencesProvider: mockFilterPreferencesProvider,
 }));
 
 jest.mock('@/domains/categories/context/CategoriesContext', () => ({
-	CategoriesProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+	CategoriesProvider: mockCategoriesProvider,
 }));
 
 jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
-	TransactionsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+	TransactionsProvider: mockTransactionsProvider,
 }));
 
 jest.mock('@/domains/accounts/context/AccountsContext', () => ({
-	AccountsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+	AccountsProvider: mockAccountsProvider,
 }));
 
 jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
-	BudgetsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+	BudgetsProvider: mockBudgetsProvider,
 }));
 
 jest.mock('@/services/firebase', () => ({
@@ -110,6 +123,7 @@ describe('App routing', () => {
 	beforeEach(() => {
 		mockAuthUser = { uid: 'user-1', email: 'test@example.com' };
 		setMobileViewport(false);
+		providerMocks.forEach((mock) => mock.mockClear());
 	});
 
 	it('redirects root to the desktop dashboard route', async () => {
@@ -130,24 +144,24 @@ describe('App routing', () => {
 		expect(screen.queryByText('Desktop dashboard')).not.toBeInTheDocument();
 	});
 
-	it('renders the desktop shell at /dashboard', () => {
+	it('renders the desktop shell at /dashboard', async () => {
 		mockInitialPath = '/dashboard';
 
 		render(<App />);
 
-		expect(screen.getByText('Desktop dashboard')).toBeInTheDocument();
+		expect(await screen.findByText('Desktop dashboard')).toBeInTheDocument();
 	});
 
-	it('renders the desktop shell at /dashboard/assistant', () => {
+	it('renders the desktop shell at /dashboard/assistant', async () => {
 		mockInitialPath = '/dashboard/assistant';
 		render(<App />);
-		expect(screen.getByText('Desktop dashboard')).toBeInTheDocument();
+		expect(await screen.findByText('Desktop dashboard')).toBeInTheDocument();
 	});
 
-	it('renders the desktop shell at /dashboard/random', () => {
+	it('renders the desktop shell at /dashboard/random', async () => {
 		mockInitialPath = '/dashboard/random';
 		render(<App />);
-		expect(screen.getByText('Desktop dashboard')).toBeInTheDocument();
+		expect(await screen.findByText('Desktop dashboard')).toBeInTheDocument();
 	});
 
 	it('redirects authenticated mobile dashboard routes to mobisite', async () => {
@@ -170,17 +184,23 @@ describe('App routing', () => {
 		expect(await screen.findByText('Marketing home')).toBeInTheDocument();
 		expect(screen.queryByText('Desktop dashboard')).not.toBeInTheDocument();
 		expect(screen.queryByTestId('mobisite-frame')).not.toBeInTheDocument();
+		expect(mockTransactionsProvider).not.toHaveBeenCalled();
+		expect(mockAccountsProvider).not.toHaveBeenCalled();
+		expect(mockBudgetsProvider).not.toHaveBeenCalled();
 	});
 
-	it('renders the mobisite route in its own frame', () => {
+	it('renders the mobisite route in its own frame without desktop data providers', async () => {
 		mockInitialPath = '/mobisite';
 
 		render(<App />);
 
-		expect(screen.getByTestId('mobisite-frame')).toBeInTheDocument();
+		expect(await screen.findByTestId('mobisite-frame')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
 		expect(screen.queryByText('Budgets')).not.toBeInTheDocument();
 		expect(screen.queryByText('Reports')).not.toBeInTheDocument();
+		expect(mockTransactionsProvider).not.toHaveBeenCalled();
+		expect(mockAccountsProvider).not.toHaveBeenCalled();
+		expect(mockBudgetsProvider).not.toHaveBeenCalled();
 	});
 });

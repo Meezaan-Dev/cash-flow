@@ -4,7 +4,7 @@ import { FiCheckCircle } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
-import { ACCOUNT_TYPE_LABELS } from '@/domains/accounts/models/AccountModel';
+import { ACCOUNT_TYPE_LABELS } from '@cash-flow/shared/accounts/AccountModel';
 import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { Button } from '@/components/app/ui/button';

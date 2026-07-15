@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '@/services/firebase';
 import { CategoryDefinition } from '@/types';
-import { TRANSFER_CATEGORY_VALUE } from '@/domains/categories/constants/categories';
+import { TRANSFER_CATEGORY_VALUE } from '@cash-flow/shared/categories/categories.constants';
 import {
 	buildCategoryLabelMap,
 	formatCategoryLabel,
@@ -24,7 +24,7 @@ import {
 	mergeCategoryOptions,
 	normalizeCategoryDefinition,
 	slugifyCategoryLabel,
-} from '@/domains/categories/utils/categories';
+} from '@cash-flow/shared/categories/categories';
 
 const USERS_COLLECTION = 'users';
 

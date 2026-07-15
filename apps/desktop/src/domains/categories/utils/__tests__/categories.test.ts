@@ -4,7 +4,7 @@ import {
 	getSubcategoryLabel,
 	normalizeCategoryDefinition,
 	normalizeCategoryOptions,
-} from '../categories';
+} from '@cash-flow/shared/categories/categories';
 
 describe('category utilities', () => {
 	it('normalizes subcategories on category definitions', () => {

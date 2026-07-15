@@ -3,7 +3,6 @@ import { FiChevronLeft, FiChevronRight, FiEdit, FiTrash2 } from 'react-icons/fi'
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
 import { Button } from '@/components/app/ui/button';
-import { Badge } from '@/components/app/ui/badge';
 import { formatCurrency } from '@/utils/formatCurrency';
 import {
 	Dialog,
@@ -12,7 +11,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/app/ui/dialog';
-import { getCategoryColor, getContrastingTextColor } from '@/domains/categories/utils/categoryColors';
+import { getCategoryColor, getContrastingTextColor } from '@cash-flow/shared/categories/categoryColors';
 import { getRecurringFrequencyLabel } from './recurringDisplay';
 
 type Props = {
@@ -199,9 +198,9 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 									{cell.dayNumber}
 								</span>
 								{dayItems.length > 0 && (
-									<Badge variant="secondary" className="text-[10px]">
+									<span className="text-[10px] font-medium text-muted-foreground">
 										{dayItems.length}
-									</Badge>
+									</span>
 								)}
 							</div>
 
@@ -297,9 +296,9 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 											{formatCurrency(transaction.amount)}
 										</p>
 										{isOverflowDay && (
-											<Badge variant="outline" className="mt-1 text-[10px]">
+											<p className="mt-1 text-[10px] text-muted-foreground">
 												From day {transaction.expectedDate}
-											</Badge>
+											</p>
 										)}
 									</div>
 									<div className="flex items-center gap-1">

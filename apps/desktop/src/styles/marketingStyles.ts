@@ -20,9 +20,6 @@ export const pageTitle = 'text-3xl font-semibold tracking-tight text-gray-900 da
 
 export const pageSubtitle = 'text-base leading-relaxed text-gray-500 dark:text-gray-400';
 
-export const pillBadge =
-	'inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-medium text-blue-600 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-400';
-
 export const primaryCta =
 	'rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500';
 

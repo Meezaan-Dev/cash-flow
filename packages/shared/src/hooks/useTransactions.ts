@@ -78,9 +78,9 @@ const isLegacyTransferPartner = (left: Transaction, right: Transaction): boolean
 };
 
 export const useTransactions = () => {
+	const [user, setUser] = useState(() => auth.currentUser);
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState(() => auth.currentUser);
 
 	useEffect(() => {
 		const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
@@ -113,7 +113,6 @@ export const useTransactions = () => {
 
 		return () => unsubscribe();
 	}, [user]);
-
 	const addTransaction = async (data: AddTransactionData) => {
 		if (!user) throw new Error('User not authenticated');
 		if (data.type !== 'income' && data.type !== 'expense') {

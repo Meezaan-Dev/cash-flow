@@ -4,7 +4,7 @@ import {
 	ACCOUNT_TYPE_LABELS,
 	calculateNetWorth,
 	getAccountLiability,
-} from '@/domains/accounts/models/AccountModel';
+} from '@cash-flow/shared/accounts/AccountModel';
 import Currency from '@/components/marketing/Currency';
 import { Account } from '@/types';
 import { cardSurface, sectionLabel } from '@/styles/marketingStyles';

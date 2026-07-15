@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FiEdit, FiTrash2, FiPlus, FiDollarSign, FiX, FiSettings } from 'react-icons/fi';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
 import { Button } from '@/components/app/ui/button';
-import { Badge } from '@/components/app/ui/badge';
 import RecurringTransactionForm from './RecurringTransactionForm';
 import {
 	Dialog,
@@ -22,12 +21,18 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/app/ui/select';
-import { PageHeader, PageShell } from '@/components/app/page-layout';
+import {
+	DataListHeader,
+	DataListRow,
+	DataListSurface,
+	PageHeader,
+	PageShell,
+} from '@/components/app/page-layout';
 import { cardSurface } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
-import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
+import { mergeCategoryOptions } from '@cash-flow/shared/categories/categories';
 import RecurringTransactionsCalendar from './RecurringTransactionsCalendar';
 import {
 	getRecurringExpectedDateLabel,
@@ -144,8 +149,6 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 		[categoryOptions, recurringTransactions]
 	);
 
-	const isHydrated = useRef(false);
-
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
 		const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
@@ -173,17 +176,9 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 		};
 
 		readViewMode();
-		isHydrated.current = true;
 		window.addEventListener('recurring-view-mode-changed', readViewMode);
 		return () => window.removeEventListener('recurring-view-mode-changed', readViewMode);
 	}, [isDesktopCalendarAllowed]);
-
-	useEffect(() => {
-		if (typeof window === 'undefined') return;
-		if (!isHydrated.current) return;
-		if (!isDesktopCalendarAllowed) return;
-		window.localStorage.setItem(RECURRING_VIEW_MODE_STORAGE_KEY, viewMode);
-	}, [viewMode, isDesktopCalendarAllowed]);
 
 	const hasActiveFilters =
 		frequencyFilter !== 'all' ||
@@ -310,53 +305,14 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 	return (
 		<PageShell>
 			<PageHeader
-				badge="Recurring"
 				title="Recurring Transactions"
 				subtitle="Manage your subscriptions, debit orders, salary, and other recurring transactions."
 				compact
 				actions={
-					<div className="flex flex-col items-end gap-2">
-						<div
-							className="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900"
-							role="tablist"
-							aria-label="Recurring transactions view mode"
-						>
-							<button
-								type="button"
-								role="tab"
-								aria-selected={viewMode === 'list'}
-								className={cn(
-									'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-									viewMode === 'list'
-										? 'bg-blue-600 text-white shadow-sm'
-										: 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'
-								)}
-								onClick={() => setViewMode('list')}
-							>
-								List
-							</button>
-							{isDesktopCalendarAllowed && (
-								<button
-									type="button"
-									role="tab"
-									aria-selected={viewMode === 'calendar'}
-									className={cn(
-										'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-										viewMode === 'calendar'
-											? 'bg-blue-600 text-white shadow-sm'
-											: 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'
-									)}
-									onClick={() => setViewMode('calendar')}
-								>
-									Calendar
-								</button>
-							)}
-						</div>
-						<Button variant="marketing" onClick={handleAddNew} className="flex-shrink-0">
-							<FiPlus className="mr-2 h-4 w-4" />
-							Add New
-						</Button>
-					</div>
+					<Button variant="marketing" onClick={handleAddNew} className="flex-shrink-0">
+						<FiPlus className="mr-2 h-4 w-4" />
+						Add New
+					</Button>
 				}
 				className="mb-6"
 			/>
@@ -478,10 +434,10 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 							</p>
 						</div>
 					</div>
-					<Badge variant="secondary" className="text-sm">
+					<p className="text-sm font-medium text-muted-foreground">
 						{filteredTransactions.length}{' '}
 						{filteredTransactions.length === 1 ? 'item' : 'items'}
-					</Badge>
+					</p>
 				</div>
 			</div>
 
@@ -511,83 +467,99 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 					)}
 				</div>
 			) : viewMode === 'list' ? (
-				<div role="list" className="space-y-3">
-					{filteredTransactions.map((expense) => (
-						<div
-							key={expense.id}
-							role="listitem"
-							className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800/50 sm:flex-row sm:items-center sm:justify-between"
-						>
-							<div className="min-w-0 flex-1">
-								<div className="flex flex-wrap items-center gap-2">
-									<h4 className="font-medium">{expense.title}</h4>
-									<Badge variant="outline" className="text-xs">
-										{getRecurringFrequencyLabel(expense.frequency)}
-									</Badge>
-									{expense.expectedDate !== undefined && (
-										<Badge variant="outline" className="text-xs">
-											{getRecurringExpectedDateLabel(expense.expectedDate)}
-										</Badge>
-									)}
-									{(expense.type === 'income') ? (
-										<Badge variant="secondary" className="text-xs text-green-600 dark:text-green-400">
-											Income
-										</Badge>
-									) : (
-										<Badge variant="secondary" className="text-xs text-red-600 dark:text-red-400">
-											Expense
-										</Badge>
-									)}
-								</div>
-								<div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-									<span className="font-medium text-foreground">
-										{formatCurrency(expense.amount)}
-									</span>
-									<span>•</span>
-									<span>{getCategoryPathLabel(expense.category, expense.subcategory)}</span>
-									{expense.accountId && (() => {
-										const acct = accounts.find((a) => a.id === expense.accountId);
-										return acct ? (
-											<>
-												<span>•</span>
-												<span className="flex items-center gap-1">
-													<span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: acct.color ?? '#6366f1' }} />
-													{acct.name}
-												</span>
-											</>
-										) : null;
-									})()}
-									{expense.description && (
-										<>
-											<span>•</span>
-											<span className="truncate">{expense.description}</span>
-										</>
+				<DataListSurface>
+					<DataListHeader className="md:grid-cols-[minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(160px,0.7fr)_minmax(240px,1fr)_96px]">
+						<span>Name</span>
+						<span>Schedule</span>
+						<span>Amount</span>
+						<span>Account / Category</span>
+						<span className="text-right">Actions</span>
+					</DataListHeader>
+					{filteredTransactions.map((transaction) => {
+						const account = accounts.find((item) => item.id === transaction.accountId);
+						const transactionType = transaction.type ?? 'expense';
+
+						return (
+							<DataListRow
+								key={transaction.id}
+								className="md:grid-cols-[minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(160px,0.7fr)_minmax(240px,1fr)_96px]"
+							>
+								<div className="min-w-0">
+									<h4 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
+										{transaction.title}
+									</h4>
+									{transaction.description && (
+										<p className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">
+											{transaction.description}
+										</p>
 									)}
 								</div>
-							</div>
-							<div className="flex items-center gap-2 sm:justify-end">
-								<Button
-									variant="ghost"
-									size="icon"
-									onClick={() => handleEdit(expense)}
-									className="h-9 w-9"
-									aria-label="Edit recurring transaction"
-								>
-									<FiEdit className="h-4 w-4" />
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									onClick={() => handleDeleteClick(expense.id!)}
-									className="h-9 w-9 text-destructive hover:text-destructive"
-									aria-label="Delete recurring transaction"
-								>
-									<FiTrash2 className="h-4 w-4" />
-								</Button>
-							</div>
-						</div>
-					))}
-				</div>
+
+								<div className="text-sm text-gray-700 dark:text-gray-300">
+									<p>{getRecurringFrequencyLabel(transaction.frequency)}</p>
+									<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+										{transaction.expectedDate !== undefined
+											? getRecurringExpectedDateLabel(transaction.expectedDate)
+											: 'No expected date'}
+									</p>
+								</div>
+
+								<div>
+									<p className="text-sm font-semibold text-gray-950 dark:text-white">
+										{formatCurrency(transaction.amount)}
+									</p>
+									<p
+										className={cn(
+											'mt-1 text-xs font-medium',
+											transactionType === 'income'
+												? 'text-green-600 dark:text-green-400'
+												: 'text-red-600 dark:text-red-400'
+										)}
+									>
+										{transactionType === 'income' ? 'Income' : 'Expense'}
+									</p>
+								</div>
+
+								<div className="min-w-0 text-sm text-gray-700 dark:text-gray-300">
+									<p className="truncate">
+										{getCategoryPathLabel(transaction.category, transaction.subcategory)}
+									</p>
+									{account && (
+										<p className="mt-1 flex items-center gap-1.5 truncate text-xs text-gray-500 dark:text-gray-400">
+											<span
+												className="h-2 w-2 shrink-0 rounded-full"
+												style={{ backgroundColor: account.color ?? '#6366f1' }}
+											/>
+											{account.name}
+										</p>
+									)}
+								</div>
+
+								<div className="flex items-center justify-start gap-2 md:justify-end">
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => handleEdit(transaction)}
+										className="h-9 w-9"
+										aria-label="Edit recurring transaction"
+									>
+										<FiEdit className="h-4 w-4" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => transaction.id && handleDeleteClick(transaction.id)}
+										className="h-9 w-9 text-destructive hover:text-destructive"
+										aria-label="Delete recurring transaction"
+										disabled={!transaction.id}
+									>
+										<FiTrash2 className="h-4 w-4" />
+									</Button>
+								</div>
+							</DataListRow>
+						);
+					})}
+				</DataListSurface>
 			) : (
 				<RecurringTransactionsCalendar
 					transactions={filteredTransactions}

@@ -9,7 +9,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/app/ui/select';
-import { Badge } from '@/components/app/ui/badge';
 import { DateRange } from '@/types';
 
 interface DateRangeFilterProps {
@@ -196,10 +195,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 
 			{isRangeActive && (
 				<div className="flex items-center gap-2">
-					<Badge
-						variant="outline"
-						className="flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm"
-					>
+					<div className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs text-muted-foreground md:text-sm">
 						<span>{formatDateRange(dateRange)}</span>
 						<button
 							onClick={onClear}
@@ -208,7 +204,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 						>
 							<FiX className="h-4 w-4" />
 						</button>
-					</Badge>
+					</div>
 				</div>
 			)}
 		</div>

@@ -4,8 +4,8 @@ import {
 	getAccountAvailableBalance,
 	getAccountLiability,
 	normalizeAccount,
-} from '../AccountModel';
-import { Account } from '@/types';
+} from '@cash-flow/shared/accounts/AccountModel';
+import { Account } from '@cash-flow/shared/types';
 
 const makeAccount = (overrides: Partial<Account> = {}): Account => ({
 	id: 'account-1',

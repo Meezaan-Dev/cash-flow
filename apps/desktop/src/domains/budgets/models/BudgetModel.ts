@@ -1,5 +1,5 @@
 import { Budget, BudgetProgress, BudgetStatus, Transaction } from '@/types';
-import { parseDbDateOrNull } from '@/utils/date';
+import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
 export type { Budget };
 

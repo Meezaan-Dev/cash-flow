@@ -1,5 +1,5 @@
 import { ImportResult, SerializableTransaction, Transaction } from '@/types';
-import { parseDbDateOrNull } from '@/utils/date';
+import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
 export type TransactionExportType = 'overall' | 'income' | 'expense';
 

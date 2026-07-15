@@ -1,6 +1,6 @@
 import { Budget, Transaction, TransactionType } from '@/types';
 import { getBudgetCycleDateRange } from '@/domains/budgets/models/BudgetModel';
-import { parseDbDateOrNull } from '@/utils/date';
+import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
 export interface TransactionFilterDescriptor {
 	accountId?: string;

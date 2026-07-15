@@ -11,7 +11,7 @@ import {
 } from '@/styles/marketingStyles';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { cn } from '@/lib/utils';
-import { parseDbDate, parseDbDateOrNull } from '@/utils/date';
+import { parseDbDate, parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
 interface RecentTransactionsPanelProps {
 	transactions: Transaction[];

@@ -23,7 +23,7 @@ import { selectedRow } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { DateRange, Transaction } from '@/types';
-import { compareTransactionsByDateDesc, getTransactionDateOrEpoch } from '@/utils/date';
+import { compareTransactionsByDateDesc, getTransactionDateOrEpoch } from '@cash-flow/shared/utils/date';
 import { Input } from '@/components/app/ui/input';
 import {
 	Select,
@@ -38,8 +38,8 @@ import { useFilterPreferences } from '@/shared/filters/context/FilterPreferences
 import {
 	buildCategoryPathOptions,
 	mergeCategoryOptions,
-} from '@/domains/categories/utils/categories';
-import { getCategoryColor } from '@/domains/categories/utils/categoryColors';
+} from '@cash-flow/shared/categories/categories';
+import { getCategoryColor } from '@cash-flow/shared/categories/categoryColors';
 import {
 	TransactionFilterDescriptor,
 	transactionFiltersFromSearch,

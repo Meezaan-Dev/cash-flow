@@ -5,8 +5,8 @@ import {
 	groupByCategory,
 	normalizeTransaction,
 	sortByDateDesc,
-} from '../TransactionModel';
-import { Transaction } from '@/types';
+} from '@cash-flow/shared/transactions/TransactionModel';
+import { Transaction } from '@cash-flow/shared/types';
 
 const makeTransaction = (overrides: Partial<Transaction> = {}): Transaction => ({
 	id: 'transaction-1',
@@ -110,7 +110,7 @@ describe('TransactionModel', () => {
 			});
 		});
 
-		it('sorts transactions by transaction date before created date', () => {
+		it('sorts transactions by transaction date with created date as a tie breaker', () => {
 			const sorted = sortByDateDesc([
 				makeTransaction({
 					id: 'older-created',
@@ -122,9 +122,21 @@ describe('TransactionModel', () => {
 					date: new Date('2026-05-13T12:00:00Z'),
 					createdAt: new Date('2026-05-01T12:00:00Z'),
 				}),
+				makeTransaction({
+					id: 'created-first',
+					date: new Date('2026-05-13T12:00:00Z'),
+					createdAt: new Date('2026-05-13T12:01:00Z'),
+				}),
+				makeTransaction({
+					id: 'created-second',
+					date: new Date('2026-05-13T12:00:00Z'),
+					createdAt: new Date('2026-05-13T12:02:00Z'),
+				}),
 			]);
 
 			expect(sorted.map((transaction) => transaction.id)).toEqual([
+				'created-second',
+				'created-first',
 				'newer-date',
 				'older-created',
 			]);

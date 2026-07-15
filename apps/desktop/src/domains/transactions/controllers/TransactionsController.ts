@@ -11,7 +11,7 @@ import {
 	calculateTotals,
 	groupByCategory,
 	sortByDateDesc,
-} from '@/domains/transactions/models/TransactionModel';
+} from '@cash-flow/shared/transactions/TransactionModel';
 import { TransactionType } from '@/types';
 
 interface AddTransactionData {
