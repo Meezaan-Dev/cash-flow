@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
-import { FiDollarSign, FiTag, FiInfo, FiSave, FiX, FiRefreshCw, FiArrowUpCircle, FiArrowDownCircle } from 'react-icons/fi';
+import { FiDollarSign, FiTag, FiInfo, FiSave, FiRefreshCw, FiArrowUpCircle, FiArrowDownCircle } from 'react-icons/fi';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
@@ -10,6 +10,7 @@ import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import { Label } from '@/components/app/ui/label';
 import { Textarea } from '@/components/app/ui/textarea';
+import { DialogDescription, DialogTitle } from '@/components/app/ui/dialog';
 import {
 	Select,
 	SelectContent,
@@ -177,24 +178,15 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			{/* Header */}
 			<div className="flex items-center justify-between border-b pb-4">
 				<div>
-					<h3 className="text-xl font-bold tracking-tight">
+					<DialogTitle className="text-xl font-bold tracking-tight">
 						{expense ? 'Edit Recurring Transaction' : 'New Recurring Transaction'}
-					</h3>
-					<p className="mt-1 text-xs text-muted-foreground">
+					</DialogTitle>
+					<DialogDescription className="mt-1 text-xs text-muted-foreground">
 						{expense
 							? 'Update your recurring transaction details'
 							: 'Set up a transaction that repeats automatically'}
-					</p>
+					</DialogDescription>
 				</div>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					onClick={onClose}
-					className="h-8 w-8 rounded-lg"
-				>
-					<FiX className="h-4 w-4" />
-				</Button>
 			</div>
 
 			<form onSubmit={handleSubmit} className="space-y-5">
