@@ -15,6 +15,7 @@ import ReconcileForm from '@/domains/accounts/views/ReconcileForm';
 import BudgetsList from '@/domains/budgets/views/BudgetsList';
 import ReportsView from '@/domains/reports/views/ReportsView';
 import RecurringTransactionsView from '@/domains/recurring/views/RecurringTransactionsView';
+import RandomView from '@/domains/random/views/RandomView';
 import AIChatbot from '@/domains/ai/components/AIChatbot';
 import AuthModals from '@/domains/auth/components/AuthModals';
 import {
@@ -47,6 +48,7 @@ const routeToView = (pathname: string, isMobile: boolean): ViewType => {
 	if (pathname.startsWith('/dashboard/budgets')) return 'budgets';
 	if (pathname.startsWith('/dashboard/recurring')) return 'recurring';
 	if (pathname.startsWith('/dashboard/reports')) return 'reports';
+	if (pathname.startsWith('/dashboard/random')) return 'random';
 	if (pathname.startsWith('/dashboard/assistant')) return 'assistant';
 	return 'dashboard';
 };
@@ -64,6 +66,8 @@ const viewToRoute = (view: ViewType): string => {
 			return '/dashboard/recurring';
 		case 'reports':
 			return '/dashboard/reports';
+		case 'random':
+			return '/dashboard/random';
 		case 'assistant':
 			return '/dashboard/assistant';
 		default:
@@ -297,6 +301,8 @@ const Dashboard: React.FC = () => {
 				return <RecurringTransactionsView onOpenSettings={() => handleOpenSettings('filters')} />;
 			case 'reports':
 				return <ReportsView onOpenSettings={() => handleOpenSettings('filters')} />;
+			case 'random':
+				return <RandomView />;
 			case 'assistant':
 				return <AIChatbot />;
 			default:

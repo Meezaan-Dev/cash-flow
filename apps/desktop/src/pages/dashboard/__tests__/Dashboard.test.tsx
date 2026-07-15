@@ -51,6 +51,7 @@ jest.mock('@/pages/dashboard/components/Sidebar', () => ({
 		<>
 			<button onClick={onCreate}>Create transaction</button>
 			<button onClick={() => onViewChange('budgets')}>Open budgets</button>
+			<button onClick={() => onViewChange('random')}>Open random</button>
 		</>
 	),
 }));
@@ -128,6 +129,11 @@ jest.mock('@/domains/ai/components/AIChatbot', () => ({
 	default: () => <div>AI assistant</div>,
 }));
 
+jest.mock('@/domains/random/views/RandomView', () => ({
+	__esModule: true,
+	default: () => <div>Random notes</div>,
+}));
+
 jest.mock('@/domains/auth/components/AuthModals', () => ({
 	__esModule: true,
 	default: () => null,
@@ -187,5 +193,19 @@ describe('Dashboard', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Open budgets' }));
 		expect(screen.getByText('Budgets list')).toBeInTheDocument();
 		expect(screen.queryByText('Transaction form')).not.toBeInTheDocument();
+	});
+
+	it('navigates to random notes from the dashboard shell', () => {
+		render(
+			<MemoryRouter initialEntries={['/dashboard']}>
+				<Routes>
+					<Route path="/dashboard" element={<Dashboard />} />
+					<Route path="/dashboard/random" element={<Dashboard />} />
+				</Routes>
+			</MemoryRouter>
+		);
+
+		fireEvent.click(screen.getByRole('button', { name: 'Open random' }));
+		expect(screen.getByText('Random notes')).toBeInTheDocument();
 	});
 });
