@@ -1,14 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
-import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import {
+	addDoc,
+	collection,
+	deleteDoc,
+	doc,
+	onSnapshot,
+	serverTimestamp,
+	setDoc,
+	updateDoc,
+} from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/services/firebase';
 
 const RANDOM_NOTE_ID = 'main';
 export const RANDOM_NOTE_LIMIT = 10_000;
+export const RANDOM_NOTE_MAX_COUNT = 5;
+
+export interface RandomNote {
+	id: string;
+	content: string;
+}
+
+const sortRandomNotes = (notes: RandomNote[]) =>
+	[...notes].sort((a, b) => {
+		if (a.id === RANDOM_NOTE_ID) return -1;
+		if (b.id === RANDOM_NOTE_ID) return 1;
+		return a.id.localeCompare(b.id);
+	});
 
 export const useRandomNote = () => {
-	const [content, setContent] = useState('');
-	const [exists, setExists] = useState(false);
+	const [notes, setNotes] = useState<RandomNote[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [user, setUser] = useState(() => auth.currentUser);
 
@@ -21,23 +42,28 @@ export const useRandomNote = () => {
 
 	useEffect(() => {
 		if (!user) {
-			setContent('');
-			setExists(false);
+			setNotes([]);
 			setLoading(false);
 			return;
 		}
 
 		setLoading(true);
-		const noteRef = doc(db, 'users', user.uid, 'random', RANDOM_NOTE_ID);
+		const notesRef = collection(db, 'users', user.uid, 'random');
 		const unsubscribe = onSnapshot(
-			noteRef,
+			notesRef,
 			(snapshot) => {
-				setExists(snapshot.exists());
-				setContent(snapshot.exists() ? String(snapshot.data().content ?? '') : '');
+				setNotes(
+					sortRandomNotes(
+						snapshot.docs.map((note) => ({
+							id: note.id,
+							content: String(note.data().content ?? ''),
+						}))
+					)
+				);
 				setLoading(false);
 			},
 			(error) => {
-				console.error('Error fetching random note:', error);
+				console.error('Error fetching random notes:', error);
 				setLoading(false);
 			}
 		);
@@ -46,27 +72,54 @@ export const useRandomNote = () => {
 	}, [user]);
 
 	const saveNote = useCallback(
-		async (nextContent: string) => {
+		async (noteId: string, nextContent: string) => {
 			if (!user) throw new Error('User not authenticated');
 
-			const noteRef = doc(db, 'users', user.uid, 'random', RANDOM_NOTE_ID);
-			if (exists) {
-				await updateDoc(noteRef, {
-					content: nextContent,
-					updatedAt: serverTimestamp(),
-				});
-				return;
-			}
-
-			await setDoc(noteRef, {
+			const noteRef = doc(db, 'users', user.uid, 'random', noteId);
+			await updateDoc(noteRef, {
 				content: nextContent,
+				updatedAt: serverTimestamp(),
+			});
+		},
+		[user]
+	);
+
+	const addNote = useCallback(async () => {
+		if (!user) throw new Error('User not authenticated');
+		if (notes.length >= RANDOM_NOTE_MAX_COUNT) {
+			throw new Error(`You can keep up to ${RANDOM_NOTE_MAX_COUNT} random notes.`);
+		}
+
+		if (notes.length === 0) {
+			const noteRef = doc(db, 'users', user.uid, 'random', RANDOM_NOTE_ID);
+			await setDoc(noteRef, {
+				content: '',
 				userId: user.uid,
 				createdAt: serverTimestamp(),
 				updatedAt: serverTimestamp(),
 			});
+			return RANDOM_NOTE_ID;
+		}
+
+		const notesRef = collection(db, 'users', user.uid, 'random');
+		const noteRef = await addDoc(notesRef, {
+			content: '',
+			userId: user.uid,
+			createdAt: serverTimestamp(),
+			updatedAt: serverTimestamp(),
+		});
+		return noteRef.id;
+	}, [notes.length, user]);
+
+	const deleteNote = useCallback(
+		async (noteId: string) => {
+			if (!user) throw new Error('User not authenticated');
+
+			const noteRef = doc(db, 'users', user.uid, 'random', noteId);
+			await deleteDoc(noteRef);
 		},
-		[exists, user]
+		[user]
 	);
 
-	return { content, loading, saveNote };
+	return { notes, loading, saveNote, addNote, deleteNote };
 };

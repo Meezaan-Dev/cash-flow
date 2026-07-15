@@ -72,6 +72,7 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 	}), [accountIds, customEndDate, customStartDate, datePreset, selectedCategories, type]);
 	const matches = useMemo(() => filterTransactionsForExport(transactions, filters), [filters, transactions]);
 	const invalidRange = datePreset === 'custom' && Boolean(customStartDate && customEndDate && customStartDate > customEndDate);
+	const hasFilters = Boolean(accountIds.length || selectedCategories.length || type !== 'overall' || datePreset !== 'all');
 	const close = () => { onOpenChange(false); reset(); };
 
 	return (
@@ -79,7 +80,9 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 			<DialogContent className={cn('max-h-modal overflow-y-auto sm:max-w-2xl', modalShell)}>
 				<DialogHeader>
 					<DialogTitle>Export transactions</DialogTitle>
-					<DialogDescription>Choose which transaction records to include.</DialogDescription>
+					<DialogDescription>
+						Choose optional filters for the export. Leaving a filter unset includes all values for that field.
+					</DialogDescription>
 				</DialogHeader>
 				<div className="grid gap-5 py-2 sm:grid-cols-2">
 					<div className="space-y-2">
@@ -89,14 +92,13 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 						</select>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="export-type">Transaction type</Label>
+						<Label htmlFor="export-type">Transaction data</Label>
 						<select id="export-type" value={type} onChange={(event) => setType(event.target.value as TransactionExportFilters['type'])} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-							<option value="overall">Overall</option><option value="income">Income</option><option value="expense">Expenses</option>
+							<option value="overall">All transaction data</option><option value="income">Income only</option><option value="expense">Expenses only</option>
 						</select>
 					</div>
 					<fieldset className="space-y-2 rounded-xl border p-3">
 						<legend className="px-1 text-sm font-medium">Accounts</legend>
-						<p className="text-xs text-muted-foreground">None selected includes all accounts.</p>
 						<div className="max-h-32 space-y-2 overflow-y-auto">
 							{accounts.map((account) => account.id && (
 								<label key={account.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={accountIds.includes(account.id)} onChange={() => setAccountIds((current) => toggle(current, account.id!))} />{account.name}</label>
@@ -105,7 +107,6 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 					</fieldset>
 					<fieldset className="space-y-2 rounded-xl border p-3">
 						<legend className="px-1 text-sm font-medium">Categories</legend>
-						<p className="text-xs text-muted-foreground">None selected includes all categories.</p>
 						<div className="max-h-32 space-y-2 overflow-y-auto">
 							{categories.map((category) => (
 								<label key={category.value} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedCategories.includes(category.value)} onChange={() => setSelectedCategories((current) => toggle(current, category.value))} />{category.label}</label>
@@ -126,7 +127,10 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 						{invalidRange && <p className="text-sm text-destructive">Start date must be on or before end date.</p>}
 					</div>
 				</div>
-				<p aria-live="polite" className="text-sm text-muted-foreground">{matches.length} matching {matches.length === 1 ? 'transaction' : 'transactions'}</p>
+				<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					<p aria-live="polite" className="text-sm text-muted-foreground">{matches.length} matching {matches.length === 1 ? 'transaction' : 'transactions'}</p>
+					<Button type="button" variant="ghost" size="sm" onClick={reset} disabled={!hasFilters}>Reset filters</Button>
+				</div>
 				<DialogFooter>
 					<Button variant="outline" onClick={close}>Cancel</Button>
 					<Button disabled={matches.length === 0 || invalidRange} onClick={() => { onExport(format, matches); close(); }}>Export {format.toUpperCase()}</Button>
