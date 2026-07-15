@@ -92,7 +92,6 @@ const RandomView: React.FC = () => {
 	return (
 		<PageShell className="flex flex-col">
 			<PageHeader
-				badge="Random"
 				title="Write anything down"
 				subtitle="A private place for brain dumps, reminders, rough thoughts, or anything that helps with mental clarity."
 			/>

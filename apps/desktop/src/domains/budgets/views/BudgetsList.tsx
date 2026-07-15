@@ -68,19 +68,16 @@ const STATUS_STYLES = {
 		label: 'On track',
 		bar: 'bg-blue-500',
 		text: 'text-blue-600 dark:text-blue-400',
-		badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
 	},
 	warning: {
 		label: 'Watch spending',
 		bar: 'bg-amber-500',
 		text: 'text-amber-600 dark:text-amber-400',
-		badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
 	},
 	over: {
 		label: 'Over budget',
 		bar: 'bg-red-500',
 		text: 'text-red-600 dark:text-red-400',
-		badge: 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300',
 	},
 };
 
@@ -156,21 +153,17 @@ const BudgetRow: React.FC<BudgetRowProps> = ({
 					<FiMove className="h-4 w-4" />
 				</span>
 				<div className="min-w-0">
-					<div className="flex items-center gap-2">
-						<h2 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-							{title}
-						</h2>
-						<span
-							className={cn(
-								'rounded-full px-2 py-0.5 text-[11px] font-medium',
-								isDraft
-									? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
-									: styles.badge
-							)}
-						>
-							{isDraft ? 'Draft' : styles.label}
-						</span>
-					</div>
+					<h2 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
+						{title}
+					</h2>
+					<p
+						className={cn(
+							'mt-0.5 text-xs font-medium',
+							isDraft ? 'text-gray-500 dark:text-gray-400' : styles.text
+						)}
+					>
+						{isDraft ? 'Draft' : styles.label}
+					</p>
 					<p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
 						{scopeHelp ?? 'Tracks this specific spending category'}
 					</p>

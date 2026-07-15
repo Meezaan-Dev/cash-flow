@@ -5,7 +5,6 @@ import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { Input } from '@/components/app/ui/input';
-import { Badge } from '@/components/app/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/app/ui/avatar';
 import { Card } from '@/components/app/ui/card';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
@@ -137,17 +136,13 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 																{tx.title}
 															</h4>
 															<div className="flex items-center gap-2 flex-wrap">
-																<Badge
-																	variant="outline"
-																	className="text-xs font-medium border-2"
-																	style={{
-																		borderColor: categoryColor,
-																		color: categoryColor,
-																		backgroundColor: `${categoryColor}15`,
-																	}}
-																>
+																<span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+																	<span
+																		className="h-2.5 w-2.5 rounded-full"
+																		style={{ backgroundColor: categoryColor }}
+																	/>
 																	{getCategoryPathLabel(tx.category, tx.subcategory)}
-																</Badge>
+																</span>
 																<span className="text-xs text-muted-foreground font-medium">
 																	{tx.type}
 																</span>

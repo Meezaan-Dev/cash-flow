@@ -1,9 +1,8 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { pageSubtitle, pageTitle, pillBadge } from '@/styles/marketingStyles';
+import { pageSubtitle, pageTitle } from '@/styles/marketingStyles';
 
 interface SectionHeaderProps {
-	badge?: string;
 	title: string;
 	subtitle?: React.ReactNode;
 	actions?: React.ReactNode;
@@ -12,7 +11,6 @@ interface SectionHeaderProps {
 }
 
 const SectionHeader: React.FC<SectionHeaderProps> = ({
-	badge,
 	title,
 	subtitle,
 	actions,
@@ -27,13 +25,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
 			)}
 		>
 			<div>
-				{badge && <div className={cn(pillBadge, 'mb-4')}>{badge}</div>}
-				<h1
-					className={cn(
-						compact ? 'text-2xl' : pageTitle,
-						badge ? '' : 'mt-0'
-					)}
-				>
+				<h1 className={cn(compact ? 'text-2xl' : pageTitle, 'mt-0')}>
 					{title}
 				</h1>
 				{subtitle && (
