@@ -3,6 +3,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FiCheck, FiEdit3, FiFileText, FiPlus, FiSave, FiTrash2 } from 'react-icons/fi';
 import { Button } from '@/components/app/ui/button';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/app/ui/dialog';
 import { Textarea } from '@/components/app/ui/textarea';
 import { useToast } from '@/components/app/ui/use-toast';
 import { PageHeader, PageShell } from '@/components/app/page-layout';
@@ -11,7 +19,7 @@ import {
 	RANDOM_NOTE_MAX_COUNT,
 	useRandomNote,
 } from '@/domains/random/hooks/useRandomNote';
-import { cardSurface, sectionLabel } from '@/styles/marketingStyles';
+import { cardSurface, modalShell, sectionLabel } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
 
@@ -25,7 +33,9 @@ const RandomView: React.FC = () => {
 	const [note, setNote] = useState({ draft: '', saved: '' });
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
 	const [viewMode, setViewMode] = useState<ViewMode>('editor');
+	const [editorDialogOpen, setEditorDialogOpen] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const dialogTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const { draft, saved } = note;
 	const hasLocalChanges = draft !== saved;
 	const activeNote = useMemo(() => notes.find((item) => item.id === activeNoteId) ?? notes[0], [activeNoteId, notes]);
@@ -50,6 +60,10 @@ const RandomView: React.FC = () => {
 	useEffect(() => {
 		if (viewMode === 'editor') textareaRef.current?.focus();
 	}, [activeNoteId, viewMode]);
+
+	useEffect(() => {
+		if (editorDialogOpen && viewMode === 'editor') dialogTextareaRef.current?.focus();
+	}, [editorDialogOpen, viewMode]);
 
 	const persistDraft = useCallback(
 		async (nextContent = draft) => {
@@ -149,6 +163,15 @@ const RandomView: React.FC = () => {
 						</h2>
 					</div>
 					<div className="flex flex-wrap items-center gap-3">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => setEditorDialogOpen(true)}
+							disabled={!activeNote}
+						>
+							<FiEdit3 className="mr-2 h-4 w-4" />
+							Open editor
+						</Button>
 						<div className="flex rounded-md border border-gray-200 p-1 dark:border-gray-800">
 							<Button
 								type="button"
@@ -285,6 +308,101 @@ const RandomView: React.FC = () => {
 					</div>
 				</div>
 			</section>
+
+			<Dialog open={editorDialogOpen} onOpenChange={setEditorDialogOpen}>
+				<DialogContent className={cn('max-h-[92vh] overflow-y-auto sm:max-w-5xl', modalShell)}>
+					<DialogHeader>
+						<DialogTitle>Edit random note</DialogTitle>
+						<DialogDescription>
+							Write in a focused space. Changes still autosave after you pause typing.
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-4">
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<div className="flex rounded-md border border-gray-200 p-1 dark:border-gray-800">
+								<Button
+									type="button"
+									size="sm"
+									variant={viewMode === 'editor' ? 'secondary' : 'ghost'}
+									onClick={() => setViewMode('editor')}
+									aria-pressed={viewMode === 'editor'}
+								>
+									<FiEdit3 className="h-4 w-4" />
+									Editor
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant={viewMode === 'markdown' ? 'secondary' : 'ghost'}
+									onClick={() => setViewMode('markdown')}
+									aria-pressed={viewMode === 'markdown'}
+								>
+									<FiFileText className="h-4 w-4" />
+									Markdown
+								</Button>
+							</div>
+							<span className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+								{saveStatus === 'saved' && !hasLocalChanges && <FiCheck className="h-4 w-4 text-emerald-600" />}
+								{saveLabel}
+							</span>
+						</div>
+
+						{activeNote ? (
+							viewMode === 'editor' ? (
+								<Textarea
+									ref={dialogTextareaRef}
+									value={draft}
+									onChange={(event) => {
+										setNote((current) => ({ ...current, draft: event.target.value }));
+										setSaveStatus('idle');
+									}}
+									disabled={loading}
+									placeholder="Write whatever is on your mind..."
+									className="h-[62vh] min-h-[420px] resize-none border-gray-200 bg-white/80 text-base leading-7 shadow-inner dark:border-gray-800 dark:bg-gray-950/50"
+									aria-label="Random note dialog editor"
+								/>
+							) : (
+								<div className="markdown-preview h-[62vh] min-h-[420px] overflow-y-auto rounded-md border border-gray-200 bg-white p-6 text-base leading-7 shadow-inner dark:border-gray-800 dark:bg-gray-950">
+									{draft.trim() ? (
+										<ReactMarkdown remarkPlugins={[remarkGfm]}>
+											{draft}
+										</ReactMarkdown>
+									) : (
+										<p className="text-sm text-gray-500 dark:text-gray-400">Nothing to preview yet.</p>
+									)}
+								</div>
+							)
+						) : (
+							<div className="flex h-[62vh] min-h-[420px] flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-white/60 p-6 text-center dark:border-gray-700 dark:bg-gray-950/40">
+								<p className="text-sm font-medium text-gray-700 dark:text-gray-200">No random notes yet</p>
+								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Add a note to start writing.</p>
+							</div>
+						)}
+
+						<div className="flex flex-col gap-1 text-sm text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between">
+							<p>{loading ? 'Loading your notes...' : 'Autosaves after you pause typing.'}</p>
+							<p className={remainingCharacters < 0 ? 'text-destructive' : undefined}>
+								{remainingCharacters.toLocaleString()} characters remaining
+							</p>
+						</div>
+					</div>
+
+					<DialogFooter>
+						<Button type="button" variant="outline" onClick={() => setEditorDialogOpen(false)}>
+							Close
+						</Button>
+						<Button
+							type="button"
+							onClick={() => void persistDraft()}
+							disabled={!activeNote || loading || saveStatus === 'saving' || draft.length > RANDOM_NOTE_LIMIT}
+						>
+							<FiSave className="mr-2 h-4 w-4" />
+							Save
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</PageShell>
 	);
 };

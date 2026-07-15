@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RandomView from '../RandomView';
 import { RANDOM_NOTE_MAX_COUNT } from '@/domains/random/hooks/useRandomNote';
@@ -89,8 +89,25 @@ describe('RandomView', () => {
 		expect(screen.queryByLabelText('Random note editor')).not.toBeInTheDocument();
 		expect(screen.getByRole('heading', { name: /legacy note/i })).toBeInTheDocument();
 
-		await user.click(screen.getByRole('button', { name: /editor/i }));
+		await user.click(screen.getByRole('button', { name: /^editor$/i }));
 		expect(screen.getByLabelText('Random note editor')).toBeInTheDocument();
+	});
+
+	it('opens the focused editor dialog and saves note edits', async () => {
+		const user = userEvent.setup();
+		render(<RandomView />);
+
+		await user.click(screen.getByRole('button', { name: /open editor/i }));
+
+		const dialog = screen.getByRole('dialog');
+		const dialogEditor = within(dialog).getByLabelText('Random note dialog editor');
+		expect(dialogEditor).toHaveValue('# Legacy note');
+
+		await user.clear(dialogEditor);
+		await user.type(dialogEditor, 'Focused note');
+		await user.click(within(dialog).getByRole('button', { name: /^save$/i }));
+
+		await waitFor(() => expect(mockSaveNote).toHaveBeenCalledWith('main', 'Focused note'));
 	});
 
 	it('renders markdown preview with document element styles', async () => {
