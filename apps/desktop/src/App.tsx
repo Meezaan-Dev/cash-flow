@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { BrowserRouter as Router, Navigate, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/app/theme/context/ThemeContext';
 import { TransactionsProvider } from '@/domains/transactions/context/TransactionsContext';
@@ -7,16 +7,9 @@ import { BudgetsProvider } from '@/domains/budgets/context/BudgetsContext';
 import { CategoriesProvider } from '@/domains/categories/context/CategoriesContext';
 import { FilterPreferencesProvider } from '@/shared/filters/context/FilterPreferencesContext';
 import ProtectedRoute from '@/app/routes/ProtectedRoute';
-
-const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'));
-const AccountDetailPage = lazy(() => import('@/pages/accounts/AccountDetail'));
-const MobisiteFrame = lazy(() => import('@/pages/mobisite/MobisiteFrame'));
-
-const RouteLoading = () => (
-	<div className="min-h-screen bg-background flex items-center justify-center text-sm text-muted-foreground">
-		Loading...
-	</div>
-);
+import Dashboard from '@/pages/dashboard/Dashboard';
+import AccountDetailPage from '@/pages/accounts/AccountDetail';
+import MobisiteFrame from '@/pages/mobisite/MobisiteFrame';
 
 const DashboardDataProviders = ({ children }: { children: ReactNode }) => (
 	<FilterPreferencesProvider>
@@ -40,32 +33,30 @@ function App() {
 	return (
 		<ThemeProvider>
 			<Router>
-				<Suspense fallback={<RouteLoading />}>
-					<Routes>
-						<Route
-							path="/"
-							element={
-								<ProtectedRoute>
-									<Navigate to="/dashboard" replace />
-								</ProtectedRoute>
-							}
-						/>
-						<Route
-							path="/dashboard/accounts/:accountId"
-							element={protectedDashboard(<AccountDetailPage />)}
-						/>
-						<Route path="/dashboard/*" element={protectedDashboard(<Dashboard />)} />
-						<Route
-							path="/mobisite"
-							element={
-								<ProtectedRoute>
-									<MobisiteFrame />
-								</ProtectedRoute>
-							}
-						/>
-						<Route path="*" element={<Navigate to="/dashboard" replace />} />
-					</Routes>
-				</Suspense>
+				<Routes>
+					<Route
+						path="/"
+						element={
+							<ProtectedRoute>
+								<Navigate to="/dashboard" replace />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/dashboard/accounts/:accountId"
+						element={protectedDashboard(<AccountDetailPage />)}
+					/>
+					<Route path="/dashboard/*" element={protectedDashboard(<Dashboard />)} />
+					<Route
+						path="/mobisite"
+						element={
+							<ProtectedRoute>
+								<MobisiteFrame />
+							</ProtectedRoute>
+						}
+					/>
+					<Route path="*" element={<Navigate to="/dashboard" replace />} />
+				</Routes>
 			</Router>
 		</ThemeProvider>
 	);

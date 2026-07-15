@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FiCheck, FiEdit3, FiSave } from 'react-icons/fi';
 import { Button } from '@/components/app/ui/button';
 import { Textarea } from '@/components/app/ui/textarea';
@@ -14,70 +14,61 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 const RandomView: React.FC = () => {
 	const { content, loading, saveNote } = useRandomNote();
 	const { toast } = useToast();
-	const [draft, setDraft] = useState('');
-	const [savedContent, setSavedContent] = useState('');
+	const [note, setNote] = useState({ draft: '', saved: '' });
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-	const [hasLocalChanges, setHasLocalChanges] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-	const latestDraftRef = useRef('');
+	const { draft, saved } = note;
+	const hasLocalChanges = draft !== saved;
 
 	useEffect(() => {
-		setSavedContent(content);
-		if (!hasLocalChanges) setDraft(content);
-	}, [content, hasLocalChanges]);
-
-	useEffect(() => {
-		latestDraftRef.current = draft;
-	}, [draft]);
+		setNote((current) => ({
+			draft: current.draft === current.saved ? content : current.draft,
+			saved: content,
+		}));
+	}, [content]);
 
 	useEffect(() => {
 		textareaRef.current?.focus();
 	}, []);
 
-	const persistDraft = async (nextContent = draft) => {
-		if (nextContent.length > RANDOM_NOTE_LIMIT) {
-			setSaveStatus('error');
-			toast({
-				title: 'Random note is too long',
-				description: `Keep it to ${RANDOM_NOTE_LIMIT.toLocaleString()} characters or fewer.`,
-				variant: 'destructive',
-			});
-			return;
-		}
-
-		setSaveStatus('saving');
-		try {
-			await saveNote(nextContent);
-			setSavedContent(nextContent);
-			if (latestDraftRef.current === nextContent) {
-				setHasLocalChanges(false);
-				setSaveStatus('saved');
-			} else {
-				setHasLocalChanges(true);
-				setSaveStatus('idle');
+	const persistDraft = useCallback(
+		async (nextContent = draft) => {
+			if (nextContent.length > RANDOM_NOTE_LIMIT) {
+				setSaveStatus('error');
+				toast({
+					title: 'Random note is too long',
+					description: `Keep it to ${RANDOM_NOTE_LIMIT.toLocaleString()} characters or fewer.`,
+					variant: 'destructive',
+				});
+				return;
 			}
-		} catch (error) {
-			setSaveStatus('error');
-			toast({
-				title: 'Random note was not saved',
-				description: getAppErrorMessage(error, { operation: 'Save random note' }),
-				variant: 'destructive',
-			});
-		}
-	};
+
+			setSaveStatus('saving');
+			try {
+				await saveNote(nextContent);
+				setNote((current) => ({ ...current, saved: nextContent }));
+				setSaveStatus('saved');
+			} catch (error) {
+				setSaveStatus('error');
+				toast({
+					title: 'Random note was not saved',
+					description: getAppErrorMessage(error, { operation: 'Save random note' }),
+					variant: 'destructive',
+				});
+			}
+		},
+		[draft, saveNote, toast]
+	);
 
 	useEffect(() => {
-		if (loading || !hasLocalChanges || draft === savedContent) return;
+		if (loading || !hasLocalChanges) return;
 
 		const timeoutId = window.setTimeout(() => {
 			void persistDraft(draft);
 		}, 900);
 
 		return () => window.clearTimeout(timeoutId);
-		// persistDraft intentionally stays out of this dependency list so typing only
-		// resets the debounce when the actual text/save inputs change.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [draft, hasLocalChanges, loading, saveNote, savedContent]);
+	}, [draft, hasLocalChanges, loading, persistDraft]);
 
 	const remainingCharacters = RANDOM_NOTE_LIMIT - draft.length;
 	const saveLabel =
@@ -127,8 +118,7 @@ const RandomView: React.FC = () => {
 						ref={textareaRef}
 						value={draft}
 						onChange={(event) => {
-							setDraft(event.target.value);
-							setHasLocalChanges(true);
+							setNote((current) => ({ ...current, draft: event.target.value }));
 							setSaveStatus('idle');
 						}}
 						disabled={loading}

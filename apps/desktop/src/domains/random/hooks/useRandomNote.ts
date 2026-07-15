@@ -48,9 +48,6 @@ export const useRandomNote = () => {
 	const saveNote = useCallback(
 		async (nextContent: string) => {
 			if (!user) throw new Error('User not authenticated');
-			if (nextContent.length > RANDOM_NOTE_LIMIT) {
-				throw new Error(`Random note must be ${RANDOM_NOTE_LIMIT} characters or fewer.`);
-			}
 
 			const noteRef = doc(db, 'users', user.uid, 'random', RANDOM_NOTE_ID);
 			if (exists) {
