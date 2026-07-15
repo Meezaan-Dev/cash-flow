@@ -1,5 +1,5 @@
 import { DateRange, Transaction } from '@/types';
-import { parseDbDateOrNull } from '@/utils/date';
+import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
 export const filterTransactionsByDateRange = (
 	transactions: Transaction[],

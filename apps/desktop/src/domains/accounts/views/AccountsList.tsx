@@ -6,7 +6,7 @@ import { Account } from '@/types';
 import {
 	ACCOUNT_TYPE_LABELS,
 	getAccountLiability,
-} from '@/domains/accounts/models/AccountModel';
+} from '@cash-flow/shared/accounts/AccountModel';
 import Currency from '@/components/marketing/Currency';
 import MotionReveal from '@/components/marketing/MotionReveal';
 import {

@@ -31,7 +31,7 @@ import {
 	getDashboardDigestDateRange,
 } from '@/pages/dashboard/utils/digestPeriod';
 import { filterTransactionsByDateRangeObject } from '@/shared/filters/utils/dateRangeFilter';
-import { compareTransactionsByDateDesc } from '@/utils/date';
+import { compareTransactionsByDateDesc } from '@cash-flow/shared/utils/date';
 import Currency from '@/components/marketing/Currency';
 import { PageHeader, PageShell } from '@/components/app/page-layout';
 import {

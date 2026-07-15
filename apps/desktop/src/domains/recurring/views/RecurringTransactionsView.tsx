@@ -27,7 +27,7 @@ import { cardSurface } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
-import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
+import { mergeCategoryOptions } from '@cash-flow/shared/categories/categories';
 import RecurringTransactionsCalendar from './RecurringTransactionsCalendar';
 import {
 	getRecurringExpectedDateLabel,

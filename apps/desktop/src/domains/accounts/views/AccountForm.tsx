@@ -6,7 +6,7 @@ import {
 	ACCOUNT_COLORS,
 	ACCOUNT_TYPE_LABELS,
 	normalizeAccountType,
-} from '@/domains/accounts/models/AccountModel';
+} from '@cash-flow/shared/accounts/AccountModel';
 import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';

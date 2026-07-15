@@ -3,7 +3,7 @@ import { Account, AccountType, NetWorthData } from '@/types';
 import {
 	calculateAvailableBalance,
 	calculateNetWorth,
-} from '@/domains/accounts/models/AccountModel';
+} from '@cash-flow/shared/accounts/AccountModel';
 
 interface AccountsControllerReturn {
 	accounts: Account[];

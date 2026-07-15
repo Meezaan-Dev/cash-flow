@@ -1,13 +1,13 @@
 import {
 	calculateAvailableBalance,
 	calculateNetWorth,
-} from '@/domains/accounts/models/AccountModel';
+} from '@cash-flow/shared/accounts/AccountModel';
 import {
 	DashboardDigestPeriod,
 	getDashboardDigestDateRange,
 } from '@/pages/dashboard/utils/digestPeriod';
 import { Account, Transaction } from '@/types';
-import { parseDbDateOrNull } from '@/utils/date';
+import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
 export interface DashboardSummary {
 	income: number;

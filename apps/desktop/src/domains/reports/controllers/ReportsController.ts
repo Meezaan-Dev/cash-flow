@@ -11,8 +11,8 @@ import {
 	SubcategoryReport,
 	Transaction,
 } from '@/types';
-import { calculateNetWorth } from '@/domains/accounts/models/AccountModel';
-import { parseDbDateOrNull } from '@/utils/date';
+import { calculateNetWorth } from '@cash-flow/shared/accounts/AccountModel';
+import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
 const CHART_COLORS = [
 	'#6366f1',

@@ -4,7 +4,7 @@ import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccount
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
-import { Transaction } from '@/domains/transactions/models/TransactionModel';
+import { Transaction } from '@cash-flow/shared/transactions/TransactionModel';
 import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
 import { TransactionType } from '@/types';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
@@ -21,7 +21,7 @@ import {
 } from '@/components/app/ui/select';
 import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
+import { mergeCategoryOptions } from '@cash-flow/shared/categories/categories';
 
 interface TransactionFormProps {
 	onClose: () => void;

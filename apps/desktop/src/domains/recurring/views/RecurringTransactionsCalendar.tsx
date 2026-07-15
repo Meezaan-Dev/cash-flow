@@ -12,7 +12,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/app/ui/dialog';
-import { getCategoryColor, getContrastingTextColor } from '@/domains/categories/utils/categoryColors';
+import { getCategoryColor, getContrastingTextColor } from '@cash-flow/shared/categories/categoryColors';
 import { getRecurringFrequencyLabel } from './recurringDisplay';
 
 type Props = {

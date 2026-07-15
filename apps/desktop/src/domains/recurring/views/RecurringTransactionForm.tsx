@@ -18,7 +18,7 @@ import {
 	SelectValue,
 } from '@/components/app/ui/select';
 import { Loader2 } from 'lucide-react';
-import { mergeCategoryOptions } from '@/domains/categories/utils/categories';
+import { mergeCategoryOptions } from '@cash-flow/shared/categories/categories';
 import { formatCurrency } from '@/utils/formatCurrency';
 
 interface RecurringTransactionFormProps {

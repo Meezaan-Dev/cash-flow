@@ -15,7 +15,7 @@ import {
 	ACCOUNT_TYPE_LABELS,
 	getAccountAvailableBalance,
 	getAccountLiability,
-} from '@/domains/accounts/models/AccountModel';
+} from '@cash-flow/shared/accounts/AccountModel';
 import Currency from '@/components/marketing/Currency';
 import { Button } from '@/components/app/ui/button';
 import AccountForm from '@/domains/accounts/views/AccountForm';
@@ -31,7 +31,7 @@ import {
 } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { parseDbDate, parseDbDateOrNull } from '@/utils/date';
+import { parseDbDate, parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
 type SubView = 'detail' | 'edit' | 'transfer' | 'reconcile';
 

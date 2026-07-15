@@ -10,8 +10,8 @@ import { Avatar, AvatarFallback } from '@/components/app/ui/avatar';
 import { Card } from '@/components/app/ui/card';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
 import { Transaction } from '@/types';
-import { compareTransactionsByDateDesc, getTransactionDateOrEpoch } from '@/utils/date';
-import { getCategoryColor } from '@/domains/categories/utils/categoryColors';
+import { compareTransactionsByDateDesc, getTransactionDateOrEpoch } from '@cash-flow/shared/utils/date';
+import { getCategoryColor } from '@cash-flow/shared/categories/categoryColors';
 
 interface TransactionsListProps {
 	onSelect?: (tx: Transaction) => void;
