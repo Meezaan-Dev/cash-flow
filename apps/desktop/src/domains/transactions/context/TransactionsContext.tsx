@@ -2,7 +2,7 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { useTransactionsController } from '@/domains/transactions/controllers/TransactionsController';
 import { useRecurringTransactionsController } from '@/domains/recurring/controllers/RecurringTransactionsController';
 import { Transaction } from '@cash-flow/shared/transactions/TransactionModel';
-import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
+import { RecurringTransaction } from '@cash-flow/shared';
 import { TransactionType } from '@/types';
 
 interface AddTransactionData {

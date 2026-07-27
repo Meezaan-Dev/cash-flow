@@ -3,6 +3,17 @@ import userEvent from '@testing-library/user-event';
 import App from '../App';
 
 const addTransaction = jest.fn();
+let mockAccounts = [{ id: 'acc-1', name: 'Cheque', balance: 1000 }];
+let mockRecurringTransactions = [
+	{
+		id: 'rent',
+		title: 'Rent',
+		type: 'expense',
+		amount: 9000,
+		category: 'food',
+		accountId: 'acc-1',
+	},
+];
 
 jest.mock('firebase/auth', () => ({
 	createUserWithEmailAndPassword: jest.fn(),
@@ -17,10 +28,11 @@ jest.mock('firebase/auth', () => ({
 jest.mock('@cash-flow/shared', () => ({
 	auth: {},
 	formatCurrency: (amount: number) => `R${amount}`,
+	getRecurringOccurrenceDateKey: () => '2026-07-27',
 	getTransactionDateOrEpoch: () => new Date(2026, 4, 22),
 	mergeCategoryOptions: (items: unknown[]) => items,
 	useAccounts: () => ({
-		accounts: [{ id: 'acc-1', name: 'Cheque', balance: 1000 }],
+		accounts: mockAccounts,
 		loading: false,
 	}),
 	useCategoryOptions: () => ({
@@ -47,6 +59,10 @@ jest.mock('@cash-flow/shared', () => ({
 		],
 		addTransaction,
 	}),
+	useRecurringTransactions: () => ({
+		recurringTransactions: mockRecurringTransactions,
+		loading: false,
+	}),
 }));
 
 describe('Mobisite App', () => {
@@ -54,6 +70,17 @@ describe('Mobisite App', () => {
 		window.sessionStorage.clear();
 		addTransaction.mockReset();
 		addTransaction.mockResolvedValue(undefined);
+		mockAccounts = [{ id: 'acc-1', name: 'Cheque', balance: 1000 }];
+		mockRecurringTransactions = [
+			{
+				id: 'rent',
+				title: 'Rent',
+				type: 'expense',
+				amount: 9000,
+				category: 'food',
+				accountId: 'acc-1',
+			},
+		];
 	});
 
 	it('starts on the home dashboard with add and list options', async () => {
@@ -121,5 +148,63 @@ describe('Mobisite App', () => {
 		await waitFor(() => expect(addTransaction).toHaveBeenCalledTimes(1));
 		expect(screen.getByRole('status')).toHaveTextContent('Transaction created');
 		expect(screen.getByRole('status')).toHaveTextContent('Expense "Lunch" added successfully.');
+	});
+
+	it('fills the transaction form from a recurring template', async () => {
+		const user = userEvent.setup();
+
+		render(<App />);
+		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
+		await user.selectOptions(screen.getByLabelText('Recurring'), 'rent');
+
+		expect(screen.getByLabelText('Title')).toHaveValue('Rent');
+		expect(screen.getByLabelText('Amount')).toHaveValue(9000);
+	});
+
+	it('creates a transaction linked to the selected recurring template', async () => {
+		const user = userEvent.setup();
+
+		render(<App />);
+		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
+		await user.selectOptions(screen.getByLabelText('Recurring'), 'rent');
+		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
+
+		await waitFor(() => expect(addTransaction).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'expense',
+				accountId: 'acc-1',
+				title: 'Rent',
+				amount: 9000,
+				category: 'food',
+				recurringTransactionId: 'rent',
+				recurringOccurrenceDate: '2026-07-27',
+			})
+		));
+	});
+
+	it('keeps the current account when a recurring template has a stale account', async () => {
+		mockRecurringTransactions = [
+			{
+				id: 'rent',
+				title: 'Rent',
+				type: 'expense',
+				amount: 9000,
+				category: 'food',
+				accountId: 'deleted-account',
+			},
+		];
+		const user = userEvent.setup();
+
+		render(<App />);
+		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
+		await user.selectOptions(screen.getByLabelText('Recurring'), 'rent');
+		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
+
+		await waitFor(() => expect(addTransaction).toHaveBeenCalledWith(
+			expect.objectContaining({
+				accountId: 'acc-1',
+				recurringTransactionId: 'rent',
+			})
+		));
 	});
 });

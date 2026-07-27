@@ -5,7 +5,7 @@ import { useTransactionsContext } from '@/domains/transactions/context/Transacti
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
-import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
+import { RecurringTransaction } from '@cash-flow/shared';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import { Label } from '@/components/app/ui/label';

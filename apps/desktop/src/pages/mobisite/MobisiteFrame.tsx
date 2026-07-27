@@ -5,48 +5,75 @@ import type { CSSProperties } from 'react';
 /** iPhone 15 logical viewport (points). */
 const IPHONE_15_WIDTH = 393;
 const IPHONE_15_HEIGHT = 852;
-/** Usable app height below status bar + home indicator. */
-const IPHONE_15_APP_HEIGHT = 759;
+const IPHONE_15_TOP_SAFE_AREA = 72;
+const IPHONE_15_BOTTOM_SAFE_AREA = 22;
+const IPHONE_15_APP_HEIGHT =
+	IPHONE_15_HEIGHT - IPHONE_15_TOP_SAFE_AREA - IPHONE_15_BOTTOM_SAFE_AREA;
+const DEVICE_WIDTH = IPHONE_15_WIDTH + 36;
+const DEVICE_HEIGHT = IPHONE_15_HEIGHT + 36;
 
 const MobisiteFrame = () => {
 	return (
-		<div className="min-h-screen-safe bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(148,163,184,0.22),transparent_55%),linear-gradient(180deg,#e2e8f0_0%,#cbd5e1_100%)] px-0 py-0 text-foreground dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(59,130,246,0.12),transparent_55%),linear-gradient(180deg,#0f172a_0%,#020617_100%)] sm:flex sm:items-center sm:justify-center sm:px-6 sm:py-10">
+		<div className="min-h-screen-safe bg-black px-0 py-0 text-foreground sm:flex sm:items-center sm:justify-center sm:px-6 sm:py-8">
 			<div className="hidden sm:block">
 				<div
 					data-testid="mobile-browser-frame"
-					className="relative rounded-[3.25rem] bg-gradient-to-b from-zinc-400 via-zinc-600 to-zinc-800 p-[10px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-black/40"
-					style={{ width: IPHONE_15_WIDTH + 20, height: IPHONE_15_HEIGHT + 20 }}
+					className="relative rounded-[4.55rem] border border-white/85 bg-[linear-gradient(115deg,#fbfbfd_0%,#b7b8bd_34%,#f7f7f8_48%,#4b4c50_100%)] shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),0_6.7px_5.3px_rgba(0,0,0,0.048),0_12.5px_10px_rgba(0,0,0,0.06),0_22.3px_17.9px_rgba(0,0,0,0.072),0_41.8px_33.4px_rgba(0,0,0,0.086),0_70px_70px_rgba(0,0,0,0.38),0_0_44px_rgba(255,255,255,0.22)]"
+					style={{ width: DEVICE_WIDTH, height: DEVICE_HEIGHT }}
 				>
-					{/* Side buttons */}
 					<div
-						className="absolute -left-[2px] top-[148px] h-8 w-[3px] rounded-l-sm bg-zinc-500/90"
+						className="absolute left-1/2 top-[5px] h-[3px] w-[88px] -translate-x-1/2 rounded-b-full bg-black/55"
 						aria-hidden
 					/>
 					<div
-						className="absolute -left-[2px] top-[196px] h-14 w-[3px] rounded-l-sm bg-zinc-500/90"
+						className="absolute -left-[5px] top-[154px] h-[68px] w-[5px] rounded-l-full bg-white/85 shadow-[inset_-1px_0_1px_rgba(0,0,0,0.35)]"
 						aria-hidden
 					/>
 					<div
-						className="absolute -left-[2px] top-[252px] h-14 w-[3px] rounded-l-sm bg-zinc-500/90"
+						className="absolute -left-[5px] top-[246px] h-[48px] w-[5px] rounded-l-full bg-white/85 shadow-[inset_-1px_0_1px_rgba(0,0,0,0.35)]"
 						aria-hidden
 					/>
 					<div
-						className="absolute -right-[2px] top-[210px] h-20 w-[3px] rounded-r-sm bg-zinc-500/90"
+						className="absolute -left-[5px] top-[311px] h-[48px] w-[5px] rounded-l-full bg-white/85 shadow-[inset_-1px_0_1px_rgba(0,0,0,0.35)]"
+						aria-hidden
+					/>
+					<div
+						className="absolute -right-[5px] top-[254px] h-[126px] w-[5px] rounded-r-full bg-white/80 shadow-[inset_1px_0_1px_rgba(0,0,0,0.4)]"
 						aria-hidden
 					/>
 
-					<div
-						className="relative flex h-full w-full flex-col overflow-hidden rounded-[2.65rem] bg-black"
-						style={{ width: IPHONE_15_WIDTH, height: IPHONE_15_HEIGHT }}
-					>
-						{/* Dynamic Island */}
+					<div className="absolute inset-[10px] overflow-hidden rounded-[4rem] bg-black p-[8px]">
 						<div
-							className="pointer-events-none absolute left-1/2 top-[11px] z-20 h-[37px] w-[126px] -translate-x-1/2 rounded-full bg-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_1px_3px_rgba(0,0,0,0.45)]"
+							className="relative h-full w-full overflow-hidden rounded-[3.35rem] bg-background px-0"
+							style={
+								{
+									paddingTop: IPHONE_15_TOP_SAFE_AREA,
+									paddingBottom: IPHONE_15_BOTTOM_SAFE_AREA,
+								} as CSSProperties
+							}
+						>
+							<div
+								className="h-full min-h-0 overflow-hidden"
+								style={{ '--vh-screen': `${IPHONE_15_APP_HEIGHT}px` } as CSSProperties}
+							>
+								<MobisiteApp />
+							</div>
+						</div>
+
+						<div
+							className="pointer-events-none absolute left-1/2 top-[23px] z-30 h-[37px] w-[126px] -translate-x-1/2 rounded-full bg-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_1px_3px_rgba(0,0,0,0.45)]"
+							aria-hidden
+						/>
+						<div
+							className="pointer-events-none absolute left-[251px] top-[36px] z-40 h-[6px] w-[6px] rounded-full bg-white/20"
+							aria-hidden
+						/>
+						<div
+							className="pointer-events-none absolute left-[252px] top-[37px] z-40 h-[2px] w-[2px] rounded-full bg-black/80"
 							aria-hidden
 						/>
 
-						{/* Status bar */}
-						<div className="relative z-10 flex h-[54px] shrink-0 items-end justify-between px-7 pb-1 text-[13px] font-semibold text-white">
+						<div className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex h-[69px] items-center justify-between px-[47px] pt-2 text-[14px] font-semibold text-white">
 							<span>9:41</span>
 							<span className="flex items-center gap-1.5">
 								<Signal className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -55,23 +82,12 @@ const MobisiteFrame = () => {
 							</span>
 						</div>
 
-						{/* App viewport */}
 						<div
-							className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-background"
-							style={{ '--vh-screen': `${IPHONE_15_APP_HEIGHT}px` } as CSSProperties}
-						>
-							<MobisiteApp />
-						</div>
-
-						{/* Home indicator */}
-						<div className="flex h-[34px] shrink-0 items-center justify-center bg-background pb-2">
-							<div className="h-[5px] w-[134px] rounded-full bg-zinc-900/80 dark:bg-white/30" />
-						</div>
+							className="pointer-events-none absolute bottom-[13px] left-1/2 z-20 h-[5px] w-[134px] -translate-x-1/2 rounded-full bg-white/45"
+							aria-hidden
+						/>
 					</div>
 				</div>
-				<p className="mt-4 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
-					iPhone 15 preview
-				</p>
 			</div>
 			<div className="block sm:hidden">
 				<MobisiteApp />
