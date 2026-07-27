@@ -40,7 +40,8 @@ The friendly first-run path is:
 2. Create at least one account in desktop admin.
 3. Choose a main account for new transactions.
 4. Add income/expense transactions from desktop or `/mobisite`.
-5. Review transaction history, balances, budgets, recurring expenses, and reports from desktop.
+5. Use saved recurring templates as quick-fill options when adding transactions on `/mobisite`.
+6. Review transaction history, balances, budgets, recurring expenses, and reports from desktop.
 
 Core capabilities include Firebase auth, multi-account management for debit/credit/savings/cash, atomic income and expense writes, linked transfer records, account reconciliation, desktop dashboard/admin views, mobile transaction capture, recurring due-today drafts, import/export, reports, settings, and the AI assistant.
 
@@ -71,7 +72,7 @@ There is only one deployed SPA. `apps/mobisite` is internal separation, not a se
 - Keep data normalization in domain models and Firebase behavior in domain hooks.
 - Use shared types from `src/types/` instead of redefining domain shapes in UI components.
 - Keep the UI friendly and direct; do not turn the app into a marketing surface.
-- Keep `/mobisite` intentionally small: add income/expense and view list only.
+- Keep `/mobisite` intentionally small: add income/expense, quick-fill from recurring templates, and view the simple list.
 - Use the route split to separate concerns: desktop manages the system; mobisite captures transactions quickly.
 
 ## Where To Start

@@ -31,6 +31,7 @@ Cash Flow is one deployed SPA. `apps/desktop/src/App.tsx` owns routing for both 
 
 - Adding income and expense transactions.
 - Viewing a simple transaction list.
+- Selecting recurring templates while adding a transaction.
 - Using the main account preference as the default account when it exists.
 
 Out of scope for `/mobisite`:

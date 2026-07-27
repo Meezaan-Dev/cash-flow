@@ -19,13 +19,15 @@ import {
 import {
 	auth,
 	formatCurrency,
+	getRecurringOccurrenceDateKey,
 	getTransactionDateOrEpoch,
 	mergeCategoryOptions,
 	parseDbDateOrNull,
-	Transaction,
+	type Transaction,
 	useAccounts,
 	useCategoryOptions,
 	useMainAccountPreference,
+	useRecurringTransactions,
 	useTransactions,
 } from '@cash-flow/shared';
 
@@ -134,6 +136,7 @@ const AuthPanel = () => {
 const AddTransactionView = () => {
 	const { accounts, loading: accountsLoading } = useAccounts();
 	const { addTransaction } = useTransactions();
+	const { recurringTransactions } = useRecurringTransactions();
 	const { categories, categoryOptions } = useCategoryOptions();
 	const { mainAccountId } = useMainAccountPreference();
 	const [type, setType] = useState<MobileTransactionType>('expense');
@@ -142,6 +145,7 @@ const AddTransactionView = () => {
 	const [amount, setAmount] = useState('');
 	const [category, setCategory] = useState('');
 	const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+	const [selectedRecurringId, setSelectedRecurringId] = useState('');
 	const [error, setError] = useState('');
 	const [saving, setSaving] = useState(false);
 	const defaultAccountId = useMemo(() => {
@@ -171,6 +175,23 @@ const AddTransactionView = () => {
 	const [subcategory, setSubcategory] = useState('');
 	const [success, setSuccess] = useState('');
 
+	const handleRecurringChange = (recurringId: string) => {
+		setSelectedRecurringId(recurringId);
+		setSuccess('');
+
+		const recurringTransaction = recurringTransactions.find((item) => item.id === recurringId);
+		if (!recurringTransaction) return;
+
+		setType(recurringTransaction.type ?? 'expense');
+		setTitle(recurringTransaction.title);
+		setAmount(String(recurringTransaction.amount));
+		setCategory(recurringTransaction.category);
+		setSubcategory(recurringTransaction.subcategory ?? '');
+		if (recurringTransaction.accountId && accounts.some((account) => account.id === recurringTransaction.accountId)) {
+			setAccountId(recurringTransaction.accountId);
+		}
+	};
+
 	const handleSubmit = async (event: FormEvent) => {
 		event.preventDefault();
 		setError('');
@@ -187,6 +208,9 @@ const AddTransactionView = () => {
 
 		setSaving(true);
 		try {
+			const selectedRecurring = recurringTransactions.find((item) => item.id === selectedRecurringId);
+			const transactionDate = date ? new Date(date) : new Date();
+
 			await addTransaction({
 				type,
 				accountId,
@@ -194,12 +218,17 @@ const AddTransactionView = () => {
 				amount: Number(amount),
 				category,
 				subcategory: subcategory || undefined,
-				date: date ? new Date(date) : new Date(),
+				date: transactionDate,
+				recurringTransactionId: selectedRecurring?.id,
+				recurringOccurrenceDate: selectedRecurring
+					? getRecurringOccurrenceDateKey(transactionDate)
+					: undefined,
 			});
 			setSuccess(`${type === 'expense' ? 'Expense' : 'Income'} "${title}" added successfully.`);
 			setTitle('');
 			setAmount('');
 			setSubcategory('');
+			setSelectedRecurringId('');
 			setDate(new Date().toISOString().split('T')[0]);
 		} catch (err) {
 			setError(getAppErrorMessage(err, { operation: 'Save transaction' }));
@@ -246,6 +275,23 @@ const AddTransactionView = () => {
 					<div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
 						{error}
 					</div>
+				)}
+				{recurringTransactions.length > 0 && (
+					<label className="block space-y-1.5 text-sm font-medium">
+						<span>Recurring</span>
+						<select
+							value={selectedRecurringId}
+							onChange={(event) => handleRecurringChange(event.target.value)}
+							className="h-12 w-full rounded-md border bg-background px-3"
+						>
+							<option value="">No recurring template</option>
+							{recurringTransactions.map((transaction) => (
+								<option key={transaction.id} value={transaction.id}>
+									{transaction.title} - {formatCurrency(transaction.amount)}
+								</option>
+							))}
+						</select>
+					</label>
 				)}
 				<div className="grid grid-cols-2 gap-2">
 					{(['expense', 'income'] as const).map((item) => (

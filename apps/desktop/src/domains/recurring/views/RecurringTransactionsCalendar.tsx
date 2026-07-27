@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FiChevronLeft, FiChevronRight, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
-import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
+import { RecurringTransaction } from '@cash-flow/shared';
 import { Button } from '@/components/app/ui/button';
 import { formatCurrency } from '@/utils/formatCurrency';
 import {

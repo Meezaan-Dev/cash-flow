@@ -174,27 +174,50 @@ function IllustrationAI() {
 
 function IllustrationSync() {
 	return (
-		<svg viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-			<defs>
-				<linearGradient id="ff6" x1="0" y1="0" x2="0" y2="1">
-					<stop offset="0%" stopColor="#3b82f6" />
-					<stop offset="100%" stopColor="#6366f1" />
-				</linearGradient>
-			</defs>
-			{/* Phone */}
-			<rect x="100" y="50" width="80" height="120" rx="12" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1.5" />
-			<rect x="112" y="68" width="56" height="70" rx="5" fill="#eff6ff" />
-			<rect x="120" y="76" width="40" height="7" rx="3.5" fill="#bfdbfe" />
-			<rect x="120" y="89" width="28" height="7" rx="3.5" fill="#bfdbfe" opacity="0.6" />
-			<rect x="120" y="102" width="34" height="7" rx="3.5" fill="#bfdbfe" opacity="0.4" />
-			{/* Orbit dots */}
-			{[0, 72, 144, 216, 288].map((deg, i) => (
-				<circle key={i}
-					cx={140 + 80 * Math.cos(deg * Math.PI / 180)}
-					cy={110 + 80 * Math.sin(deg * Math.PI / 180)}
-					r="5" fill="#3b82f6" opacity={0.15 + i * 0.1} />
-			))}
-		</svg>
+		<div className="relative flex h-full w-full items-center justify-center">
+			<div className="relative h-[164px] w-[76px] rounded-[22px] bg-zinc-950 p-[4px] shadow-[0_18px_34px_rgba(15,23,42,0.28)] ring-1 ring-zinc-700">
+				<div className="absolute left-1/2 top-[7px] z-20 h-[9px] w-[31px] -translate-x-1/2 rounded-full bg-black" />
+				<div className="h-full overflow-hidden rounded-[18px] bg-white">
+					<div className="flex h-[14px] items-end justify-between bg-slate-950 px-2 pb-0.5 text-[5px] font-semibold text-white">
+						<span>9:41</span>
+						<span>5G</span>
+					</div>
+					<div className="space-y-2 p-2">
+						<div>
+							<p className="text-[5px] font-bold uppercase tracking-wide text-slate-400">
+								CashFlow mobile
+							</p>
+							<p className="text-[8px] font-semibold text-slate-950">Add transaction</p>
+						</div>
+						<div className="grid grid-cols-2 gap-1">
+							<div className="rounded-[5px] bg-blue-600 py-1 text-center text-[5px] font-semibold text-white">
+								expense
+							</div>
+							<div className="rounded-[5px] border border-slate-200 py-1 text-center text-[5px] font-semibold text-slate-500">
+								income
+							</div>
+						</div>
+						{[
+							['Recurring', 'Rent - R9,000'],
+							['Title', 'Rent'],
+							['Amount', '9000'],
+							['Account', 'Cheque'],
+						].map(([label, value]) => (
+							<div key={label} className="space-y-0.5">
+								<p className="text-[4.5px] font-semibold text-slate-500">{label}</p>
+								<div className="rounded-[5px] border border-slate-200 bg-slate-50 px-1.5 py-1 text-[5px] font-medium text-slate-800">
+									{value}
+								</div>
+							</div>
+						))}
+						<div className="rounded-[5px] bg-blue-600 py-1.5 text-center text-[5px] font-bold text-white">
+							Add transaction
+						</div>
+					</div>
+				</div>
+				<div className="absolute bottom-[7px] left-1/2 h-[2px] w-[27px] -translate-x-1/2 rounded-full bg-slate-900/80" />
+			</div>
+		</div>
 	);
 }
 

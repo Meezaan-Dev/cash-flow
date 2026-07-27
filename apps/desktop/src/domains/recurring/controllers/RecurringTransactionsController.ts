@@ -1,5 +1,7 @@
-import { useRecurringTransactions } from '@/domains/recurring/hooks/useRecurringTransactions';
-import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
+import {
+	useRecurringTransactions,
+	type RecurringTransaction,
+} from '@cash-flow/shared';
 
 interface RecurringTransactionsControllerReturn {
 // Data

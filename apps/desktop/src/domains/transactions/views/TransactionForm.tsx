@@ -5,7 +5,7 @@ import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { Transaction } from '@cash-flow/shared/transactions/TransactionModel';
-import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
+import { RecurringTransaction } from '@cash-flow/shared';
 import { TransactionType } from '@/types';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { Button } from '@/components/app/ui/button';

@@ -3,7 +3,7 @@ import { FiEdit, FiTrash2, FiPlus, FiDollarSign } from 'react-icons/fi';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
-import { RecurringTransaction } from '@/domains/recurring/models/RecurringTransactionModel';
+import { RecurringTransaction } from '@cash-flow/shared';
 import { Button } from '@/components/app/ui/button';
 import RecurringTransactionForm from './RecurringTransactionForm';
 import {
