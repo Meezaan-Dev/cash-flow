@@ -6,6 +6,7 @@ import {
 	getAccountLiability,
 } from '@cash-flow/shared/accounts/AccountModel';
 import Currency from '@/components/marketing/Currency';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
 import { Account } from '@/types';
 import { cardSurface, sectionLabel } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
@@ -93,12 +94,16 @@ const AccountBalanceStrip: React.FC<AccountBalanceStripProps> = ({
 									)}
 								>
 									<p className={sectionLabel}>
-										{account.bank
-											? `${account.bank} - ${ACCOUNT_TYPE_LABELS[account.type]}`
-											: ACCOUNT_TYPE_LABELS[account.type]}
+										<SensitiveText widthClassName="w-28">
+											{account.bank
+												? `${account.bank} - ${ACCOUNT_TYPE_LABELS[account.type]}`
+												: ACCOUNT_TYPE_LABELS[account.type]}
+										</SensitiveText>
 									</p>
 									<p className="truncate text-sm font-medium text-gray-900 dark:text-gray-50">
-										{account.name}
+										<SensitiveText widthClassName="w-24">
+											{account.name}
+										</SensitiveText>
 									</p>
 									<Currency
 										amount={account.balance}

@@ -7,6 +7,8 @@ import { Button } from '@/components/app/ui/button';
 import { Textarea } from '@/components/app/ui/textarea';
 import { cardSurface, sectionLabel } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
+import { usePrivacyMode } from '@/app/privacy/PrivacyModeContext';
+import { SensitiveValue } from '@/app/privacy/SensitiveValue';
 
 const MAX_HISTORY_MESSAGES = 12;
 const SUGGESTED_PROMPTS = [
@@ -30,6 +32,7 @@ const createMessage = (
 const AIChatbot: React.FC = () => {
 	const { currentUser } = useAuth();
 	const { askQuestion } = useAIChatController();
+	const { isPrivacyMode } = usePrivacyMode();
 	const [inputValue, setInputValue] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
 	const [messages, setMessages] = useState<AIChatMessage[]>([]);
@@ -37,7 +40,7 @@ const AIChatbot: React.FC = () => {
 	const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
 	const isAuthenticated = Boolean(currentUser?.uid);
-	const canSend = !isLoading && isAuthenticated && inputValue.trim().length > 0;
+	const canSend = !isPrivacyMode && !isLoading && isAuthenticated && inputValue.trim().length > 0;
 
 	useEffect(() => {
 		inputRef.current?.focus();
@@ -172,7 +175,9 @@ const AIChatbot: React.FC = () => {
 												: 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50'
 									)}
 								>
-									{message.content}
+									<SensitiveValue className="block" widthClassName="w-56">
+										{message.content}
+									</SensitiveValue>
 								</div>
 							</div>
 						))
@@ -190,7 +195,7 @@ const AIChatbot: React.FC = () => {
 					<div className="flex items-end gap-2">
 						<Textarea
 							ref={inputRef}
-							value={inputValue}
+							value={isPrivacyMode ? '' : inputValue}
 							onChange={(event) => setInputValue(event.target.value)}
 							onKeyDown={(event) => {
 								if (event.key === 'Enter' && !event.shiftKey) {
@@ -198,10 +203,10 @@ const AIChatbot: React.FC = () => {
 									void handleSend();
 								}
 							}}
-							placeholder="Ask a question about your finances..."
+							placeholder={isPrivacyMode ? 'Hidden while privacy mode is on' : 'Ask a question about your finances...'}
 							className="max-h-32 min-h-[48px] resize-none"
 							rows={2}
-							disabled={!isAuthenticated || isLoading}
+							disabled={isPrivacyMode || !isAuthenticated || isLoading}
 							maxLength={2000}
 						/>
 						<Button

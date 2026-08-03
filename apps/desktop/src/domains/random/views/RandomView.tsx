@@ -22,13 +22,31 @@ import {
 import { cardSurface, modalShell, sectionLabel } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
+import { usePrivacyMode } from '@/app/privacy/PrivacyModeContext';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type ViewMode = 'editor' | 'markdown';
 
+const HiddenNoteSkeleton: React.FC<{ className: string }> = ({ className }) => (
+	<div
+		className={cn(
+			'flex flex-col gap-4 rounded-md border border-gray-200 bg-white p-6 shadow-inner dark:border-gray-800 dark:bg-gray-950',
+			className
+		)}
+		aria-label="Random note hidden"
+	>
+		<span className="privacy-skeleton h-5 w-2/3" />
+		<span className="privacy-skeleton h-4 w-full" />
+		<span className="privacy-skeleton h-4 w-11/12" />
+		<span className="privacy-skeleton h-4 w-3/4" />
+	</div>
+);
+
 const RandomView: React.FC = () => {
 	const { notes, loading, saveNote, addNote, deleteNote } = useRandomNote();
 	const { toast } = useToast();
+	const { isPrivacyMode } = usePrivacyMode();
 	const [activeNoteId, setActiveNoteId] = useState('');
 	const [note, setNote] = useState({ draft: '', saved: '' });
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -213,7 +231,9 @@ const RandomView: React.FC = () => {
 				<div className="space-y-4 p-5">
 					<div className="space-y-3">
 						{activeNote ? (
-							viewMode === 'editor' ? (
+							isPrivacyMode ? (
+								<HiddenNoteSkeleton className="h-[55vh] min-h-[360px] max-h-[620px]" />
+							) : viewMode === 'editor' ? (
 								<Textarea
 									ref={textareaRef}
 									value={draft}
@@ -300,7 +320,9 @@ const RandomView: React.FC = () => {
 								>
 									<span className="block font-medium">Note {index + 1}</span>
 									<span className="block truncate text-xs opacity-75">
-										{item.content.trim() || 'Empty note'}
+										<SensitiveText widthClassName="w-28">
+											{item.content.trim() || 'Empty note'}
+										</SensitiveText>
 									</span>
 								</button>
 							))}
@@ -349,7 +371,9 @@ const RandomView: React.FC = () => {
 						</div>
 
 						{activeNote ? (
-							viewMode === 'editor' ? (
+							isPrivacyMode ? (
+								<HiddenNoteSkeleton className="h-[62vh] min-h-[420px]" />
+							) : viewMode === 'editor' ? (
 								<Textarea
 									ref={dialogTextareaRef}
 									value={draft}

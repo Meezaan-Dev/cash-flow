@@ -17,6 +17,7 @@ import {
 	getAccountLiability,
 } from '@cash-flow/shared/accounts/AccountModel';
 import Currency from '@/components/marketing/Currency';
+import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
 import { Button } from '@/components/app/ui/button';
 import AccountForm from '@/domains/accounts/views/AccountForm';
 import TransferForm from '@/domains/accounts/views/TransferForm';
@@ -110,10 +111,18 @@ const AccountDetailPage: React.FC = () => {
 	return (
 		<PageShell>
 			<PageHeader
-				title={account.name}
+				title={
+					<SensitiveText widthClassName="w-40">
+						{account.name}
+					</SensitiveText>
+				}
 				subtitle={
 					<span className="inline-flex items-center gap-2">
-						{account.bank && <span>{account.bank}</span>}
+						{account.bank && (
+							<SensitiveText widthClassName="w-24">
+								{account.bank}
+							</SensitiveText>
+						)}
 						{account.bank && <span>·</span>}
 						<span>{ACCOUNT_TYPE_LABELS[account.type]}</span>
 					</span>
@@ -150,7 +159,11 @@ const AccountDetailPage: React.FC = () => {
 					label={account.type === 'credit' ? 'Available Credit' : 'Available Balance'}
 					amount={availableBalance}
 					tone={availableBalance < 0 ? 'balance-negative' : 'balance-positive'}
-					note={account.type === 'credit' ? `Limit ${formatCurrency(account.creditLimit ?? 0)}` : undefined}
+					note={account.type === 'credit' ? (
+						<SensitiveValue widthClassName="w-24">
+							Limit {formatCurrency(account.creditLimit ?? 0)}
+						</SensitiveValue>
+					) : undefined}
 				/>
 				{account.type === 'credit' ? (
 					<SummaryCard
@@ -219,7 +232,9 @@ const AccountDetailPage: React.FC = () => {
 									</div>
 									<div className="min-w-0">
 										<p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-											{tx.title}
+											<SensitiveText widthClassName="w-32">
+												{tx.title}
+											</SensitiveText>
 										</p>
 										<p className="text-xs capitalize text-gray-500 dark:text-gray-400">
 											{tx.type}
@@ -230,9 +245,13 @@ const AccountDetailPage: React.FC = () => {
 								<p className="text-sm text-gray-700 dark:text-gray-300">{dateStr}</p>
 
 								<p className="truncate text-sm text-gray-700 dark:text-gray-300">
-									{tx.category
-										? getCategoryPathLabel(tx.category, tx.subcategory)
-										: 'Uncategorized'}
+									{tx.category ? (
+										<SensitiveText widthClassName="w-28">
+											{getCategoryPathLabel(tx.category, tx.subcategory)}
+										</SensitiveText>
+									) : (
+										'Uncategorized'
+									)}
 								</p>
 
 								<div className="text-left md:text-right">

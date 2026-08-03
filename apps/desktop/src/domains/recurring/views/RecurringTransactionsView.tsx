@@ -5,6 +5,8 @@ import { useCategoriesContext } from '@/domains/categories/context/CategoriesCon
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { RecurringTransaction } from '@cash-flow/shared';
 import { Button } from '@/components/app/ui/button';
+import Currency from '@/components/marketing/Currency';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
 import RecurringTransactionForm from './RecurringTransactionForm';
 import {
 	Dialog,
@@ -30,7 +32,6 @@ import {
 } from '@/components/app/page-layout';
 import { cardSurface } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/formatCurrency';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
 import { mergeCategoryOptions } from '@cash-flow/shared/categories/categories';
 import RecurringTransactionsCalendar from './RecurringTransactionsCalendar';
@@ -428,9 +429,13 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 							<FiDollarSign className="h-5 w-5 text-primary" />
 						</div>
 						<div>
-							<p className="text-xs text-gray-500 dark:text-gray-400">{filterLabel}</p>
+							<p className="text-xs text-gray-500 dark:text-gray-400">
+								<SensitiveText widthClassName="w-28">
+									{filterLabel}
+								</SensitiveText>
+							</p>
 							<p className="text-2xl font-bold tracking-tight">
-								{formatCurrency(filteredTotal)}
+								<Currency amount={filteredTotal} />
 							</p>
 						</div>
 					</div>
@@ -486,11 +491,15 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 							>
 								<div className="min-w-0">
 									<h4 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-										{transaction.title}
+										<SensitiveText widthClassName="w-32">
+											{transaction.title}
+										</SensitiveText>
 									</h4>
 									{transaction.description && (
 										<p className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">
-											{transaction.description}
+											<SensitiveText widthClassName="w-36">
+												{transaction.description}
+											</SensitiveText>
 										</p>
 									)}
 								</div>
@@ -506,7 +515,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 
 								<div>
 									<p className="text-sm font-semibold text-gray-950 dark:text-white">
-										{formatCurrency(transaction.amount)}
+										<Currency amount={transaction.amount} />
 									</p>
 									<p
 										className={cn(
@@ -522,7 +531,9 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 
 								<div className="min-w-0 text-sm text-gray-700 dark:text-gray-300">
 									<p className="truncate">
-										{getCategoryPathLabel(transaction.category, transaction.subcategory)}
+										<SensitiveText widthClassName="w-28">
+											{getCategoryPathLabel(transaction.category, transaction.subcategory)}
+										</SensitiveText>
 									</p>
 									{account && (
 										<p className="mt-1 flex items-center gap-1.5 truncate text-xs text-gray-500 dark:text-gray-400">
@@ -530,7 +541,9 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 												className="h-2 w-2 shrink-0 rounded-full"
 												style={{ backgroundColor: account.color ?? '#6366f1' }}
 											/>
-											{account.name}
+											<SensitiveText widthClassName="w-24">
+												{account.name}
+											</SensitiveText>
 										</p>
 									)}
 								</div>

@@ -3,7 +3,8 @@ import { FiChevronLeft, FiChevronRight, FiEdit, FiTrash2 } from 'react-icons/fi'
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { RecurringTransaction } from '@cash-flow/shared';
 import { Button } from '@/components/app/ui/button';
-import { formatCurrency } from '@/utils/formatCurrency';
+import Currency from '@/components/marketing/Currency';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
 import {
 	Dialog,
 	DialogContent,
@@ -131,7 +132,7 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 							setVisibleMonth(new Date(now.getFullYear(), now.getMonth(), 1));
 						}}
 					>
-						Today
+						This month
 					</Button>
 					<Button
 						variant="outline"
@@ -238,8 +239,10 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 												openDayModal(cell.dayNumber!);
 											}}
 										>
-											{transaction.title}
-											{isOverflowDay ? ` (from day ${transaction.expectedDate})` : ''}
+											<SensitiveText widthClassName="w-20">
+												{transaction.title}
+												{isOverflowDay ? ` (from day ${transaction.expectedDate})` : ''}
+											</SensitiveText>
 										</button>
 									);
 								})}
@@ -295,20 +298,34 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 									className="flex items-start justify-between gap-3 rounded-lg border p-3"
 								>
 									<div className="min-w-0">
-										<p className="truncate text-sm font-medium">{transaction.title}</p>
+										<p className="truncate text-sm font-medium">
+											<SensitiveText widthClassName="w-32">
+												{transaction.title}
+											</SensitiveText>
+										</p>
 										<p className="text-xs text-muted-foreground">
-											{getCategoryPathLabel(
-												transaction.category,
-												transaction.subcategory
-											)} •{' '}
+											<SensitiveText widthClassName="w-28">
+												{getCategoryPathLabel(
+													transaction.category,
+													transaction.subcategory
+												)}
+											</SensitiveText>{' '}
+											•{' '}
 											{getRecurringFrequencyLabel(transaction.frequency)}
 											{transaction.accountId && (() => {
 												const acct = accounts.find((a) => a.id === transaction.accountId);
-												return acct ? <> • {acct.name}</> : null;
+												return acct ? (
+													<>
+														{' '}•{' '}
+														<SensitiveText widthClassName="w-24">
+															{acct.name}
+														</SensitiveText>
+													</>
+												) : null;
 											})()}
 										</p>
 										<p className="mt-1 text-sm font-medium">
-											{formatCurrency(transaction.amount)}
+											<Currency amount={transaction.amount} />
 										</p>
 										{isOverflowDay && (
 											<p className="mt-1 text-[10px] text-muted-foreground">

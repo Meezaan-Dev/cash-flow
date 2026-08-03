@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DashboardOverview from '@/pages/dashboard/components/DashboardOverview';
+import { PrivacyModeProvider } from '@/app/privacy/PrivacyModeContext';
+import PrivacyModeButton from '@/pages/dashboard/components/PrivacyModeButton';
 
 const mockAddTransaction = jest.fn();
 const mockAddTransfer = jest.fn();
@@ -135,17 +137,27 @@ jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 	}),
 }));
 
+const overviewProps = {
+	onOpenHistory: mockOnOpenHistory,
+	onOpenBudgets: mockOnOpenBudgets,
+	onOpenSettings: mockOnOpenSettings,
+	onCreateTransaction: mockOnCreateTransaction,
+	onOpenTransactions: mockOnOpenTransactions,
+	onSelectTransaction: mockOnSelectTransaction,
+	onEditRecurringDraft: mockOnEditRecurringDraft,
+};
+
 const renderOverview = () =>
 	render(
-		<DashboardOverview
-			onOpenHistory={mockOnOpenHistory}
-			onOpenBudgets={mockOnOpenBudgets}
-			onOpenSettings={mockOnOpenSettings}
-			onCreateTransaction={mockOnCreateTransaction}
-			onOpenTransactions={mockOnOpenTransactions}
-			onSelectTransaction={mockOnSelectTransaction}
-			onEditRecurringDraft={mockOnEditRecurringDraft}
-		/>
+		<DashboardOverview {...overviewProps} />
+	);
+
+const renderOverviewWithPrivacyButton = () =>
+	render(
+		<PrivacyModeProvider>
+			<PrivacyModeButton />
+			<DashboardOverview {...overviewProps} />
+		</PrivacyModeProvider>
 	);
 
 describe('DashboardOverview', () => {
@@ -214,6 +226,17 @@ describe('DashboardOverview', () => {
 		expect(screen.getByText('Transaction 9')).toBeInTheDocument();
 		expect(screen.queryByText('Transaction 10')).not.toBeInTheDocument();
 		expect(screen.queryByText('Transaction 11')).not.toBeInTheDocument();
+	});
+
+	it('replaces recent transaction text with skeletons in privacy mode', () => {
+		renderOverviewWithPrivacyButton();
+
+		expect(screen.getByText('Salary')).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Hide data' }));
+
+		expect(screen.queryByText('Salary')).not.toBeInTheDocument();
+		expect(screen.getAllByTestId('privacy-skeleton').length).toBeGreaterThan(0);
 	});
 
 	it('shows upcoming recurring expenses and confirms them with occurrence metadata', async () => {

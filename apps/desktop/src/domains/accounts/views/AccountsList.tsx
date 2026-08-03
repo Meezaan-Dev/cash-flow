@@ -8,6 +8,7 @@ import {
 	getAccountLiability,
 } from '@cash-flow/shared/accounts/AccountModel';
 import Currency from '@/components/marketing/Currency';
+import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
 import MotionReveal from '@/components/marketing/MotionReveal';
 import {
 	DataListHeader,
@@ -193,10 +194,14 @@ const AccountsList: React.FC = () => {
 											/>
 											<div className="min-w-0">
 												<h3 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-													{account.name}
+													<SensitiveText widthClassName="w-28">
+														{account.name}
+													</SensitiveText>
 												</h3>
 												<p className="truncate text-xs text-gray-500 dark:text-gray-400">
-													{account.bank || ACCOUNT_TYPE_LABELS[account.type]}
+													<SensitiveText widthClassName="w-24">
+														{account.bank || ACCOUNT_TYPE_LABELS[account.type]}
+													</SensitiveText>
 												</p>
 											</div>
 										</div>
@@ -217,17 +222,25 @@ const AccountsList: React.FC = () => {
 													<FiArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
 												)}
 												<span>
-													{account.type === 'credit'
-														? liability > 0
-															? `${formatCurrency(liability)} debt`
-															: 'No credit used'
-														: 'Available balance'}
+													{account.type === 'credit' && liability > 0 ? (
+														<SensitiveValue widthClassName="w-20">
+															{formatCurrency(liability)} debt
+														</SensitiveValue>
+													) : account.type === 'credit' ? (
+														'No credit used'
+													) : (
+														'Available balance'
+													)}
 												</span>
 											</div>
 											<p className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">
-												{account.type === 'credit'
-													? `Balance ${formatCurrency(account.balance)} · Limit ${formatCurrency(creditLimit)}`
-													: ACCOUNT_TYPE_LABELS[account.type]}
+												{account.type === 'credit' ? (
+													<SensitiveValue widthClassName="w-40">
+														Balance {formatCurrency(account.balance)} · Limit {formatCurrency(creditLimit)}
+													</SensitiveValue>
+												) : (
+													ACCOUNT_TYPE_LABELS[account.type]
+												)}
 											</p>
 										</div>
 

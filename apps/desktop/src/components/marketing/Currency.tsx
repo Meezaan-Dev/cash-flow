@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
+import { SensitiveValue } from '@/app/privacy/SensitiveValue';
 import {
 	balanceNegative,
 	balancePositive,
@@ -50,7 +51,12 @@ const Currency: React.FC<CurrencyProps> = ({
 	}
 
 	return (
-		<span className={cn(currencyBase, toneClasses[tone], className)}>{display}</span>
+		<SensitiveValue
+			className={cn(currencyBase, toneClasses[tone], className)}
+			widthClassName="w-28"
+		>
+			{display}
+		</SensitiveValue>
 	);
 };
 

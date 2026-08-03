@@ -38,6 +38,8 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import TransactionExportDialog from '@/domains/transactions/views/TransactionExportDialog';
 import { Transaction } from '@/types';
 import { useToast } from '@/components/app/ui/use-toast';
+import { usePrivacyMode } from '@/app/privacy/PrivacyModeContext';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
 
 interface SettingsModalProps {
 	open: boolean;
@@ -55,6 +57,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	initialTab,
 }) => {
 	const { toast } = useToast();
+	const { isPrivacyMode } = usePrivacyMode();
 	const { transactions, deleteAllTransactions } = useTransactionsContext();
 	const { accounts } = useAccountsContext();
 	const { mainAccountId, setMainAccountId } = useMainAccountPreference();
@@ -434,7 +437,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 													) : (
 														accounts.map((account) => (
 															<option key={account.id} value={account.id}>
-																{account.name} ({formatCurrency(account.balance)})
+																{isPrivacyMode
+																	? 'Hidden account'
+																	: `${account.name} (${formatCurrency(account.balance)})`}
 															</option>
 														))
 													)}
@@ -738,9 +743,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 																			onClick={() => toggleCategoryExpanded(category.id)}
 																			className="min-w-0 flex-1 text-left"
 																		>
-																			<p className="font-medium">{category.label}</p>
+																			<p className="font-medium">
+																				<SensitiveText widthClassName="w-28">
+																					{category.label}
+																				</SensitiveText>
+																			</p>
 																			<p className="text-xs text-gray-500 dark:text-gray-400">
-																				{category.value}
+																				<SensitiveText widthClassName="w-20">
+																					{category.value}
+																				</SensitiveText>
 																				{` • ${category.subcategories.length} ${
 																					category.subcategories.length === 1
 																						? 'subcategory'
@@ -834,10 +845,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 																					) : (
 																						<div>
 																							<p className="text-sm font-medium">
-																								{subcategory.label}
+																								<SensitiveText widthClassName="w-24">
+																									{subcategory.label}
+																								</SensitiveText>
 																							</p>
 																							<p className="text-xs text-gray-500 dark:text-gray-400">
-																								{subcategory.value}
+																								<SensitiveText widthClassName="w-20">
+																									{subcategory.value}
+																								</SensitiveText>
 																							</p>
 																						</div>
 																					)}

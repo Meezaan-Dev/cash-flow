@@ -35,6 +35,7 @@ import { useToast } from '@/components/app/ui/use-toast';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import MotionReveal from '@/components/marketing/MotionReveal';
+import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
 import {
 	DataListHeader,
 	DataListRow,
@@ -154,7 +155,9 @@ const BudgetRow: React.FC<BudgetRowProps> = ({
 				</span>
 				<div className="min-w-0">
 					<h2 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-						{title}
+						<SensitiveText widthClassName="w-32">
+							{title}
+						</SensitiveText>
 					</h2>
 					<p
 						className={cn(
@@ -165,7 +168,13 @@ const BudgetRow: React.FC<BudgetRowProps> = ({
 						{isDraft ? 'Draft' : styles.label}
 					</p>
 					<p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
-						{scopeHelp ?? 'Tracks this specific spending category'}
+						{scopeHelp ? (
+							<SensitiveText widthClassName="w-40">
+								{scopeHelp}
+							</SensitiveText>
+						) : (
+							'Tracks this specific spending category'
+						)}
 					</p>
 				</div>
 			</div>
@@ -173,7 +182,9 @@ const BudgetRow: React.FC<BudgetRowProps> = ({
 			<div>
 				<div className="flex items-end justify-between gap-3">
 					<p className="text-sm font-semibold text-gray-950 dark:text-white">
-						{formatCurrency(item.spent)} spent of {formatCurrency(item.budget.amount)}
+						<SensitiveValue widthClassName="w-40">
+							{formatCurrency(item.spent)} spent of {formatCurrency(item.budget.amount)}
+						</SensitiveValue>
 					</p>
 					<span className={cn('text-xs font-medium', styles.text)}>
 						{Math.round(item.usedPercentage)}% used
@@ -199,9 +210,11 @@ const BudgetRow: React.FC<BudgetRowProps> = ({
 					</span>
 				</div>
 				<p className={cn('mt-1 text-xs font-medium', styles.text)}>
-					{item.remaining >= 0
-						? `${formatCurrency(item.remaining)} remaining`
-						: `${formatCurrency(Math.abs(item.remaining))} over budget`}
+					<SensitiveValue widthClassName="w-28">
+						{item.remaining >= 0
+							? `${formatCurrency(item.remaining)} remaining`
+							: `${formatCurrency(Math.abs(item.remaining))} over budget`}
+					</SensitiveValue>
 				</p>
 				<div className="mt-2">
 					{isDraft ? (
@@ -541,11 +554,15 @@ const BudgetsList: React.FC = () => {
 						<DialogDescription>
 							Delete{' '}
 							{budgetToDelete
-								? getBudgetTitle(
+								? (
+									<SensitiveText widthClassName="w-28">
+										{getBudgetTitle(
 										budgetToDelete,
 										getCategoryLabel,
 										getSubcategoryLabel
-									)
+									)}
+									</SensitiveText>
+								)
 								: 'this budget'}
 							? Transactions will not be removed.
 						</DialogDescription>

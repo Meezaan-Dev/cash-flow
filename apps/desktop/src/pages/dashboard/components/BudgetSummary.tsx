@@ -28,6 +28,7 @@ import {
 import { formatCurrency } from '@/utils/formatCurrency';
 import { cn } from '@/lib/utils';
 import { useCurrentDate } from '@/hooks/useCurrentDate';
+import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
 
 interface BudgetSummaryProps {
 	onOpenBudgets: () => void;
@@ -182,7 +183,9 @@ const BudgetSummary: React.FC<BudgetSummaryProps> = ({
 						>
 							<div className="min-w-0">
 								<p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-									{title}
+									<SensitiveText widthClassName="w-32">
+										{title}
+									</SensitiveText>
 								</p>
 								<p className="truncate text-xs text-gray-500 dark:text-gray-400">
 									{getBudgetPeriodLabel(item.budget, referenceDate)}
@@ -190,8 +193,10 @@ const BudgetSummary: React.FC<BudgetSummaryProps> = ({
 							</div>
 							<div>
 								<p className="text-sm font-semibold text-gray-950 dark:text-white">
-									{formatCurrency(item.spent)} of{' '}
-									{formatCurrency(item.budget.amount)}
+									<SensitiveValue widthClassName="w-36">
+										{formatCurrency(item.spent)} of{' '}
+										{formatCurrency(item.budget.amount)}
+									</SensitiveValue>
 								</p>
 								<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
 									{Math.round(item.usedPercentage)}% used
@@ -202,9 +207,11 @@ const BudgetSummary: React.FC<BudgetSummaryProps> = ({
 									{styles.label}
 								</p>
 								<p className={cn('mt-1 text-xs font-medium', styles.text)}>
-									{item.remaining >= 0
-										? `${formatCurrency(item.remaining)} remaining`
-										: `${formatCurrency(Math.abs(item.remaining))} over budget`}
+									<SensitiveValue widthClassName="w-28">
+										{item.remaining >= 0
+											? `${formatCurrency(item.remaining)} remaining`
+											: `${formatCurrency(Math.abs(item.remaining))} over budget`}
+									</SensitiveValue>
 								</p>
 							</div>
 						</DataListRow>

@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { pageSubtitle, pageTitle } from '@/styles/marketingStyles';
 
 interface SectionHeaderProps {
-	title: string;
+	title: React.ReactNode;
 	subtitle?: React.ReactNode;
 	actions?: React.ReactNode;
 	className?: string;

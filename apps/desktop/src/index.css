@@ -198,6 +198,11 @@
 	opacity: 1;
 }
 
+.privacy-skeleton {
+	@apply animate-pulse rounded-full bg-gray-200 text-transparent dark:bg-gray-800;
+	pointer-events: none;
+}
+
 .markdown-preview :where(h1, h2) {
 	@apply mb-3 mt-6 border-b border-gray-200 pb-2 font-semibold leading-tight text-gray-950 dark:border-gray-800 dark:text-gray-50;
 }
