@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecurringTransactionsView from '../RecurringTransactionsView';
+import RecurringTransactionsCalendar from '../RecurringTransactionsCalendar';
 
 const mockDeleteRecurringTransaction = jest.fn();
 const mockAddRecurringTransaction = jest.fn();
@@ -94,5 +95,34 @@ describe('RecurringTransactionsView', () => {
 
 		expect(screen.getByRole('heading', { name: 'Edit Recurring Transaction' })).toBeInTheDocument();
 		expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+	});
+});
+
+
+describe('RecurringTransactionsCalendar', () => {
+	it('marks the current day with a Today label', () => {
+		const now = new Date();
+
+		render(
+			<RecurringTransactionsCalendar
+				transactions={[
+					{
+						id: 'rent',
+						accountId: 'checking',
+						title: 'Rent',
+						amount: 12000,
+						type: 'expense',
+						category: 'home',
+						frequency: 'monthly',
+						expectedDate: now.getDate(),
+					},
+				]}
+				onEdit={jest.fn()}
+				onDelete={jest.fn()}
+				getCategoryPathLabel={() => 'Home / Rent'}
+			/>
+		);
+
+		expect(screen.getByText('Today')).toBeInTheDocument();
 	});
 });

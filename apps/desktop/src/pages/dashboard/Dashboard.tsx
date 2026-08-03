@@ -41,6 +41,7 @@ import {
 	transactionFiltersToSearch,
 } from '@/shared/filters/utils/transactionFilters';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
+import type { DueRecurringDraft } from '@cash-flow/shared/recurring/dueRecurringDrafts';
 
 const routeToView = (pathname: string, isMobile: boolean): ViewType => {
 	if (pathname.startsWith('/dashboard/transactions')) return isMobile ? 'list' : 'table';
@@ -84,6 +85,7 @@ const Dashboard: React.FC = () => {
 
 	const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 	const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+	const [editingRecurringDraft, setEditingRecurringDraft] = useState<DueRecurringDraft | null>(null);
 	const [sidebarVisible, setSidebarVisible] = useState(true);
 	const [activeView, setActiveView] = useState<ViewType>(() =>
 		routeToView(location.pathname, window.innerWidth < 768)
@@ -129,6 +131,7 @@ const Dashboard: React.FC = () => {
 	}, [navigate]);
 
 	const handleCreate = useCallback(() => {
+		setEditingRecurringDraft(null);
 		if (accountsLoading) {
 			toast({
 				title: 'Checking accounts',
@@ -145,9 +148,9 @@ const Dashboard: React.FC = () => {
 			});
 			return;
 		}
-			setSelectedTx(null);
-			setSelectedTransactionId(null);
-			setActiveView('transaction');
+		setSelectedTx(null);
+		setSelectedTransactionId(null);
+		setActiveView('transaction');
 	}, [accounts.length, accountsLoading, handleCreateAccount, toast]);
 
 	useEffect(() => {
@@ -167,10 +170,12 @@ const Dashboard: React.FC = () => {
 		if (tx) {
 			setSelectedTx(tx);
 			setSelectedTransactionId(tx.id ?? null);
+			setEditingRecurringDraft(null);
 			setActiveView('transaction');
 		} else {
 			setSelectedTx(null);
 			setSelectedTransactionId(null);
+			setEditingRecurringDraft(null);
 			setActiveView('dashboard');
 			navigate('/dashboard');
 		}
@@ -210,9 +215,17 @@ const Dashboard: React.FC = () => {
 	const handleCloseForm = () => {
 		setSelectedTx(null);
 		setSelectedTransactionId(null);
+		setEditingRecurringDraft(null);
 		setActiveView('dashboard');
 		navigate('/dashboard');
 	};
+
+	const handleEditRecurringDraft = useCallback((draft: DueRecurringDraft) => {
+		setSelectedTx(null);
+		setSelectedTransactionId(null);
+		setEditingRecurringDraft(draft);
+		setActiveView('transaction');
+	}, []);
 
 	const toggleSidebar = () => setSidebarVisible((prev) => !prev);
 
@@ -246,6 +259,7 @@ const Dashboard: React.FC = () => {
 		if (view !== 'transaction') {
 			setSelectedTx(null);
 			setSelectedTransactionId(null);
+			setEditingRecurringDraft(null);
 		}
 		if (view === 'transaction' || view === 'transfer' || view === 'reconcile') {
 			setActiveView(view);
@@ -268,6 +282,9 @@ const Dashboard: React.FC = () => {
 				return (
 					<TransactionForm
 						transaction={selectedTx || undefined}
+						recurringTransaction={editingRecurringDraft?.recurringTransaction}
+						recurringOccurrenceDate={editingRecurringDraft?.occurrenceDate}
+						recurringOccurrenceDateKey={editingRecurringDraft?.occurrenceDateKey}
 						onClose={handleCloseForm}
 						onSuccess={(message) =>
 							toast({
@@ -308,13 +325,13 @@ const Dashboard: React.FC = () => {
 			default:
 				return (
 					<DashboardOverview
-						onOpenAccounts={() => navigate('/dashboard/accounts')}
 						onOpenHistory={handleOpenHistory}
 						onOpenBudgets={() => navigate('/dashboard/budgets')}
 						onOpenSettings={() => handleOpenSettings('general')}
 						onCreateTransaction={handleCreate}
 						onOpenTransactions={handleOpenTransactions}
 						onSelectTransaction={handleSelect}
+						onEditRecurringDraft={handleEditRecurringDraft}
 					/>
 				);
 		}

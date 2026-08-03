@@ -173,10 +173,20 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 						today.getMonth() === visibleMonth.getMonth() &&
 						today.getDate() === cell.dayNumber;
 
+					const dayCellClass = [
+						'min-h-28 rounded-lg border p-2 transition-colors',
+						dayItems.length > 0 ? 'cursor-pointer hover:bg-muted/20' : '',
+						isToday
+							? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-200 shadow-sm dark:border-amber-500/80 dark:bg-amber-950/20 dark:ring-amber-900/70'
+							: '',
+					]
+						.filter(Boolean)
+						.join(' ');
+
 					return (
 						<div
 							key={cell.key}
-							className={`min-h-28 rounded-lg border p-2 ${dayItems.length > 0 ? 'cursor-pointer hover:bg-muted/20' : ''}`}
+							className={dayCellClass}
 							onClick={() => dayItems.length > 0 && openDayModal(cell.dayNumber)}
 							role={dayItems.length > 0 ? 'button' : undefined}
 							tabIndex={dayItems.length > 0 ? 0 : -1}
@@ -191,12 +201,17 @@ const RecurringTransactionsCalendar: React.FC<Props> = ({
 							}}
 							aria-label={dayItems.length > 0 ? `Open day ${cell.dayNumber} transactions` : undefined}
 						>
-							<div className="mb-2 flex items-center justify-between">
-								<span
-									className={`text-sm font-semibold ${isToday ? 'text-primary' : 'text-foreground'}`}
-								>
-									{cell.dayNumber}
-								</span>
+							<div className="mb-2 flex items-center justify-between gap-2">
+								<div className="flex items-center gap-2">
+									<span className={isToday ? 'text-sm font-bold text-amber-700 dark:text-amber-300' : 'text-sm font-semibold text-foreground'}>
+										{cell.dayNumber}
+									</span>
+									{isToday && (
+										<span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+											Today
+										</span>
+									)}
+								</div>
 								{dayItems.length > 0 && (
 									<span className="text-[10px] font-medium text-muted-foreground">
 										{dayItems.length}
