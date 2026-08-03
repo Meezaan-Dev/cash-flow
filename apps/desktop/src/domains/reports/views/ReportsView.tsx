@@ -33,6 +33,8 @@ import {
 import { filterTransactionsByDateRangeObject } from '@/shared/filters/utils/dateRangeFilter';
 import { compareTransactionsByDateDesc } from '@cash-flow/shared/utils/date';
 import Currency from '@/components/marketing/Currency';
+import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
+import { usePrivacyMode } from '@/app/privacy/PrivacyModeContext';
 import { PageHeader, PageShell } from '@/components/app/page-layout';
 import {
 	cardSurface,
@@ -80,6 +82,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 	const { accounts } = useAccountsContext();
 	const { getCategoryLabel, getCategoryPathLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
+	const { isPrivacyMode } = usePrivacyMode();
 	const reportPrefs = prefs.reports;
 
 	const [periodMode, setPeriodMode] = useState<PeriodMode>('month');
@@ -308,7 +311,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 									<SelectItem value="all">All accounts</SelectItem>
 									{accounts.map((account) => (
 										<SelectItem key={account.id} value={account.id!}>
-											{account.name}
+											<SensitiveText widthClassName="w-24">
+												{account.name}
+											</SensitiveText>
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -386,7 +391,13 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 						<div className={cn('p-4', cardSurfaceMuted)}>
 							<p className={sectionLabel}>Biggest category</p>
 							<p className="mt-1 truncate text-xl font-semibold text-gray-900 dark:text-gray-50">
-								{biggestCategory ? getCategoryLabel(biggestCategory.category) : 'None yet'}
+								{biggestCategory ? (
+									<SensitiveText widthClassName="w-28">
+										{getCategoryLabel(biggestCategory.category)}
+									</SensitiveText>
+								) : (
+									'None yet'
+								)}
 							</p>
 							<p className="text-sm text-gray-500 dark:text-gray-400">
 								{biggestCategory ? (
@@ -399,12 +410,16 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 						<div className={cn('p-4', cardSurfaceMuted)}>
 							<p className={sectionLabel}>Biggest subcategory</p>
 							<p className="mt-1 truncate text-xl font-semibold text-gray-900 dark:text-gray-50">
-								{biggestSubcategory
-									? getSubcategoryDisplayLabel(
-										biggestSubcategory.category,
-										biggestSubcategory.subcategory
-									)
-									: 'None yet'}
+								{biggestSubcategory ? (
+									<SensitiveText widthClassName="w-32">
+										{getSubcategoryDisplayLabel(
+											biggestSubcategory.category,
+											biggestSubcategory.subcategory
+										)}
+									</SensitiveText>
+								) : (
+									'None yet'
+								)}
 							</p>
 							<p className="text-sm text-gray-500 dark:text-gray-400">
 								{biggestSubcategory ? (
@@ -482,7 +497,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 																	style={{ backgroundColor: category.color }}
 																/>
 																<span className="truncate font-semibold">
-																	{getCategoryLabel(category.category)}
+																	<SensitiveText widthClassName="w-28">
+																		{getCategoryLabel(category.category)}
+																	</SensitiveText>
 																</span>
 															</div>
 															<div className={cn('mt-2 h-2 rounded-full', progressTrack)}>
@@ -506,7 +523,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 															<div className={`text-xs ${deltaTone}`}>
 																{category.deltaAmount === 0
 																	? 'No change'
-																	: `${category.deltaAmount > 0 ? '+' : ''}${formatCurrency(category.deltaAmount)} vs prev`}
+																	: (
+																		<SensitiveValue widthClassName="w-24">
+																			{category.deltaAmount > 0 ? '+' : ''}{formatCurrency(category.deltaAmount)} vs prev
+																		</SensitiveValue>
+																	)}
 															</div>
 														</div>
 													</div>
@@ -534,10 +555,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 																	)}
 																>
 																	<span className="truncate">
-																		{getSubcategoryDisplayLabel(
-																			subcategory.category,
-																			subcategory.subcategory
-																		)}
+																		<SensitiveText widthClassName="w-32">
+																			{getSubcategoryDisplayLabel(
+																				subcategory.category,
+																				subcategory.subcategory
+																			)}
+																		</SensitiveText>
 																	</span>
 																	<span className="text-gray-500 dark:text-gray-400">
 																		{subcategory.percentage.toFixed(0)}%
@@ -567,10 +590,17 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 						{reportPrefs.subcategoryBreakdown && (
 							<div className={cn('p-5', cardSurface)}>
 								<h2 className="text-base font-semibold">
-									{selectedSubcategoryLabel ??
-										(selectedCategory
-											? getCategoryLabel(selectedCategory)
-											: 'Focused transactions')}
+									{selectedSubcategoryLabel ? (
+										<SensitiveText widthClassName="w-32">
+											{selectedSubcategoryLabel}
+										</SensitiveText>
+									) : selectedCategory ? (
+										<SensitiveText widthClassName="w-28">
+											{getCategoryLabel(selectedCategory)}
+										</SensitiveText>
+									) : (
+										'Focused transactions'
+									)}
 								</h2>
 								<p className="mt-1 text-sm text-muted-foreground">
 									{selectedCategory
@@ -587,9 +617,16 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 												>
 													<div className="flex items-center justify-between gap-3">
 														<div className="min-w-0">
-															<div className="truncate font-medium">{transaction.title}</div>
+															<div className="truncate font-medium">
+																<SensitiveText widthClassName="w-32">
+																	{transaction.title}
+																</SensitiveText>
+															</div>
 															<div className="text-xs text-gray-500 dark:text-gray-400">
-																{formatDate(transaction)} · {accountNameMap[transaction.accountId] ?? 'Unknown account'}
+																{formatDate(transaction)} ·{' '}
+																<SensitiveText widthClassName="w-24">
+																	{accountNameMap[transaction.accountId] ?? 'Unknown account'}
+																</SensitiveText>
 															</div>
 														</div>
 														<Currency
@@ -622,7 +659,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 														className="h-2.5 w-2.5 rounded-full"
 														style={{ backgroundColor: account.color }}
 													/>
-													<span className="font-semibold">{account.accountName}</span>
+													<span className="font-semibold">
+														<SensitiveText widthClassName="w-28">
+															{account.accountName}
+														</SensitiveText>
+													</span>
 													<span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
 														{account.transactionCount} tx
 													</span>
@@ -667,7 +708,16 @@ const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
 									Income, expenses, and net movement
 								</p>
 							</div>
-							{monthlyTrend.length > 0 ? (
+							{isPrivacyMode ? (
+								<div
+									className="flex h-60 flex-col justify-end gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950"
+									aria-label="Money movement chart hidden"
+								>
+									<span className="privacy-skeleton h-20 w-full rounded-lg" />
+									<span className="privacy-skeleton h-12 w-10/12 rounded-lg" />
+									<span className="privacy-skeleton h-16 w-11/12 rounded-lg" />
+								</div>
+							) : monthlyTrend.length > 0 ? (
 								<ResponsiveContainer width="100%" height={240}>
 									<AreaChart data={monthlyTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
 										<defs>

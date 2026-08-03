@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { FiDollarSign } from 'react-icons/fi';
 import Currency from '@/components/marketing/Currency';
+import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
 import { Account, Transaction } from '@/types';
 import {
 	cardSurface,
@@ -96,7 +97,9 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 							>
 								<div className="min-w-0">
 									<p className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
-										{transaction.title}
+										<SensitiveText widthClassName="w-32">
+											{transaction.title}
+										</SensitiveText>
 									</p>
 									<p className="text-xs text-gray-400 dark:text-gray-500">
 										{date.toLocaleDateString('en-ZA', {
@@ -104,7 +107,12 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 											month: 'short',
 										})}
 										{!isTransfer &&
-											` · ${getCategoryPathLabel(transaction.category, transaction.subcategory)}`}
+											' · '}
+										{!isTransfer && (
+											<SensitiveText widthClassName="w-24">
+												{getCategoryPathLabel(transaction.category, transaction.subcategory)}
+											</SensitiveText>
+										)}
 										{isTransfer && ' · Transfer'}
 									</p>
 								</div>
@@ -121,15 +129,16 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 										className="ml-3 flex-shrink-0 text-sm"
 									/>
 								) : (
-									<span
+									<SensitiveValue
 										className={cn(
 											currencyBase,
 											currencyExpense,
 											'ml-3 flex-shrink-0 text-sm'
 										)}
+										widthClassName="w-20"
 									>
 										-{formatCurrency(transaction.amount).replace(/^-/, '')}
-									</span>
+									</SensitiveValue>
 								)}
 							</button>
 						);

@@ -6,6 +6,8 @@ import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { RecurringTransaction } from '@cash-flow/shared';
 import { Button } from '@/components/app/ui/button';
 import RecurringTransactionForm from './RecurringTransactionForm';
+import Currency from '@/components/marketing/Currency';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
 import {
 	Dialog,
 	DialogContent,
@@ -14,7 +16,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/app/ui/dialog';
-import { formatCurrency } from '@/utils/formatCurrency';
 
 const RecurringTransactionsList: React.FC = () => {
 	const { recurringTransactions, deleteRecurringTransaction, recurringTransactionsLoading } =
@@ -116,19 +117,25 @@ const RecurringTransactionsList: React.FC = () => {
 						>
 							<div className="min-w-0 flex-1">
 								<div className="flex flex-wrap items-center gap-2">
-									<h4 className="font-medium">{transaction.title}</h4>
+									<h4 className="font-medium">
+										<SensitiveText widthClassName="w-32">
+											{transaction.title}
+										</SensitiveText>
+									</h4>
 									<span className="text-xs text-muted-foreground">
 										({getFrequencyLabel(transaction.frequency)})
 									</span>
 								</div>
 								<div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-									<span>{formatCurrency(transaction.amount)}</span>
+									<span><Currency amount={transaction.amount} /></span>
 									<span className="hidden sm:inline">•</span>
 									<span>
-										{getCategoryPathLabel(
-											transaction.category,
-											transaction.subcategory
-										)}
+										<SensitiveText widthClassName="w-28">
+											{getCategoryPathLabel(
+												transaction.category,
+												transaction.subcategory
+											)}
+										</SensitiveText>
 									</span>
 									{transaction.accountId && (() => {
 										const acct = accounts.find((a) => a.id === transaction.accountId);
@@ -137,7 +144,9 @@ const RecurringTransactionsList: React.FC = () => {
 												<span className="hidden sm:inline">•</span>
 												<span className="flex items-center gap-1">
 													<span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: acct.color ?? '#6366f1' }} />
-													{acct.name}
+													<SensitiveText widthClassName="w-24">
+														{acct.name}
+													</SensitiveText>
 												</span>
 											</>
 										) : null;
@@ -145,7 +154,11 @@ const RecurringTransactionsList: React.FC = () => {
 									{transaction.description && (
 										<>
 											<span className="hidden sm:inline">•</span>
-											<span className="truncate">{transaction.description}</span>
+											<span className="truncate">
+												<SensitiveText widthClassName="w-36">
+													{transaction.description}
+												</SensitiveText>
+											</span>
 										</>
 									)}
 								</div>

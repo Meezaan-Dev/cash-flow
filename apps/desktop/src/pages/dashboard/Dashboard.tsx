@@ -7,6 +7,7 @@ import { Transaction, ViewType } from '@/types';
 import DashboardOverview from '@/pages/dashboard/components/DashboardOverview';
 import Sidebar from '@/pages/dashboard/components/Sidebar';
 import SettingsModal from '@/pages/dashboard/components/SettingsModal';
+import PrivacyModeButton from '@/pages/dashboard/components/PrivacyModeButton';
 import TransactionForm from '@/domains/transactions/views/TransactionForm';
 import TransactionsTable from '@/domains/transactions/views/TransactionsTable';
 import AccountsList from '@/domains/accounts/views/AccountsList';
@@ -42,6 +43,10 @@ import {
 } from '@/shared/filters/utils/transactionFilters';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import type { DueRecurringDraft } from '@cash-flow/shared/recurring/dueRecurringDrafts';
+import {
+	PrivacyModeProvider,
+	usePrivacyMode,
+} from '@/app/privacy/PrivacyModeContext';
 
 const routeToView = (pathname: string, isMobile: boolean): ViewType => {
 	if (pathname.startsWith('/dashboard/transactions')) return isMobile ? 'list' : 'table';
@@ -76,10 +81,17 @@ const viewToRoute = (view: ViewType): string => {
 	}
 };
 
-const Dashboard: React.FC = () => {
+const isEditableKeyboardTarget = (target: EventTarget | null) => {
+	if (!(target instanceof Element)) return false;
+	const element = target as HTMLElement;
+	return Boolean(element?.closest('input, textarea, select, [contenteditable="true"]'));
+};
+
+const DashboardContent: React.FC = () => {
 	const { transactions, addTransaction, deleteTransaction } = useTransactionsContext();
 	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { toast } = useToast();
+	const { togglePrivacyMode } = usePrivacyMode();
 	const location = useLocation();
 	const navigate = useNavigate();
 
@@ -157,14 +169,25 @@ const Dashboard: React.FC = () => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key.toLowerCase() !== 'k') return;
 			if (!e.ctrlKey && !e.metaKey) return;
-			const target = e.target as HTMLElement | null;
-			if (target?.closest('input, textarea, [contenteditable="true"]')) return;
+			if (isEditableKeyboardTarget(e.target)) return;
 			e.preventDefault();
 			handleCreate();
 		};
 		window.addEventListener('keydown', onKeyDown);
 		return () => window.removeEventListener('keydown', onKeyDown);
 	}, [handleCreate]);
+
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key.toLowerCase() !== 'h') return;
+			if (!e.ctrlKey && !e.metaKey) return;
+			if (isEditableKeyboardTarget(e.target)) return;
+			e.preventDefault();
+			togglePrivacyMode();
+		};
+		window.addEventListener('keydown', onKeyDown);
+		return () => window.removeEventListener('keydown', onKeyDown);
+	}, [togglePrivacyMode]);
 
 	const handleSelect = (tx: Transaction | null) => {
 		if (tx) {
@@ -460,6 +483,7 @@ const Dashboard: React.FC = () => {
 				className={`relative flex min-h-0 flex-1 flex-col overflow-hidden transition-all duration-300 ease-in-out h-screen-safe md:h-auto ${sidebarVisible ? 'md:ml-8' : 'md:ml-0'
 					} ${!sidebarVisible ? 'pt-[4.5rem]' : ''}`}
 			>
+				<PrivacyModeButton />
 				{!sidebarVisible && (
 					<Button
 						variant="outline"
@@ -480,5 +504,11 @@ const Dashboard: React.FC = () => {
 		</div>
 	);
 };
+
+const Dashboard: React.FC = () => (
+	<PrivacyModeProvider>
+		<DashboardContent />
+	</PrivacyModeProvider>
+);
 
 export default Dashboard;

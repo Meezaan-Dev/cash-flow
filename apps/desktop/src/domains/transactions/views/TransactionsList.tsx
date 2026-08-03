@@ -3,7 +3,9 @@ import { FiArrowUp, FiArrowDown, FiSearch, FiCalendar, FiSettings } from 'react-
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
-import { formatCurrency } from '@/utils/formatCurrency';
+import Currency from '@/components/marketing/Currency';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
+import { usePrivacyMode } from '@/app/privacy/PrivacyModeContext';
 import { Input } from '@/components/app/ui/input';
 import { Avatar, AvatarFallback } from '@/components/app/ui/avatar';
 import { Card } from '@/components/app/ui/card';
@@ -23,6 +25,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { getCategoryPathLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
+	const { isPrivacyMode } = usePrivacyMode();
 	const listPrefs = prefs.transactionsList;
 	const [search, setSearch] = useState('');
 	const hasNoAccounts = !accountsLoading && accounts.length === 0;
@@ -52,6 +55,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 	}, [filtered]);
 
 	const getInitials = (name: string) => {
+		if (isPrivacyMode) return '--';
 		const parts = name.split(' ');
 		return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
 	};
@@ -133,7 +137,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 													<div className="flex items-start justify-between gap-4">
 														<div className="flex-1 min-w-0">
 															<h4 className="font-semibold text-base mb-1.5 truncate">
-																{tx.title}
+																<SensitiveText widthClassName="w-32">
+																	{tx.title}
+																</SensitiveText>
 															</h4>
 															<div className="flex items-center gap-2 flex-wrap">
 																<span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -141,7 +147,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 																		className="h-2.5 w-2.5 rounded-full"
 																		style={{ backgroundColor: categoryColor }}
 																	/>
-																	{getCategoryPathLabel(tx.category, tx.subcategory)}
+																	<SensitiveText widthClassName="w-28">
+																		{getCategoryPathLabel(tx.category, tx.subcategory)}
+																	</SensitiveText>
 																</span>
 																<span className="text-xs text-muted-foreground font-medium">
 																	{tx.type}
@@ -168,7 +176,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 																	<FiArrowDown className="h-4 w-4" />
 																)}
 															</div>
-															<span>{formatCurrency(tx.amount)}</span>
+															<Currency amount={tx.amount} />
 														</div>
 													</div>
 												</div>

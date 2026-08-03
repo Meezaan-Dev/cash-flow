@@ -14,6 +14,7 @@ import {
 } from '@/components/app/ui/dialog';
 import { sectionLabel } from '@/styles/marketingStyles';
 import type { DueRecurringDraft } from '@cash-flow/shared/recurring/dueRecurringDrafts';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
 
 interface UpcomingRecurringPreviewProps {
 	drafts: DueRecurringDraft[];
@@ -165,7 +166,9 @@ const UpcomingRecurringPreview: React.FC<UpcomingRecurringPreviewProps> = ({
 															className="block w-full truncate border-l-2 border-blue-500 py-0.5 pl-2 text-left text-xs font-semibold text-gray-800 transition-colors hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-100 dark:hover:text-blue-400"
 															onClick={() => setSelectedDraft(draft)}
 														>
-															{recurringTransaction.title}
+															<SensitiveText widthClassName="w-20">
+																{recurringTransaction.title}
+															</SensitiveText>
 														</button>
 													);
 												})}
@@ -184,18 +187,33 @@ const UpcomingRecurringPreview: React.FC<UpcomingRecurringPreviewProps> = ({
 					<DialogHeader>
 						<DialogTitle>Confirm recurring expense?</DialogTitle>
 						<DialogDescription>
-							{selectedDraft
-								? `Create ${selectedDraft.recurringTransaction.title} for ${formatOccurrenceDate(selectedDraft.occurrenceDate)}?`
-								: ''}
+							{selectedDraft ? (
+								<>
+									Create{' '}
+									<SensitiveText widthClassName="w-28">
+										{selectedDraft.recurringTransaction.title}
+									</SensitiveText>{' '}
+									for {formatOccurrenceDate(selectedDraft.occurrenceDate)}?
+								</>
+							) : ''}
 						</DialogDescription>
 					</DialogHeader>
 					{selectedDraft && (
 						<div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 text-sm dark:border-gray-800 dark:bg-gray-800/40">
 							<p className="font-semibold text-gray-950 dark:text-gray-50">
-								{selectedDraft.recurringTransaction.title}
+								<SensitiveText widthClassName="w-28">
+									{selectedDraft.recurringTransaction.title}
+								</SensitiveText>
 							</p>
 							<p className="mt-1 text-gray-500 dark:text-gray-400">
-								{selectedAccount ? `${selectedAccount.name} - ` : ''}
+								{selectedAccount ? (
+									<>
+										<SensitiveText widthClassName="w-24">
+											{selectedAccount.name}
+										</SensitiveText>
+										{' - '}
+									</>
+								) : ''}
 								<Currency amount={selectedDraft.recurringTransaction.amount} tone="balance-negative" />
 							</p>
 						</div>

@@ -8,6 +8,7 @@ import { useCategoriesContext } from '@/domains/categories/context/CategoriesCon
 import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
 import DateRangeFilter from '@/shared/filters/components/DateRangeFilter';
 import Currency from '@/components/marketing/Currency';
+import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
 import {
 	DataListHeader,
 	DataListRow,
@@ -503,7 +504,9 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 							<SelectItem value="all">All accounts</SelectItem>
 							{accounts.map((account) => (
 								<SelectItem key={account.id} value={account.id!}>
-									{account.name}
+									<SensitiveText widthClassName="w-24">
+										{account.name}
+									</SensitiveText>
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -659,7 +662,9 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 									/>
 									<div className="min-w-0">
 										<p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-											{tx.title}
+											<SensitiveText widthClassName="w-32">
+												{tx.title}
+											</SensitiveText>
 										</p>
 										<div className="mt-1 flex flex-wrap items-center gap-2">
 											<span
@@ -667,7 +672,9 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 												style={{ backgroundColor: categoryColor }}
 											/>
 											<span className="truncate text-xs text-gray-500 dark:text-gray-400">
-												{getCategoryPathLabel(tx.category, tx.subcategory)}
+												<SensitiveText widthClassName="w-24">
+													{getCategoryPathLabel(tx.category, tx.subcategory)}
+												</SensitiveText>
 											</span>
 										</div>
 									</div>
@@ -684,7 +691,9 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 								</div>
 								<div className="min-w-0">
 									<p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-										{account?.name ?? 'Unknown account'}
+										<SensitiveText widthClassName="w-28">
+											{account?.name ?? 'Unknown account'}
+										</SensitiveText>
 									</p>
 									<p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
 										{getTransactionDateOrEpoch(
@@ -705,16 +714,20 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 													: 'text-red-600 dark:text-red-400'
 											)}
 										>
-											{getCategoryPathLabel(
-												budgetContext.budget.categoryId,
-												budgetContext.budget.subCategoryId
-											)}
+											<SensitiveText widthClassName="w-24">
+												{getCategoryPathLabel(
+													budgetContext.budget.categoryId,
+													budgetContext.budget.subCategoryId
+												)}
+											</SensitiveText>
 											{' · '}
-											{budgetContext.remaining >= 0
-												? `${formatCurrency(budgetContext.remaining)} remaining`
-												: `${formatCurrency(
-														Math.abs(budgetContext.remaining)
-													)} over budget`}
+											<SensitiveValue widthClassName="w-24">
+												{budgetContext.remaining >= 0
+													? `${formatCurrency(budgetContext.remaining)} remaining`
+													: `${formatCurrency(
+															Math.abs(budgetContext.remaining)
+														)} over budget`}
+											</SensitiveValue>
 										</p>
 									)}
 								</div>

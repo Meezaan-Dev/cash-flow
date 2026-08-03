@@ -143,21 +143,26 @@ jest.mock('@/components/app/ui/toaster', () => ({
 	Toaster: () => null,
 }));
 
+const renderDashboard = (initialPath = '/dashboard') =>
+	render(
+		<MemoryRouter initialEntries={[initialPath]}>
+			<Routes>
+				<Route path="/dashboard" element={<Dashboard />} />
+				<Route path="/dashboard/transactions" element={<Dashboard />} />
+				<Route path="/dashboard/budgets" element={<Dashboard />} />
+				<Route path="/dashboard/random" element={<Dashboard />} />
+				<Route path="/dashboard/settings" element={<Dashboard />} />
+			</Routes>
+		</MemoryRouter>
+	);
+
 describe('Dashboard', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
 	it('closes the transaction form after finishing an add from /dashboard', () => {
-		render(
-			<MemoryRouter initialEntries={['/dashboard']}>
-				<Routes>
-					<Route path="/dashboard" element={<Dashboard />} />
-					<Route path="/dashboard/transactions" element={<Dashboard />} />
-					<Route path="/dashboard/settings" element={<Dashboard />} />
-				</Routes>
-			</MemoryRouter>
-		);
+		renderDashboard();
 
 		expect(screen.getByText('Dashboard overview')).toBeInTheDocument();
 
@@ -178,14 +183,7 @@ describe('Dashboard', () => {
 	});
 
 	it('navigates from the transaction form to budgets without getting stuck', () => {
-		render(
-			<MemoryRouter initialEntries={['/dashboard']}>
-				<Routes>
-					<Route path="/dashboard" element={<Dashboard />} />
-					<Route path="/dashboard/budgets" element={<Dashboard />} />
-				</Routes>
-			</MemoryRouter>
-		);
+		renderDashboard();
 
 		fireEvent.click(screen.getByRole('button', { name: 'Create transaction' }));
 		expect(screen.getByText('Transaction form')).toBeInTheDocument();
@@ -196,16 +194,60 @@ describe('Dashboard', () => {
 	});
 
 	it('navigates to random notes from the dashboard shell', () => {
-		render(
-			<MemoryRouter initialEntries={['/dashboard']}>
-				<Routes>
-					<Route path="/dashboard" element={<Dashboard />} />
-					<Route path="/dashboard/random" element={<Dashboard />} />
-				</Routes>
-			</MemoryRouter>
-		);
+		renderDashboard();
 
 		fireEvent.click(screen.getByRole('button', { name: 'Open random' }));
 		expect(screen.getByText('Random notes')).toBeInTheDocument();
+	});
+
+	it('toggles privacy mode from the panic button', () => {
+		renderDashboard();
+
+		const button = screen.getByRole('button', { name: 'Hide data' });
+		expect(button).toHaveAttribute('aria-pressed', 'false');
+
+		fireEvent.click(button);
+
+		expect(screen.getByRole('button', { name: 'Reveal data' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+	});
+
+	it('toggles privacy mode with Ctrl+H', () => {
+		renderDashboard();
+
+		fireEvent.keyDown(window, { key: 'h', ctrlKey: true });
+
+		expect(screen.getByRole('button', { name: 'Reveal data' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+	});
+
+	it('toggles privacy mode with Meta+Shift+H', () => {
+		renderDashboard();
+
+		fireEvent.keyDown(window, { key: 'h', metaKey: true, shiftKey: true });
+
+		expect(screen.getByRole('button', { name: 'Reveal data' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+	});
+
+	it('ignores privacy shortcuts inside editable fields', () => {
+		renderDashboard();
+
+		const editable = document.createElement('div');
+		editable.setAttribute('contenteditable', 'true');
+		document.body.appendChild(editable);
+		fireEvent.keyDown(editable, { key: 'h', ctrlKey: true });
+
+		expect(screen.getByRole('button', { name: 'Hide data' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		editable.remove();
 	});
 });

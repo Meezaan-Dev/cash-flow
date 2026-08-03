@@ -17,6 +17,7 @@ import { Input } from '@/components/app/ui/input';
 import { Label } from '@/components/app/ui/label';
 import { modalShell } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
+import { SensitiveText } from '@/app/privacy/SensitiveValue';
 
 type ExportFormat = 'csv' | 'json';
 type DatePreset = 'all' | 'this-month' | 'last-month' | 'this-year' | 'custom';
@@ -101,7 +102,7 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 						<legend className="px-1 text-sm font-medium">Accounts</legend>
 						<div className="max-h-32 space-y-2 overflow-y-auto">
 							{accounts.map((account) => account.id && (
-								<label key={account.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={accountIds.includes(account.id)} onChange={() => setAccountIds((current) => toggle(current, account.id!))} />{account.name}</label>
+								<label key={account.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={accountIds.includes(account.id)} onChange={() => setAccountIds((current) => toggle(current, account.id!))} /><SensitiveText widthClassName="w-24">{account.name}</SensitiveText></label>
 							))}
 						</div>
 					</fieldset>
@@ -109,7 +110,7 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 						<legend className="px-1 text-sm font-medium">Categories</legend>
 						<div className="max-h-32 space-y-2 overflow-y-auto">
 							{categories.map((category) => (
-								<label key={category.value} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedCategories.includes(category.value)} onChange={() => setSelectedCategories((current) => toggle(current, category.value))} />{category.label}</label>
+								<label key={category.value} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedCategories.includes(category.value)} onChange={() => setSelectedCategories((current) => toggle(current, category.value))} /><SensitiveText widthClassName="w-24">{category.label}</SensitiveText></label>
 							))}
 						</div>
 					</fieldset>
