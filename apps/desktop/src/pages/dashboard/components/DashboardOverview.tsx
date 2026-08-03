@@ -1,47 +1,43 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { FiCheck, FiPlus, FiRefreshCw, FiSettings } from 'react-icons/fi';
-import { getDueRecurringDrafts } from '@cash-flow/shared/recurring/dueRecurringDrafts';
+import React, { useMemo, useState } from 'react';
+import { FiPlus, FiSettings } from 'react-icons/fi';
+import {
+	getUpcomingRecurringDrafts,
+	type DueRecurringDraft,
+} from '@cash-flow/shared/recurring/dueRecurringDrafts';
 import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
+import { calculateNetWorth } from '@cash-flow/shared/accounts/AccountModel';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import Currency from '@/components/marketing/Currency';
 import MotionReveal from '@/components/marketing/MotionReveal';
-import MarketingCard from '@/components/marketing/MarketingCard';
 import { PageHeader, PageShell } from '@/components/app/page-layout';
 import { Button } from '@/components/app/ui/button';
 import { useToast } from '@/components/app/ui/use-toast';
 import { Transaction } from '@/types';
-import AccountBalanceStrip from '@/pages/dashboard/components/AccountBalanceStrip';
-import MonthlyDigest from '@/pages/dashboard/components/MonthlyDigest';
 import RecentTransactionsPanel from '@/pages/dashboard/components/RecentTransactionsPanel';
 import BudgetSummary from '@/pages/dashboard/components/BudgetSummary';
-import { calculateDashboardSummary } from '@/pages/dashboard/utils/dashboardSummary';
-import {
-	DashboardDigestPeriod,
-	loadDashboardDigestPeriod,
-	saveDashboardDigestPeriod,
-} from '@/pages/dashboard/utils/digestPeriod';
+import UpcomingRecurringPreview from '@/pages/dashboard/components/UpcomingRecurringPreview';
 import { TransactionFilterDescriptor } from '@/shared/filters/utils/transactionFilters';
 
 interface DashboardOverviewProps {
-	onOpenAccounts: () => void;
 	onOpenHistory: () => void;
 	onOpenBudgets: () => void;
 	onOpenSettings: () => void;
 	onCreateTransaction: () => void;
 	onOpenTransactions: (filters: TransactionFilterDescriptor) => void;
 	onSelectTransaction: (transaction: Transaction) => void;
+	onEditRecurringDraft: (draft: DueRecurringDraft) => void;
 }
 
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({
-	onOpenAccounts,
 	onOpenHistory,
 	onOpenBudgets,
 	onOpenSettings,
 	onCreateTransaction,
 	onOpenTransactions,
 	onSelectTransaction,
+	onEditRecurringDraft,
 }) => {
 	const { transactions, recurringTransactions, addTransaction } = useTransactionsContext();
 	const { accounts } = useAccountsContext();
@@ -49,19 +45,9 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 	const { toast } = useToast();
 	const { mainAccountId } = useMainAccountPreference();
 	const [confirmingDraftId, setConfirmingDraftId] = useState<string | null>(null);
-	const [digestPeriod, setDigestPeriod] = useState<DashboardDigestPeriod>(() =>
-		loadDashboardDigestPeriod()
-	);
-	const handleDigestPeriodChange = useCallback((nextPeriod: DashboardDigestPeriod) => {
-		setDigestPeriod(nextPeriod);
-		saveDashboardDigestPeriod(nextPeriod);
-	}, []);
-	const summary = useMemo(
-		() => calculateDashboardSummary(transactions, accounts, new Date(), digestPeriod),
-		[accounts, digestPeriod, transactions]
-	);
-	const dueRecurringDrafts = useMemo(
-		() => getDueRecurringDrafts(recurringTransactions, transactions, new Date()),
+	const netWorth = useMemo(() => calculateNetWorth(accounts).netWorth, [accounts]);
+	const upcomingRecurringDrafts = useMemo(
+		() => getUpcomingRecurringDrafts(recurringTransactions, transactions, new Date(), 7),
 		[recurringTransactions, transactions]
 	);
 	const defaultAccountId = useMemo(() => {
@@ -70,10 +56,11 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 	}, [accounts, mainAccountId]);
 
 	const handleConfirmRecurringDraft = async (
-		draft: (typeof dueRecurringDrafts)[number]
+		draft: (typeof upcomingRecurringDrafts)[number]
 	) => {
 		const recurringTransaction = draft.recurringTransaction;
 		const accountId = recurringTransaction.accountId ?? defaultAccountId;
+		const confirmKey = `${recurringTransaction.id}:${draft.occurrenceDateKey}`;
 
 		if (!recurringTransaction.id || !accountId) {
 			toast({
@@ -84,7 +71,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 			return;
 		}
 
-		setConfirmingDraftId(recurringTransaction.id);
+		setConfirmingDraftId(confirmKey);
 		try {
 			await addTransaction({
 				type: 'expense',
@@ -100,7 +87,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 			});
 			toast({
 				title: 'Recurring expense confirmed',
-				description: `${recurringTransaction.title} was added to today.`,
+				description: `${recurringTransaction.title} was added for ${draft.occurrenceDate.toLocaleDateString('en-ZA')}.`,
 			});
 		} catch (error) {
 			toast({
@@ -138,11 +125,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 				<PageHeader
 					title="Dashboard"
 					subtitle={
-						<span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-							<span>
-								Net worth <Currency amount={summary.netWorth} className="text-sm" />
-							</span>
-							<span>{summary.periodLabel}</span>
+						<span>
+							Net worth <Currency amount={netWorth} className="text-sm" />
 						</span>
 					}
 					actions={headerActions}
@@ -151,101 +135,33 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
 			<div className="space-y-8">
 				<MotionReveal delay={0.06}>
-						<MonthlyDigest
-							summary={summary}
-							period={digestPeriod}
-							onPeriodChange={handleDigestPeriodChange}
-							onOpenTransactions={onOpenTransactions}
-						/>
+					<UpcomingRecurringPreview
+						drafts={upcomingRecurringDrafts}
+						accounts={accounts}
+						confirmingDraftId={confirmingDraftId}
+						onConfirm={handleConfirmRecurringDraft}
+						onEdit={onEditRecurringDraft}
+					/>
 				</MotionReveal>
 
 				<MotionReveal delay={0.12}>
+					<RecentTransactionsPanel
+						transactions={transactions}
+						accounts={accounts}
+						getCategoryPathLabel={getCategoryPathLabel}
+						onSelect={onSelectTransaction}
+						onOpenHistory={onOpenHistory}
+						limit={10}
+					/>
+				</MotionReveal>
+
+				<MotionReveal delay={0.18}>
 					<BudgetSummary
 						onOpenBudgets={onOpenBudgets}
 						onOpenTransactions={onOpenTransactions}
 					/>
 				</MotionReveal>
-
-				<div className="grid gap-4 xl:grid-cols-2">
-					<MotionReveal delay={0.18}>
-						<RecentTransactionsPanel
-							transactions={transactions}
-							accounts={accounts}
-							getCategoryPathLabel={getCategoryPathLabel}
-							onSelect={onSelectTransaction}
-							onOpenHistory={onOpenHistory}
-						/>
-					</MotionReveal>
-					<MotionReveal delay={0.24}>
-						<AccountBalanceStrip
-							accounts={accounts}
-							onOpenAccounts={onOpenAccounts}
-						/>
-					</MotionReveal>
-				</div>
-
-				{dueRecurringDrafts.length > 0 && (
-					<MotionReveal delay={0.28}>
-							<MarketingCard
-								header={
-									<div>
-										<h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
-											<FiRefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-											Due today
-										</h2>
-										<p className="text-xs text-gray-500 dark:text-gray-400">
-											Confirm recurring expenses that should become transactions.
-										</p>
-									</div>
-								}
-							>
-								<div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-									{dueRecurringDrafts.map((draft) => {
-										const recurringTransaction = draft.recurringTransaction;
-										const account = accounts.find(
-											(item) => item.id === recurringTransaction.accountId
-										);
-										return (
-											<div
-												key={recurringTransaction.id}
-												className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-gray-800 dark:bg-gray-800/40"
-											>
-												<div className="min-w-0">
-													<p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">
-														{recurringTransaction.title}
-													</p>
-													<p className="truncate text-xs text-gray-500 dark:text-gray-400">
-														{getCategoryPathLabel(
-															recurringTransaction.category,
-															recurringTransaction.subcategory
-														)}
-														{account ? ` • ${account.name}` : ''}
-													</p>
-													<Currency
-														amount={recurringTransaction.amount}
-														tone="balance-negative"
-														className="mt-1 text-sm"
-													/>
-												</div>
-												<Button
-													type="button"
-													variant="marketing"
-													size="sm"
-													onClick={() => handleConfirmRecurringDraft(draft)}
-													disabled={confirmingDraftId === recurringTransaction.id}
-												>
-													<FiCheck className="mr-2 h-4 w-4" />
-													Confirm
-												</Button>
-											</div>
-										);
-									})}
-								</div>
-							</MarketingCard>
-					</MotionReveal>
-				)}
-
-				</div>
+			</div>
 		</PageShell>
 	);
 };

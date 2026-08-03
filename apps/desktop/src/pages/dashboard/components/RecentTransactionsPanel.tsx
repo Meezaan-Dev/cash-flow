@@ -20,6 +20,7 @@ interface RecentTransactionsPanelProps {
 	onSelect: (transaction: Transaction) => void;
 	onOpenHistory: () => void;
 	compact?: boolean;
+	limit?: number;
 }
 
 const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
@@ -28,7 +29,9 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 	onSelect,
 	onOpenHistory,
 	compact = false,
+	limit,
 }) => {
+	const displayLimit = limit ?? (compact ? 5 : 6);
 	const recentTransactions = useMemo(
 		() =>
 			[...transactions]
@@ -42,8 +45,8 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 					const rightCreated = parseDbDateOrNull(right.createdAt)?.getTime() ?? 0;
 					return rightCreated - leftCreated;
 				})
-				.slice(0, compact ? 5 : 6),
-		[compact, transactions]
+				.slice(0, displayLimit),
+		[displayLimit, transactions]
 	);
 
 	return (

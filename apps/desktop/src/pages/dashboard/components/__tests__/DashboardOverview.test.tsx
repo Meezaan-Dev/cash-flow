@@ -3,14 +3,26 @@ import DashboardOverview from '@/pages/dashboard/components/DashboardOverview';
 
 const mockAddTransaction = jest.fn();
 const mockAddTransfer = jest.fn();
-const mockOnOpenAccounts = jest.fn();
 const mockOnOpenHistory = jest.fn();
 const mockOnOpenSettings = jest.fn();
 const mockOnOpenBudgets = jest.fn();
 const mockOnCreateTransaction = jest.fn();
 const mockOnOpenTransactions = jest.fn();
 const mockOnSelectTransaction = jest.fn();
+const mockOnEditRecurringDraft = jest.fn();
 const today = new Date();
+
+const makeTransaction = (index: number) => ({
+	id: `tx-${index}`,
+	accountId: 'acc-1',
+	title: `Transaction ${index}`,
+	amount: 100 + index,
+	type: 'expense',
+	category: 'food',
+	subcategory: 'groceries',
+	date: new Date(today.getFullYear(), today.getMonth(), today.getDate() - index),
+});
+
 let mockTransactions = [
 	{
 		id: 'salary',
@@ -87,6 +99,10 @@ jest.mock('@/domains/accounts/context/AccountsContext', () => ({
 	}),
 }));
 
+jest.mock('@cash-flow/shared/accounts/mainAccountPreference', () => ({
+	useMainAccountPreference: () => ({ mainAccountId: 'acc-1' }),
+}));
+
 jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 	useCategoriesContext: () => ({
 		categories: [
@@ -118,6 +134,19 @@ jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 			subcategory ? `${category} / ${subcategory}` : category,
 	}),
 }));
+
+const renderOverview = () =>
+	render(
+		<DashboardOverview
+			onOpenHistory={mockOnOpenHistory}
+			onOpenBudgets={mockOnOpenBudgets}
+			onOpenSettings={mockOnOpenSettings}
+			onCreateTransaction={mockOnCreateTransaction}
+			onOpenTransactions={mockOnOpenTransactions}
+			onSelectTransaction={mockOnSelectTransaction}
+			onEditRecurringDraft={mockOnEditRecurringDraft}
+		/>
+	);
 
 describe('DashboardOverview', () => {
 	beforeEach(() => {
@@ -158,57 +187,43 @@ describe('DashboardOverview', () => {
 		];
 	});
 
-	it('renders the cockpit dashboard with digest, accounts, and transactions', () => {
-		render(
-			<DashboardOverview
-				onOpenAccounts={mockOnOpenAccounts}
-				onOpenHistory={mockOnOpenHistory}
-				onOpenBudgets={mockOnOpenBudgets}
-				onOpenSettings={mockOnOpenSettings}
-				onCreateTransaction={mockOnCreateTransaction}
-				onOpenTransactions={mockOnOpenTransactions}
-				onSelectTransaction={mockOnSelectTransaction}
-			/>
-		);
+	it('renders the focused dashboard home sections without digest or account panels', () => {
+		renderOverview();
 
 		expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
 		expect(screen.getByText(/Net worth/i)).toBeInTheDocument();
-		expect(screen.getByText('Available balance')).toBeInTheDocument();
-		expect(screen.getByText('Income')).toBeInTheDocument();
-		expect(screen.getByText('Expenses')).toBeInTheDocument();
-		expect(screen.getByText('Net change')).toBeInTheDocument();
-		expect(screen.getByText('Accounts')).toBeInTheDocument();
+		expect(screen.getByText('Next 7 days')).toBeInTheDocument();
+		expect(screen.getByText('Planned recurring expenses')).toBeInTheDocument();
 		expect(screen.getByText('Recent')).toBeInTheDocument();
 		expect(screen.getByText('Latest transactions')).toBeInTheDocument();
+		expect(screen.getByText('Budget health')).toBeInTheDocument();
+		expect(screen.queryByText('Available balance')).not.toBeInTheDocument();
+		expect(screen.queryByText('Income')).not.toBeInTheDocument();
+		expect(screen.queryByText('Expenses')).not.toBeInTheDocument();
+		expect(screen.queryByText('Net change')).not.toBeInTheDocument();
+		expect(screen.queryByText('Accounts')).not.toBeInTheDocument();
 		expect(screen.queryByRole('region', { name: /ai assistant/i })).not.toBeInTheDocument();
-
-		fireEvent.click(screen.getByRole('button', { name: /income/i }));
-		expect(mockOnOpenTransactions).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: 'income',
-				startDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-				endDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-			})
-		);
 	});
 
-	it('shows due recurring drafts and confirms them with occurrence metadata', async () => {
-		render(
-			<DashboardOverview
-				onOpenAccounts={mockOnOpenAccounts}
-				onOpenHistory={mockOnOpenHistory}
-				onOpenBudgets={mockOnOpenBudgets}
-				onOpenSettings={mockOnOpenSettings}
-				onCreateTransaction={mockOnCreateTransaction}
-				onOpenTransactions={mockOnOpenTransactions}
-				onSelectTransaction={mockOnSelectTransaction}
-			/>
-		);
+	it('shows the last 10 transactions on the dashboard home', () => {
+		mockTransactions = Array.from({ length: 12 }, (_, index) => makeTransaction(index));
 
-		expect(screen.getByText('Due today')).toBeInTheDocument();
+		renderOverview();
+
+		expect(screen.getByText('Transaction 0')).toBeInTheDocument();
+		expect(screen.getByText('Transaction 9')).toBeInTheDocument();
+		expect(screen.queryByText('Transaction 10')).not.toBeInTheDocument();
+		expect(screen.queryByText('Transaction 11')).not.toBeInTheDocument();
+	});
+
+	it('shows upcoming recurring expenses and confirms them with occurrence metadata', async () => {
+		renderOverview();
+
 		expect(screen.getByText('Rent')).toBeInTheDocument();
+		expect(screen.getByText('Today')).toBeInTheDocument();
 
-		fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+		fireEvent.click(screen.getByRole('button', { name: 'Rent' }));
+		fireEvent.click(screen.getByRole('button', { name: /apply as is/i }));
 
 		await waitFor(() =>
 			expect(mockAddTransaction).toHaveBeenCalledWith(
@@ -221,5 +236,28 @@ describe('DashboardOverview', () => {
 				})
 			)
 		);
+	});
+
+	it('opens the edit flow for a single recurring occurrence', () => {
+		renderOverview();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Rent' }));
+		fireEvent.click(screen.getByRole('button', { name: /edit this transaction/i }));
+
+		expect(mockOnEditRecurringDraft).toHaveBeenCalledWith(
+			expect.objectContaining({
+				recurringTransaction: expect.objectContaining({ id: 'rent' }),
+				occurrenceDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+			})
+		);
+	});
+
+	it('shows an empty state when no recurring expenses are due soon', () => {
+		mockRecurringTransactions = [];
+
+		renderOverview();
+
+		expect(screen.getByText('Nothing due soon')).toBeInTheDocument();
+		expect(screen.getByText(/Recurring expenses due in the next 7 days/i)).toBeInTheDocument();
 	});
 });

@@ -28,6 +28,8 @@ interface TransactionFormProps {
 	onSuccess?: (message: string) => void;
 	transaction?: Transaction;
 	recurringTransaction?: RecurringTransaction;
+	recurringOccurrenceDate?: Date;
+	recurringOccurrenceDateKey?: string;
 }
 
 const TransactionForm: React.FC<TransactionFormProps> = ({
@@ -35,6 +37,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	onSuccess,
 	transaction,
 	recurringTransaction: initialRecurringTransaction,
+	recurringOccurrenceDate,
+	recurringOccurrenceDateKey,
 }) => {
 	const { addTransaction, addTransfer, updateTransaction, recurringTransactions } = useTransactionsContext();
 	const { accounts } = useAccountsContext();
@@ -130,7 +134,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 			setCategory(initialRecurringTransaction.category ?? '');
 			setSubcategory(initialRecurringTransaction.subcategory ?? '');
 			setDescription(initialRecurringTransaction.description ?? '');
-			setDate(new Date().toISOString().split('T')[0]);
+			setDate((recurringOccurrenceDate ?? new Date()).toISOString().split('T')[0]);
 			setError('');
 			setSelectedRecurringId(initialRecurringTransaction.id || null);
 		} else {
@@ -146,7 +150,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 			setError('');
 			setSelectedRecurringId(null);
 		}
-	}, [transaction, initialRecurringTransaction]);
+	}, [transaction, initialRecurringTransaction, recurringOccurrenceDate]);
 
 	// Fill an empty account field from the user's preferred account without
 	// resetting the rest of the form when that preference changes.
@@ -245,6 +249,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 					subcategory: subcategoryForSubmit,
 					description,
 					date: date ? new Date(date) : new Date(),
+					recurringTransactionId: initialRecurringTransaction?.id,
+					recurringOccurrenceDate: recurringOccurrenceDateKey,
 				});
 			}
 			onSuccess?.(

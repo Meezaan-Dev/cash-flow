@@ -70,7 +70,33 @@ const BudgetSummary: React.FC<BudgetSummaryProps> = ({
 			);
 	}, [budgets, referenceDate, transactions]);
 
-	if (progress.length === 0) return null;
+	if (progress.length === 0) {
+		return (
+			<section className="space-y-4">
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+					<div>
+						<h2 className="flex items-center gap-2 text-lg font-semibold text-gray-950 dark:text-white">
+							<FiTarget className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+							Budget health
+						</h2>
+						<p className="text-sm text-gray-500 dark:text-gray-400">
+							How current spending compares with active plans.
+						</p>
+					</div>
+					<Button type="button" variant="outline" onClick={onOpenBudgets}>
+						View all budgets
+						<FiArrowRight className="h-4 w-4" />
+					</Button>
+				</div>
+				<div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-6 text-center dark:border-gray-800 dark:bg-gray-800/30">
+					<p className="font-medium text-gray-900 dark:text-gray-50">No active budgets yet</p>
+					<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						Published budgets will show health signals here.
+					</p>
+				</div>
+			</section>
+		);
+	}
 
 	const totalBudgeted = progress.reduce(
 		(sum, item) => sum + item.budget.amount,
