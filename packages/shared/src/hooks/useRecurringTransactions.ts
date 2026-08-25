@@ -51,6 +51,11 @@ const sanitizeRecurringPayload = (
 			'Account',
 			TEXT_LIMITS.documentId
 		);
+	} else if (
+		allowFieldDelete &&
+		Object.prototype.hasOwnProperty.call(payload, 'accountId')
+	) {
+		sanitized.accountId = deleteField();
 	}
 	if (Object.prototype.hasOwnProperty.call(payload, 'description')) {
 		const description = normalizeOptionalText(

@@ -308,7 +308,6 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 			<PageHeader
 				title="Recurring Transactions"
 				subtitle="Manage your subscriptions, debit orders, salary, and other recurring transactions."
-				compact
 				actions={
 					<Button variant="marketing" onClick={handleAddNew} className="flex-shrink-0">
 						<FiPlus className="mr-2 h-4 w-4" />
@@ -585,7 +584,11 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 			{/* Add / Edit Form Dialog */}
 			<Dialog open={isFormOpen} onOpenChange={handleCloseForm}>
 				<DialogContent className="sm:max-w-lg overflow-y-auto">
-					<RecurringTransactionForm transaction={editingTransaction} onClose={handleCloseForm} />
+					<RecurringTransactionForm
+						key={editingTransaction?.id ?? 'new-recurring-transaction'}
+						transaction={editingTransaction}
+						onClose={handleCloseForm}
+					/>
 				</DialogContent>
 			</Dialog>
 

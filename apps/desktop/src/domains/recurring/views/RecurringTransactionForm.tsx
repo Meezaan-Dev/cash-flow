@@ -39,17 +39,19 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 	const { categories, categoryOptions } = useCategoriesContext();
 	const { accounts } = useAccountsContext();
 	const { mainAccountId } = useMainAccountPreference();
-	const [title, setTitle] = useState('');
-	const [amount, setAmount] = useState(0);
-	const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
-	const [category, setCategory] = useState('');
-	const [subcategory, setSubcategory] = useState('');
-	const [description, setDescription] = useState('');
-	const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>(
-		'monthly'
+	const [title, setTitle] = useState(expense?.title ?? '');
+	const [amount, setAmount] = useState(expense?.amount ?? 0);
+	const [transactionType, setTransactionType] = useState<'expense' | 'income'>(
+		expense?.type ?? 'expense'
 	);
-	const [expectedDate, setExpectedDate] = useState<number | ''>('');
-	const [accountId, setAccountId] = useState('');
+	const [category, setCategory] = useState(expense?.category ?? '');
+	const [subcategory, setSubcategory] = useState(expense?.subcategory ?? '');
+	const [description, setDescription] = useState(expense?.description ?? '');
+	const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>(
+		expense?.frequency ?? 'monthly'
+	);
+	const [expectedDate, setExpectedDate] = useState<number | ''>(expense?.expectedDate ?? '');
+	const [accountId, setAccountId] = useState(expense?.accountId ?? '');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const availableCategories = React.useMemo(
@@ -75,6 +77,13 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 		},
 		[accounts, mainAccountId]
 	);
+	const selectedAccount = React.useMemo(
+		() => accounts.find((account) => account.id === accountId),
+		[accounts, accountId]
+	);
+	const selectedAccountLabel = selectedAccount
+		? `${selectedAccount.name} (${formatCurrency(selectedAccount.balance)})`
+		: '';
 
 	const handleCategoryChange = (value: string) => {
 		setCategory(value);
@@ -117,10 +126,10 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 	}, [availableSubcategories, subcategory]);
 
 	useEffect(() => {
-		if (!accountId && defaultAccountId) {
+		if (!expense && !accountId && defaultAccountId) {
 			setAccountId(defaultAccountId);
 		}
-	}, [accountId, defaultAccountId]);
+	}, [accountId, defaultAccountId, expense]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -235,7 +244,11 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 						</Label>
 						<Select value={accountId} onValueChange={setAccountId}>
 							<SelectTrigger id="re-account" className="h-10 rounded-lg border-2 transition-all focus:border-primary">
-								<SelectValue placeholder="Select account" />
+								{selectedAccountLabel ? (
+									<span>{selectedAccountLabel}</span>
+								) : (
+									<SelectValue placeholder="Select account" />
+								)}
 							</SelectTrigger>
 							<SelectContent>
 								{accounts.map((a) => (
