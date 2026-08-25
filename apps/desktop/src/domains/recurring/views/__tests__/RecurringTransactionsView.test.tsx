@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecurringTransactionsView from '../RecurringTransactionsView';
 import RecurringTransactionsCalendar from '../RecurringTransactionsCalendar';
+import RecurringTransactionForm from '../RecurringTransactionForm';
+import { Dialog, DialogContent } from '@/components/app/ui/dialog';
 
 const mockDeleteRecurringTransaction = jest.fn();
 const mockAddRecurringTransaction = jest.fn();
@@ -40,7 +42,10 @@ jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 
 jest.mock('@/domains/accounts/context/AccountsContext', () => ({
 	useAccountsContext: () => ({
-		accounts: [{ id: 'checking', name: 'Checking', color: '#0ea5e9' }],
+		accounts: [
+			{ id: 'checking', name: 'Checking', color: '#0ea5e9', balance: 0 },
+			{ id: 'savings', name: 'Savings', color: '#22c55e', balance: 0 },
+		],
 	}),
 }));
 
@@ -59,10 +64,26 @@ jest.mock('@/shared/filters/context/FilterPreferencesContext', () => ({
 }));
 
 jest.mock('@cash-flow/shared/accounts/mainAccountPreference', () => ({
-	useMainAccountPreference: () => ({ mainAccountId: 'checking' }),
+	useMainAccountPreference: () => ({ mainAccountId: 'savings' }),
+}));
+
+jest.mock('@/components/marketing/SectionHeader', () => ({
+	__esModule: true,
+	default: ({ title, subtitle, actions, className, compact }: any) => (
+		<header className={className} data-compact={compact ? 'true' : 'false'} data-testid="section-header">
+			<h1>{title}</h1>
+			{subtitle && <div>{subtitle}</div>}
+			{actions}
+		</header>
+	),
 }));
 
 describe('RecurringTransactionsView', () => {
+	beforeAll(() => {
+		HTMLElement.prototype.hasPointerCapture = jest.fn();
+		HTMLElement.prototype.scrollIntoView = jest.fn();
+	});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		(window.localStorage.getItem as jest.Mock).mockReturnValue('list');
@@ -85,6 +106,7 @@ describe('RecurringTransactionsView', () => {
 			'recurringTransactions.viewMode',
 			expect.any(String)
 		);
+		expect(screen.getByTestId('section-header')).toHaveAttribute('data-compact', 'false');
 	});
 
 	it('shows one close button in the edit recurring modal', async () => {
@@ -95,6 +117,74 @@ describe('RecurringTransactionsView', () => {
 
 		expect(screen.getByRole('heading', { name: 'Edit Recurring Transaction' })).toBeInTheDocument();
 		expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+	});
+
+});
+
+describe('RecurringTransactionForm', () => {
+	const recurringTransaction = {
+		id: 'rent',
+		accountId: 'checking',
+		title: 'Rent',
+		amount: 12000,
+		type: 'expense' as const,
+		category: 'home',
+		subcategory: 'rent',
+		description: 'Apartment',
+		frequency: 'monthly' as const,
+		expectedDate: 1,
+	};
+	const renderForm = () =>
+		render(
+			<Dialog open>
+				<DialogContent>
+					<RecurringTransactionForm transaction={recurringTransaction} onClose={jest.fn()} />
+				</DialogContent>
+			</Dialog>
+		);
+
+	beforeAll(() => {
+		HTMLElement.prototype.hasPointerCapture = jest.fn();
+		HTMLElement.prototype.scrollIntoView = jest.fn();
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('keeps the saved account selected when editing a recurring transaction', async () => {
+		const user = userEvent.setup();
+		renderForm();
+
+		expect(screen.getByRole('combobox', { name: 'Account' })).toHaveTextContent('Checking');
+		expect(screen.getByRole('combobox', { name: 'Account' })).not.toHaveTextContent('Savings');
+		await waitFor(() => expect(screen.getByLabelText('Title')).toHaveValue('Rent'));
+
+		await user.click(screen.getByRole('button', { name: 'Update Transaction' }));
+
+		await waitFor(() =>
+			expect(mockUpdateRecurringTransaction).toHaveBeenCalledWith(
+				'rent',
+				expect.objectContaining({ accountId: 'checking' })
+			)
+		);
+	});
+
+	it('saves a changed account when editing a recurring transaction', async () => {
+		const user = userEvent.setup();
+		renderForm();
+
+		await waitFor(() => expect(screen.getByLabelText('Title')).toHaveValue('Rent'));
+		await user.click(screen.getByRole('combobox', { name: 'Account' }));
+		await user.click(screen.getByRole('option', { name: /Savings/ }));
+		await user.click(screen.getByRole('button', { name: 'Update Transaction' }));
+
+		await waitFor(() =>
+			expect(mockUpdateRecurringTransaction).toHaveBeenCalledWith(
+				'rent',
+				expect.objectContaining({ accountId: 'savings' })
+			)
+		);
 	});
 });
 
