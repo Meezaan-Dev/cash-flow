@@ -31,13 +31,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/app/ui/dialog';
-import { useTransactions } from '../hooks/useTransactions';
-import { Transaction, ViewType } from '../types';
-import PieChart from '../components/PieChart';
-import Sidebar from '../components/Sidebar';
-import ThemeDropdown from '../components/ThemeDropdown';
-import TransactionForm from '../components/TransactionForm';
-import TransactionsTable from '../components/TransactionsTable';
+import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
+import { Transaction, ViewType } from '@/types';
+import PieChart from '@/domains/reports/components/PieChart';
+import Sidebar from '@/pages/dashboard/components/Sidebar';
+import ThemeDropdown from '@/app/theme/components/ThemeDropdown';
+import TransactionForm from '@/domains/transactions/views/TransactionForm';
+import TransactionsTable from '@/domains/transactions/views/TransactionsTable';
 ```
 
 ## 3. **Styles**

@@ -87,7 +87,7 @@ const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
 							<div className="h-3 w-3 rounded-full bg-emerald-400/70" />
 						</div>
 						<div className="mx-auto flex items-center justify-center rounded-md border border-gray-200 bg-white px-4 py-1 font-mono text-xs text-gray-400">
-							DONT USE EXCEL, USE CASHFLOW
+							TRACK MONEY WITHOUT SPREADSHEET DRIFT
 						</div>
 					</div>
 

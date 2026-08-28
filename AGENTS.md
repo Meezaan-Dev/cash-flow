@@ -6,7 +6,7 @@ Quick context for AI agents working in this repository.
 
 1. [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md) — purpose, architecture, data model
 2. [docs/ROUTES.md](docs/ROUTES.md) — `/dashboard`, `/mobisite`, mobile redirects
-3. [.cursor/skills/git-workflow/SKILL.md](.cursor/skills/git-workflow/SKILL.md) — **branch names, commits, PRs**
+3. [agents/skills/git-workflow/SKILL.md](agents/skills/git-workflow/SKILL.md) — **branch names, commits, PRs**
 
 ## Git conventions (summary)
 
@@ -24,17 +24,17 @@ Quick context for AI agents working in this repository.
 
 **Examples:** `feat/premium-dashboard-ui`, `fix/due-today-layout`, `docs/agent-standards`
 
-Read the full workflow (commit format, PR template, checklist) in [.cursor/skills/git-workflow/SKILL.md](.cursor/skills/git-workflow/SKILL.md).
+Read the full workflow (commit format, PR template, checklist) in [agents/skills/git-workflow/SKILL.md](agents/skills/git-workflow/SKILL.md).
 
 ## Repo layout
 
 ```
 apps/desktop/     # Main SPA (dashboard, marketing, mobisite frame)
 apps/mobisite/    # Mobile capture app (mounted at /mobisite)
-packages/shared/  # Firebase, types, hooks, utilities
+packages/shared/  # Firebase, types, hooks, models, utilities
 packages/ui/      # Shared UI placeholder
 docs/             # Project documentation
-.cursor/skills/   # Agent skills (project-specific)
+agents/skills/    # Agent skills (project-specific)
 ```
 
 ## Key rules
@@ -45,6 +45,7 @@ docs/             # Project documentation
 - Run `npm test` before opening PRs when code changed
 - Desktop UI: marketing-style tokens in `apps/desktop/src/styles/marketingStyles.ts`
 - Mobile: authenticated users on viewports `<768px` redirect to `/mobisite`
+- Current app surfaces include accounts, transactions, budgets, recurring templates, reports, random notes, assistant, settings, categories, filters, import/export, and privacy mode
 
 ## Testing
 

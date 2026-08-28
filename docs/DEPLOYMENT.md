@@ -1,279 +1,164 @@
-# Firebase Cloud Functions API Deployment Guide
+# Deployment Guide
+
+Cash Flow has one production SPA and a small Firebase backend surface.
+
+- The SPA is built from `apps/desktop` and emitted to root `dist/`.
+- Vercel hosts the SPA and rewrites dashboard/mobile routes back to `/`.
+- Firebase hosts Firestore data, Firestore security rules, and Cloud Functions.
+- `apps/mobisite` is imported into the desktop host router; it is not deployed as a separate site.
 
 ## SPA Deployment
 
-Production is same-domain with one SPA build.
-
-- `npm run build` emits root `dist/`.
-- `vercel.json` rewrites SPA paths back to `/`, so `/dashboard/*` and `/mobisite` can be loaded directly.
-- Firestore rules are deployed separately when needed:
+Production is same-domain with one Vite build:
 
 ```bash
-firebase deploy --only firestore:rules
+npm run build
 ```
 
-## Cloud Functions API
-
-This guide provides step-by-step instructions for deploying the Firebase Cloud Functions API and configuring the React app to use it.
-
-## Prerequisites
-
-1. **Firebase CLI**: Install Firebase CLI globally
-
-    ```bash
-    npm install -g firebase-tools
-    ```
-
-2. **Firebase Project**: Make sure you have a Firebase project set up
-
-    ```bash
-    firebase login
-    firebase projects:list
-    ```
-
-3. **Node.js**: Ensure you have Node.js 22+ installed
-
-## Step 1: Initialize Firebase Functions
-
-1. **Navigate to your project root**:
-
-    ```bash
-    cd /path/to/your/cash-flow/project
-    ```
-
-2. **Install Firebase Functions dependencies**:
-
-    ```bash
-    cd functions
-    npm install
-    ```
-
-3. **Build the functions**:
-    ```bash
-    npm run build
-    ```
-
-## Step 2: Configure Firebase Project
-
-1. **Initialize Firebase in your project** (if not already done):
-
-    ```bash
-    firebase init
-    ```
-
-    - Select "Functions" when prompted
-    - Choose your Firebase project
-    - Select TypeScript
-    - Use ESLint
-    - Install dependencies with npm
-
-2. **Update firebase.json** (already created):
-    ```json
-    {
-    	"functions": {
-    		"source": "functions",
-    		"predeploy": [
-    			"npm --prefix \"$RESOURCE_DIR\" run lint",
-    			"npm --prefix \"$RESOURCE_DIR\" run build"
-    		]
-    	}
-    }
-    ```
-
-## Step 3: Deploy Cloud Functions
-
-1. **Deploy the functions**:
-
-    ```bash
-    firebase deploy --only functions
-    ```
-
-2. **Note the function URLs** from the deployment output:
-
-    ```
-    ✔  functions[getUserTransactions(us-central1)] Successful create operation.
-    ✔  functions[healthCheck(us-central1)] Successful create operation.
-
-    Function URL (getUserTransactions): https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net/getUserTransactions
-    Function URL (healthCheck): https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net/healthCheck
-    ```
-
-## Step 4: Configure React App
-
-1. **Create environment variables**:
-   Create a `.env` file in your project root:
-
-    ```env
-    VITE_API_BASE_URL=https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net
-    ```
-
-2. **Update the API service** (if needed):
-   The API service is already configured to use the environment variable. Make sure your `.env` file contains the correct URL.
-
-## Step 5: Test the API
-
-1. **Start your React app**:
-
-    ```bash
-    npm run dev
-    ```
-
-2. **Navigate to the API test page**:
-    - Log in to your app
-    - Click on the "API" option in the sidebar
-    - Test the health check and transactions endpoints
-
-## Step 6: Security Rules (Required)
-
-1. **Update Firestore security rules** to ensure only authenticated users can access their data:
-
-    The `firestore.rules` file should contain:
-
-    ```javascript
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        // User document and subcollections
-        match /users/{userId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-
-          match /transactions/{transactionId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-            allow create: if request.auth != null && request.auth.uid == userId;
-          }
-
-          match /recurringTransactions/{id} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-            allow create: if request.auth != null && request.auth.uid == userId;
-          }
-
-          match /accounts/{accountId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-            allow create: if request.auth != null && request.auth.uid == userId;
-          }
-
-          match /budgets/{budgetId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-            allow create: if request.auth != null && request.auth.uid == userId;
-          }
-
-                    match /categories/{categoryId} {
-                        allow read, write: if request.auth != null && request.auth.uid == userId;
-                        allow create: if request.auth != null && request.auth.uid == userId;
-                    }
-        }
-
-        // Legacy top-level collections (backward compatibility, read-only)
-        match /transactions/{document} {
-          allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-        }
-
-        match /recurringExpenses/{document} {
-          allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-        }
-      }
-    }
-    ```
-
-2. **Deploy security rules**:
-    ```bash
-    firebase deploy --only firestore:rules
-    ```
-
-**Note:** Security rules are required for the app to function properly. Without them, users will get permission errors when trying to access their data.
-
-## Troubleshooting
-
-### Common Issues
-
-1. **CORS Errors**:
-    - The functions already include CORS headers
-    - Make sure your domain is allowed in Firebase Console
-
-2. **Authentication Errors**:
-    - Ensure users are properly authenticated
-    - Check that the JWT token is being sent correctly
-
-3. **Function Deployment Errors**:
-    - Check that all dependencies are installed
-    - Ensure TypeScript compilation succeeds
-    - Verify Firebase project configuration
-
-### Debugging
-
-1. **View function logs**:
-
-    ```bash
-    firebase functions:log
-    ```
-
-2. **Test functions locally**:
-
-    ```bash
-    firebase emulators:start --only functions
-    ```
-
-3. **Check function status**:
-    ```bash
-    firebase functions:list
-    ```
-
-## API Endpoints
-
-### GET /getUserTransactions
-
-- **Authentication**: Requires Bearer token in Authorization header
-- **Response**: JSON array of user transactions
-- **Error Handling**: Returns appropriate HTTP status codes and error messages
-
-### GET /healthCheck
-
-- **Authentication**: None required
-- **Response**: JSON with API status and timestamp
-- **Purpose**: Verify API is running
-
-## Environment Variables
-
-| Variable            | Description                  | Example                                                  |
-| ------------------- | ---------------------------- | -------------------------------------------------------- |
-| `VITE_API_BASE_URL` | Base URL for Cloud Functions | `https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net` |
-
-The AI assistant also requires a server-side Firebase secret. Set it before deploying
-the `askAI` function:
+`vercel.json` rewrites SPA paths back to `/`, so these URLs can be loaded directly:
+
+- `/`
+- `/dashboard`
+- `/dashboard/*`
+- `/mobisite`
+
+## Firebase Project Setup
+
+Install and authenticate the Firebase CLI when needed:
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase projects:list
+```
+
+The current `firebase.json` has Firestore rules plus two Functions codebases:
+
+```json
+{
+	"firestore": {
+		"rules": "firestore.rules"
+	},
+	"functions": [
+		{
+			"source": "functions",
+			"predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"],
+			"codebase": "default"
+		},
+		{
+			"source": "yoyo_jwt",
+			"codebase": "yoyo_jwt",
+			"ignore": [
+				"node_modules",
+				".git",
+				"firebase-debug.log",
+				"firebase-debug.*.log",
+				"*.local"
+			],
+			"predeploy": [
+				"npm --prefix \"$RESOURCE_DIR\" run lint",
+				"npm --prefix \"$RESOURCE_DIR\" run build"
+			]
+		}
+	]
+}
+```
+
+## Environment Variables And Secrets
+
+The browser app reads Firebase config from repo-root `.env.local` through `apps/desktop/vite.config.ts`.
+
+```text
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+VITE_API_BASE_URL=
+```
+
+`VITE_API_BASE_URL` is optional because the client has a production Cloud Functions fallback. Set it when targeting a different Firebase project or emulator.
+
+The AI assistant requires a server-side Firebase secret:
 
 ```bash
 firebase functions:secrets:set GEMINI_API_KEY
 firebase deploy --only functions:askAI
 ```
 
-For local emulation, copy `functions/.secret.local.example` to
-`functions/.secret.local` and put the
-real key there. The repository-level `.env.example` documents the variable name
-only; never commit a real API key or prefix it with `VITE_`, because `VITE_*`
-variables are bundled into browser JavaScript.
+For local emulation, copy `functions/.secret.local.example` to `functions/.secret.local` and add the real key there. Never commit the real value and never expose it as `VITE_GEMINI_API_KEY`.
 
-## Security Considerations
+## Cloud Functions
 
-1. **JWT Token Validation**: The API validates Firebase ID tokens
-2. **User Data Isolation**: Users can only access their own transactions
-3. **CORS Protection**: Proper CORS headers are set
-4. **Error Handling**: Sensitive information is not exposed in error messages
+Main API endpoints live in `functions/src/index.ts`:
 
-## Monitoring
+- `GET /healthCheck`
+- `GET /getUserTransactions`
+- `POST /askAI`
 
-1. **Firebase Console**: Monitor function usage and errors
-2. **Logs**: Use `firebase functions:log` for debugging
-3. **Metrics**: Track function performance in Firebase Console
+Deploy all default functions:
 
-## Cost Optimization
+```bash
+firebase deploy --only functions:default
+```
 
-1. **Function Timeout**: Functions are configured with reasonable timeouts
-2. **Cold Starts**: Consider using Firebase Functions v2 for better performance
-3. **Caching**: Implement caching strategies for frequently accessed data
+Deploy one function when appropriate:
 
-## Next Steps
+```bash
+firebase deploy --only functions:askAI
+```
 
-1. **Add more endpoints** as needed (create, update, delete transactions)
-2. **Implement rate limiting** for production use
-3. **Add comprehensive logging** and monitoring
-4. **Set up CI/CD** for automated deployments
+Useful checks:
+
+```bash
+firebase functions:list
+firebase functions:log
+firebase emulators:start --only functions
+```
+
+## Firestore Rules
+
+Firestore rules are deployed separately when needed:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+The current `firestore.rules` file is the source of truth. It scopes active data under `users/{userId}` and validates:
+
+- Ownership through `request.auth.uid`.
+- Allowed keys for accounts, transactions, budgets, categories, recurring transactions, and random notes.
+- Required string fields, timestamp fields, known enum values, and money bounds.
+- Transfer metadata: `transferAccountId`, `transferId`, and `transferDirection`.
+- Budget lifecycle fields, date fields, display order, and optional account/category scope.
+- Category/subcategory shape and random note content length.
+
+Legacy top-level `transactions` and `recurringExpenses` collections are read-only compatibility paths.
+
+## Verification
+
+Before deploying app changes:
+
+```bash
+npm test -- --runInBand
+npm run build
+```
+
+For API changes, also build functions:
+
+```bash
+cd functions
+npm run build
+```
+
+After deployment, verify the SPA route you touched and check Cloud Function logs when API or assistant behavior changed.
+
+## Troubleshooting
+
+- **SPA route 404 on refresh:** confirm Vercel rewrites still send app routes to `/`.
+- **Permission errors:** deploy `firestore.rules` and confirm the signed-in user owns the target `users/{userId}` path.
+- **AI assistant unavailable:** confirm `GEMINI_API_KEY` exists in Firebase Secret Manager and is attached to the deployed `askAI` function.
+- **Auth errors from API:** refresh/sign in again and confirm the request uses `Authorization: Bearer <firebase_id_token>`.
+- **Wrong API project:** set `VITE_API_BASE_URL` to the intended Cloud Functions base URL.

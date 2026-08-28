@@ -49,9 +49,9 @@ Acceptance checks:
 
 - Add regression tests around known risk areas:
   - single-confirm delete flow
-  - import-without-account guard
   - AI month date fallback
-  - transfer balance invariants
+  - Settings import UI behavior
+  - landing page responsive copy fit after marketing text changes
 
 Acceptance checks:
 

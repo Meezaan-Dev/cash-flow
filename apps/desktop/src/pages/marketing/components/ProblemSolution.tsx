@@ -40,10 +40,10 @@ const transactions = [
 ];
 
 const securityItems = [
-	'End to end encryption',
-	'No third party data sharing',
-	'Data stored in South Africa',
-	'Delete your account at any time',
+	'Firebase-auth scoped records',
+	'User-owned accounts and transactions',
+	'Privacy mode for shared screens',
+	'Export your data at any time',
 ];
 
 const ProblemSolution: React.FC = () => {
@@ -163,10 +163,10 @@ const ProblemSolution: React.FC = () => {
 							</p>
 							<ul className="space-y-4">
 								{[
-									'Smart categorisation',
-									'Custom tags and labels',
-									'Recurring expense detection',
-									'Export to CSV at any time',
+									'Custom categories and subcategories',
+									'Filter by account, category, type, and date',
+									'Recurring templates with Quick Fill',
+									'CSV and JSON export at any time',
 								].map((item) => (
 									<li key={item} className="flex items-center gap-3">
 										<div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
@@ -196,7 +196,7 @@ const ProblemSolution: React.FC = () => {
 								Your data stays yours. Always.
 							</h2>
 							<p className="text-base leading-relaxed text-gray-500">
-								CashFlow never sells, shares or brokers your financial data. End to end encryption means what happens in your account stays in your account.
+								CashFlow keeps records scoped to your signed-in account, with privacy mode for moments when someone else can see your screen.
 							</p>
 						</div>
 						<ul className="space-y-4">
