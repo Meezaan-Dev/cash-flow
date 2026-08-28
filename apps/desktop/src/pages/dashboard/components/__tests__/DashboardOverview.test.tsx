@@ -205,7 +205,7 @@ describe('DashboardOverview', () => {
 		expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
 		expect(screen.getByText(/Net worth/i)).toBeInTheDocument();
 		expect(screen.getByText('Next 7 days')).toBeInTheDocument();
-		expect(screen.getByText('Planned recurring expenses')).toBeInTheDocument();
+		expect(screen.getByText('Planned recurring transactions')).toBeInTheDocument();
 		expect(screen.getByText('Recent')).toBeInTheDocument();
 		expect(screen.getByText('Latest transactions')).toBeInTheDocument();
 		expect(screen.getByText('Budget health')).toBeInTheDocument();
@@ -239,7 +239,7 @@ describe('DashboardOverview', () => {
 		expect(screen.getAllByTestId('privacy-skeleton').length).toBeGreaterThan(0);
 	});
 
-	it('shows upcoming recurring expenses and confirms them with occurrence metadata', async () => {
+	it('shows upcoming recurring transactions and confirms expenses with occurrence metadata', async () => {
 		renderOverview();
 
 		expect(screen.getByText('Rent')).toBeInTheDocument();
@@ -261,6 +261,39 @@ describe('DashboardOverview', () => {
 		);
 	});
 
+	it('shows upcoming recurring income and confirms it with the income type', async () => {
+		mockRecurringTransactions = [
+			{
+				id: 'monthly-pay',
+				accountId: 'acc-1',
+				title: 'Monthly Pay',
+				amount: 12000,
+				type: 'income',
+				category: 'personal',
+				expectedDate: today.getDate(),
+			},
+		];
+
+		renderOverview();
+
+		expect(screen.getByText('Monthly Pay')).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Monthly Pay' }));
+		fireEvent.click(screen.getByRole('button', { name: /apply as is/i }));
+
+		await waitFor(() =>
+			expect(mockAddTransaction).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'income',
+					accountId: 'acc-1',
+					title: 'Monthly Pay',
+					recurringTransactionId: 'monthly-pay',
+					recurringOccurrenceDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+				})
+			)
+		);
+	});
+
 	it('opens the edit flow for a single recurring occurrence', () => {
 		renderOverview();
 
@@ -275,12 +308,12 @@ describe('DashboardOverview', () => {
 		);
 	});
 
-	it('shows an empty state when no recurring expenses are due soon', () => {
+	it('shows an empty state when no recurring transactions are due soon', () => {
 		mockRecurringTransactions = [];
 
 		renderOverview();
 
 		expect(screen.getByText('Nothing due soon')).toBeInTheDocument();
-		expect(screen.getByText(/Recurring expenses due in the next 7 days/i)).toBeInTheDocument();
+		expect(screen.getByText(/Recurring transactions due in the next 7 days/i)).toBeInTheDocument();
 	});
 });
