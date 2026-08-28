@@ -61,11 +61,12 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 		const recurringTransaction = draft.recurringTransaction;
 		const accountId = recurringTransaction.accountId ?? defaultAccountId;
 		const confirmKey = `${recurringTransaction.id}:${draft.occurrenceDateKey}`;
+		const transactionType = recurringTransaction.type ?? 'expense';
 
 		if (!recurringTransaction.id || !accountId) {
 			toast({
 				title: 'Account needed',
-				description: 'Add an account to this recurring expense before confirming it.',
+				description: 'Add an account to this recurring transaction before confirming it.',
 				variant: 'destructive',
 			});
 			return;
@@ -74,7 +75,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 		setConfirmingDraftId(confirmKey);
 		try {
 			await addTransaction({
-				type: 'expense',
+				type: transactionType,
 				accountId,
 				title: recurringTransaction.title,
 				amount: recurringTransaction.amount,
@@ -86,12 +87,12 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 				recurringOccurrenceDate: draft.occurrenceDateKey,
 			});
 			toast({
-				title: 'Recurring expense confirmed',
+				title: 'Recurring transaction confirmed',
 				description: `${recurringTransaction.title} was added for ${draft.occurrenceDate.toLocaleDateString('en-ZA')}.`,
 			});
 		} catch (error) {
 			toast({
-				title: 'Could not confirm expense',
+				title: 'Could not confirm transaction',
 				description:
 					error instanceof Error ? error.message : 'Try again in a moment.',
 				variant: 'destructive',

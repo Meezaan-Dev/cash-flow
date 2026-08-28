@@ -73,6 +73,7 @@ const UpcomingRecurringPreview: React.FC<UpcomingRecurringPreviewProps> = ({
 	const selectedAccount = selectedDraft
 		? accounts.find((account) => account.id === selectedDraft.recurringTransaction.accountId)
 		: undefined;
+	const selectedTransactionType = selectedDraft?.recurringTransaction.type ?? 'expense';
 
 	const handleApplySelected = () => {
 		if (!selectedDraft) return;
@@ -93,10 +94,10 @@ const UpcomingRecurringPreview: React.FC<UpcomingRecurringPreviewProps> = ({
 					<p className={sectionLabel}>Next 7 days</p>
 					<h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
 						<FiCalendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-						Planned recurring expenses
+						Planned recurring transactions
 					</h2>
 					<p className="text-sm text-gray-500 dark:text-gray-400">
-						Upcoming recurring expenses that have not been confirmed yet.
+						Upcoming recurring transactions that have not been confirmed yet.
 					</p>
 				</div>
 			}
@@ -108,7 +109,7 @@ const UpcomingRecurringPreview: React.FC<UpcomingRecurringPreviewProps> = ({
 					</div>
 					<p className="font-medium text-gray-900 dark:text-gray-50">Nothing due soon</p>
 					<p className="mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400">
-						Recurring expenses due in the next 7 days will show up here.
+						Recurring transactions due in the next 7 days will show up here.
 					</p>
 				</div>
 			) : (
@@ -119,7 +120,7 @@ const UpcomingRecurringPreview: React.FC<UpcomingRecurringPreviewProps> = ({
 								<p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
 									Upcoming
 								</p>
-								<p className="text-base font-semibold tracking-tight">8-day expense calendar</p>
+								<p className="text-base font-semibold tracking-tight">8-day transaction calendar</p>
 							</div>
 							<p className="text-sm font-medium text-gray-500 dark:text-gray-400">
 								{today.toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' })}
@@ -185,7 +186,7 @@ const UpcomingRecurringPreview: React.FC<UpcomingRecurringPreviewProps> = ({
 			<Dialog open={!!selectedDraft} onOpenChange={(open) => !open && setSelectedDraft(null)}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Confirm recurring expense?</DialogTitle>
+						<DialogTitle>Confirm recurring transaction?</DialogTitle>
 						<DialogDescription>
 							{selectedDraft ? (
 								<>
@@ -214,7 +215,14 @@ const UpcomingRecurringPreview: React.FC<UpcomingRecurringPreviewProps> = ({
 										{' - '}
 									</>
 								) : ''}
-								<Currency amount={selectedDraft.recurringTransaction.amount} tone="balance-negative" />
+								<Currency
+									amount={selectedDraft.recurringTransaction.amount}
+									tone={
+										selectedTransactionType === 'income'
+											? 'balance-positive'
+											: 'balance-negative'
+									}
+								/>
 							</p>
 						</div>
 					)}

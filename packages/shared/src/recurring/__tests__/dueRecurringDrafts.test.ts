@@ -7,7 +7,7 @@ import {
 const today = new Date(2026, 4, 22);
 
 describe('getDueRecurringDrafts', () => {
-	it('matches expense templates on the current day of month', () => {
+	it('matches scheduled templates on the current day of month', () => {
 		const drafts = getDueRecurringDrafts(
 			[
 				{
@@ -18,16 +18,27 @@ describe('getDueRecurringDrafts', () => {
 					category: 'home',
 					expectedDate: 22,
 				},
+				{
+					id: 'salary',
+					title: 'Salary',
+					amount: 10000,
+					type: 'income',
+					category: 'income',
+					expectedDate: 22,
+				},
 			],
 			[],
 			today
 		);
 
-		expect(drafts).toHaveLength(1);
-		expect(drafts[0].occurrenceDateKey).toBe('2026-05-22');
+		expect(drafts.map((draft) => draft.recurringTransaction.id)).toEqual(['rent', 'salary']);
+		expect(drafts.map((draft) => draft.occurrenceDateKey)).toEqual([
+			'2026-05-22',
+			'2026-05-22',
+		]);
 	});
 
-	it('ignores income templates and templates without an expected date', () => {
+	it('ignores templates without an expected date', () => {
 		const drafts = getDueRecurringDrafts(
 			[
 				{
@@ -50,7 +61,7 @@ describe('getDueRecurringDrafts', () => {
 			today
 		);
 
-		expect(drafts).toHaveLength(0);
+		expect(drafts.map((draft) => draft.recurringTransaction.id)).toEqual(['salary']);
 	});
 
 	it('hides templates already confirmed for the occurrence date', () => {
@@ -86,7 +97,7 @@ describe('getDueRecurringDrafts', () => {
 });
 
 describe('getUpcomingRecurringDrafts', () => {
-	it('returns unconfirmed expense templates from today through the next 7 days', () => {
+	it('returns unconfirmed templates from today through the next 7 days', () => {
 		const drafts = getUpcomingRecurringDrafts(
 			[
 				{
@@ -128,10 +139,12 @@ describe('getUpcomingRecurringDrafts', () => {
 
 		expect(drafts.map((draft) => draft.recurringTransaction.id)).toEqual([
 			'rent',
+			'salary',
 			'insurance',
 		]);
 		expect(drafts.map((draft) => draft.occurrenceDateKey)).toEqual([
 			'2026-05-22',
+			'2026-05-24',
 			'2026-05-25',
 		]);
 	});
