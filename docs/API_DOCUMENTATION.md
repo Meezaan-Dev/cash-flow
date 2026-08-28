@@ -1,24 +1,26 @@
 # API Documentation
 
-This document describes the Firebase Cloud Functions API endpoints for the CashFlow application.
+This document describes the Firebase Cloud Functions endpoints used by Cash Flow.
 
 ## Base URL
 
-```
+Production fallback used by the browser client:
+
+```text
 https://us-central1-cash-flow-eb5bd.cloudfunctions.net
 ```
 
+Override with `VITE_API_BASE_URL` when targeting another Firebase project or a local emulator.
+
 ## Authentication
 
-All protected endpoints require a Firebase ID token in the Authorization header:
+Protected endpoints require a Firebase ID token:
 
-```
+```http
 Authorization: Bearer <firebase_id_token>
 ```
 
-### Getting a Firebase ID Token
-
-In the application, you can get the current user's ID token:
+Client code can get a token from Firebase Auth:
 
 ```typescript
 import { getIdToken } from 'firebase/auth';
@@ -27,19 +29,47 @@ import { auth } from './services/firebase';
 const token = await getIdToken(auth.currentUser, true);
 ```
 
+## Response Shapes
+
+Successful data responses use:
+
+```typescript
+interface ApiResponse<T> {
+	success: true;
+	data?: T;
+	message?: string;
+}
+```
+
+Structured API errors use:
+
+```typescript
+interface ErrorPayload {
+	success: false;
+	error: string;
+	code: string;
+	details: string;
+	retryable: boolean;
+	requestId: string;
+}
+```
+
+`getUserTransactions` still returns a simpler legacy error shape for auth/internal failures:
+
+```json
+{
+	"success": false,
+	"error": "Invalid or expired token"
+}
+```
+
 ## Endpoints
 
-### 1. Health Check
+### GET `/healthCheck`
 
-**GET** `/healthCheck`
+Checks whether the default Functions API is running.
 
-Check if the API is running.
-
-**Request:**
-
-```http
-GET /healthCheck
-```
+**Authentication:** none
 
 **Response:**
 
@@ -47,35 +77,19 @@ GET /healthCheck
 {
 	"success": true,
 	"message": "API is running",
-	"timestamp": "2024-01-15T10:30:00.000Z"
+	"timestamp": "2026-08-28T10:30:00.000Z"
 }
 ```
 
-Error responses include a stable `code`, a precise `details` recovery message,
-whether retrying is appropriate, and a `requestId` that can be matched against
-Firebase Function logs:
-
-```json
-{
-	"success": false,
-	"error": "Gemini rejected the request because its rate or quota limit was reached.",
-	"code": "GEMINI_RATE_LIMITED",
-	"details": "Wait 30-60 seconds before retrying. If it continues, review the Gemini API project quota and billing status.",
-	"retryable": true,
-	"requestId": "request-reference"
-}
-```
-
-**Status Codes:**
+**Status codes:**
 
 - `200` - API is running
-- `500` - Internal server error
 
-### 2. Get User Transactions
+### GET `/getUserTransactions`
 
-**GET** `/getUserTransactions`
+Returns the authenticated user's transactions from `users/{uid}/transactions`, ordered by `date` descending.
 
-Retrieve all transactions for the authenticated user.
+**Authentication:** required
 
 **Request:**
 
@@ -97,37 +111,31 @@ Authorization: Bearer <firebase_id_token>
 			"title": "Grocery shopping",
 			"amount": 100.5,
 			"type": "expense",
-			"category": "Food",
+			"category": "food",
+			"subcategory": "groceries",
 			"description": "Weekly groceries",
-			"date": "2024-01-15",
-			"createdAt": "2024-01-15T10:30:00.000Z"
+			"date": "2026-08-28T00:00:00.000Z",
+			"createdAt": "2026-08-28T10:30:00.000Z"
 		}
 	],
 	"message": "Successfully retrieved 1 transactions"
 }
 ```
 
-**Status Codes:**
+Transfer records may also include `transferAccountId`. The desktop app primarily reads transactions directly from Firestore; this endpoint exists for API consumers and compatibility.
+
+**Status codes:**
 
 - `200` - Success
-- `401` - Unauthorized (missing or invalid token)
+- `401` - Missing, invalid, or expired token
 - `405` - Method not allowed
 - `500` - Internal server error
 
-**Error Response:**
+### POST `/askAI`
 
-```json
-{
-	"success": false,
-	"error": "Invalid or expired token"
-}
-```
+Generates a concise answer from the authenticated user's account and transaction data.
 
-### 3. Ask AI Assistant
-
-**POST** `/askAI`
-
-Generate a finance summary/answer from the authenticated user's transactions and accounts.
+**Authentication:** required
 
 **Request:**
 
@@ -141,7 +149,10 @@ Content-Type: application/json
 {
 	"question": "How much did I spend this month?",
 	"userId": "user_uid",
-	"history": [{ "role": "user", "content": "Focus on my main account." }]
+	"history": [
+		{ "role": "user", "content": "Focus on my main account." },
+		{ "role": "assistant", "content": "Sure, I will focus there." }
+	]
 }
 ```
 
@@ -154,23 +165,41 @@ Content-Type: application/json
 }
 ```
 
-**Status Codes:**
+**Status codes:**
 
-- `200` - Success (including no-transaction guidance responses)
-- `400` - Missing `question` or `userId`
-- `401` - Missing/invalid auth token
+- `200` - Success
+- `400` - Missing/invalid question, user id, or history
+- `401` - Missing/invalid Firebase token
 - `403` - Authenticated token user does not match `userId`
 - `405` - Method not allowed
-- `429` - Gemini rate limit reached
-- `502` - Gemini is temporarily unavailable
+- `429` - Gemini rate or quota limit reached
+- `502` - Gemini did not return a usable answer
+- `503` - Gemini configuration, auth, or availability problem
 
-**Notes:**
+**Important behavior:**
 
-- `askAI` currently analyzes up to 2000 transactions per request.
-- Monthly calculations use `date` and fall back to `createdAt` when `date` is unavailable.
-- Responses are generated by `gemini-2.5-flash` from authenticated user data.
-- History is optional and limited to 12 messages of 2000 characters each.
-- The function requires `GEMINI_API_KEY` in Firebase Secret Manager.
+- `question` is required and limited to 2000 characters.
+- `history` is optional and limited to 12 user/assistant messages of 2000 characters each.
+- The function verifies the Firebase token before loading data.
+- The function rejects requests where the token uid does not match `userId`.
+- The prompt includes up to 2000 user transactions and all user accounts.
+- Monthly calculations are instructed to use `date` and fall back to `createdAt`.
+- Transfers are excluded from income/expense totals unless the user asks about transfers.
+- The model is `gemini-2.5-flash`.
+- The function requires `GEMINI_API_KEY` in Firebase Secret Manager or local Functions secrets.
+
+**Example structured error:**
+
+```json
+{
+	"success": false,
+	"error": "Gemini rejected the request because its rate or quota limit was reached.",
+	"code": "GEMINI_RATE_LIMITED",
+	"details": "Wait 30-60 seconds before retrying. If it continues, review the Gemini API project quota and billing status.",
+	"retryable": true,
+	"requestId": "request-reference"
+}
+```
 
 ## Data Models
 
@@ -191,64 +220,45 @@ interface Transaction {
 	createdAt?: string;
 	updatedAt?: string;
 	transferAccountId?: string;
+	transferId?: string;
+	transferDirection?: 'out' | 'in';
+	recurringTransactionId?: string;
+	recurringOccurrenceDate?: string;
 }
 ```
 
-### API Response
+### Account
 
 ```typescript
-interface ApiResponse<T> {
-	success: boolean;
-	data?: T;
-	error?: string;
-	message?: string;
+interface Account {
+	id: string;
+	name: string;
+	type: string;
+	balance: number;
+	creditLimit?: number;
+	currency: string;
 }
 ```
-
-## Error Handling
-
-The API returns appropriate HTTP status codes and error messages:
-
-| Status Code | Description           | Example Error                     |
-| ----------- | --------------------- | --------------------------------- |
-| `200`       | Success               | -                                 |
-| `401`       | Unauthorized          | "Invalid or expired token"        |
-| `403`       | Forbidden             | "Authenticated user does not match the provided userId" |
-| `405`       | Method not allowed    | "Only GET/POST requests are supported" |
-| `500`       | Internal server error | "Internal server error"           |
 
 ## CORS
 
-The API includes CORS headers to allow cross-origin requests:
+Functions set permissive CORS headers for browser access:
 
-```
+```http
 Access-Control-Allow-Origin: *
 Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 Access-Control-Allow-Headers: Content-Type, Authorization
 ```
 
-## Rate Limiting
+## Testing With cURL
 
-Currently, no rate limiting is implemented. Consider implementing rate limiting for production use.
-
-## Security
-
-1. **JWT Token Validation**: All protected endpoints validate Firebase ID tokens
-2. **User Data Isolation**: Users can only access their own transactions
-3. **Input Validation**: All inputs are validated and sanitized
-4. **Error Handling**: Sensitive information is not exposed in error messages
-
-## Testing
-
-### Using cURL
-
-**Health Check:**
+Health check:
 
 ```bash
 curl -X GET https://us-central1-cash-flow-eb5bd.cloudfunctions.net/healthCheck
 ```
 
-**Get User Transactions:**
+Transactions:
 
 ```bash
 curl -X GET \
@@ -256,88 +266,28 @@ curl -X GET \
   https://us-central1-cash-flow-eb5bd.cloudfunctions.net/getUserTransactions
 ```
 
-### Using Postman
+AI assistant:
 
-1. **Health Check:**
-    - Method: `GET`
-    - URL: `https://us-central1-cash-flow-eb5bd.cloudfunctions.net/healthCheck`
-
-2. **Get User Transactions:**
-    - Method: `GET`
-    - URL: `https://us-central1-cash-flow-eb5bd.cloudfunctions.net/getUserTransactions`
-    - Headers: `Authorization: Bearer YOUR_FIREBASE_ID_TOKEN`
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_FIREBASE_ID_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Summarize this month","userId":"YOUR_UID","history":[]}' \
+  https://us-central1-cash-flow-eb5bd.cloudfunctions.net/askAI
+```
 
 ## Monitoring
 
-### Firebase Console
-
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Select your project
-3. Navigate to Functions
-4. View logs, metrics, and performance data
-
-### Function Logs
-
-```bash
-firebase functions:log
-```
-
-### Function Status
+Use Firebase tools for production status and logs:
 
 ```bash
 firebase functions:list
+firebase functions:log
+firebase functions:log --only askAI
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **CORS Errors**
-    - Ensure your domain is allowed in Firebase Console
-    - Check that CORS headers are being sent
-
-2. **Authentication Errors**
-    - Verify the user is logged in
-    - Check that the token is valid and not expired
-    - Ensure the token is being sent in the correct format
-
-3. **Function Not Found**
-    - Verify the function is deployed
-    - Check the function URL is correct
-    - Ensure the function name matches the deployment
-
-### Debugging
-
-1. **Check Function Logs:**
-
-    ```bash
-    firebase functions:log --only getUserTransactions
-    ```
-
-2. **Test Locally:**
-
-    ```bash
-    firebase emulators:start --only functions
-    ```
-
-3. **Verify Deployment:**
-    ```bash
-    firebase functions:list
-    ```
 
 ## Future Enhancements
 
-1. **Additional Endpoints:**
-    - `POST /transactions` - Create new transaction
-    - `PUT /transactions/{id}` - Update transaction
-    - `DELETE /transactions/{id}` - Delete transaction
-
-2. **Query Parameters:**
-    - Date range filtering
-    - Category filtering
-    - Pagination support
-
-3. **Advanced Features:**
-    - Bulk operations
-    - Client-side import/export (Implemented in app UI: Settings → Data)
-    - Analytics endpoints
+- Add rate limiting around authenticated API calls.
+- Split `functions/src/index.ts` into smaller request, auth, analytics, and AI helper modules.
+- Consider dedicated analytics endpoints only if the frontend needs server-side aggregation.

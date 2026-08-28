@@ -138,7 +138,7 @@ const Navbar: React.FC<NavbarProps> = ({ onAuthClick }) => {
 									onClick={() => { onAuthClick('login'); setMobileMenuOpen(false); }}
 									className="flex w-full items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
 								>
-									<LogIn size={15} className="text-blue-500" /> Log in / Demo
+									<LogIn size={15} className="text-blue-500" /> Log in
 								</button>
 								<button
 									onClick={() => { onAuthClick('register'); setMobileMenuOpen(false); }}

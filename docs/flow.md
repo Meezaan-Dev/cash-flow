@@ -1,8 +1,10 @@
-# Cash Flow App - Data Structure and Flow Design
+# Cash Flow App - Data Structure and Flow
+
+This document describes the current app data model, Firestore layout, and frontend data flow. Cash Flow is one deployed SPA: `apps/desktop` owns routing and imports the small `apps/mobisite` capture experience at `/mobisite`.
 
 ## 1. Data Structures
 
-**Account:**
+**Account**
 
 - `id?: string`
 - `userId?: string`
@@ -11,16 +13,19 @@
 - `type: 'debit' | 'credit' | 'savings' | 'cash'`
 - `currency?: string`
 - `balance: number`
+- `creditLimit?: number`
 - `color?: string`
 - `icon?: string`
 - `createdAt?: Date | { toDate: () => Date }`
+- `updatedAt?: Date | { toDate: () => Date }`
 
-**Transaction:**
+Credit accounts use signed balances. Negative credit balances count as liabilities; available balance can include configured credit limits.
+
+**Transaction**
 
 - `id?: string`
 - `userId?: string`
-- `accountId: string` ← required; links to an Account
-- `transferAccountId?: string` ← set on transfer records to identify the counterpart account
+- `accountId: string`
 - `title: string`
 - `amount: number`
 - `type: 'income' | 'expense' | 'transfer'`
@@ -29,11 +34,16 @@
 - `description?: string`
 - `date?: Date | { toDate: () => Date }`
 - `createdAt?: Date | { toDate: () => Date }`
+- `updatedAt?: Date | { toDate: () => Date }`
+- `transferAccountId?: string`
+- `transferId?: string`
+- `transferDirection?: 'out' | 'in'`
+- `recurringTransactionId?: string`
+- `recurringOccurrenceDate?: string`
 
-**Transfer:**
-A transfer is represented as **two Transaction documents** — both with `type: 'transfer'`. The source account gets a debit record; the destination account gets a credit record. Both carry `transferAccountId` pointing to the other account.
+Transfers are represented as two linked transaction documents with shared `transferId`, opposite `transferDirection`, category `transfer`, and balance updates on both accounts.
 
-**Budget:**
+**Budget**
 
 - `id: string`
 - `userId: string`
@@ -42,17 +52,31 @@ A transfer is represented as **two Transaction documents** — both with `type: 
 - `subCategoryId?: string`
 - `amount: number`
 - `period: 'monthly' | 'custom'`
-- `month?: string` (`YYYY-MM`, monthly budgets only)
+- `month?: string`
+- `cycleDay?: number`
+- `startDay?: number`
+- `endDay?: number`
 - `startDate: string`
 - `endDate: string`
 - `lifecycleStatus: 'draft' | 'published'`
-- `displayOrder?: number` (persisted card position; legacy budgets use a stable fallback)
+- `displayOrder?: number`
 - `createdAt?: Date | { toDate: () => Date }`
 - `updatedAt?: Date | { toDate: () => Date }`
 
-Users can create up to eight budgets. New budgets begin as drafts, published budgets track matching expenses, and completed periods can be repeated into a new draft.
+Users can create up to eight budgets. New budgets begin as drafts, published budgets track matching expenses, completed periods can be repeated into a new draft, and ordering is persisted.
 
-**RecurringTransaction:**
+**Category**
+
+- `id: string`
+- `value: string`
+- `label: string`
+- `subcategories: Array<{ value: string; label: string }>`
+- `createdAt?: Date | { toDate: () => Date }`
+- `updatedAt?: Date | { toDate: () => Date }`
+
+Categories live per user. Renames update related transactions, recurring templates, and budgets in a batch when needed. Categories or subcategories that are still in use cannot be deleted.
+
+**RecurringTransaction**
 
 - `id?: string`
 - `userId?: string`
@@ -66,230 +90,137 @@ Users can create up to eight budgets. New budgets begin as drafts, published bud
 - `frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly'`
 - `expectedDate?: number`
 - `createdAt?: Date | { toDate: () => Date }`
+- `updatedAt?: Date | { toDate: () => Date }`
 
----
+**RandomNote**
+
+- `id: string`
+- `userId: string`
+- `content: string`
+- `createdAt?: Date | { toDate: () => Date }`
+- `updatedAt?: Date | { toDate: () => Date }`
+
+Random notes are private user-scoped notes with markdown preview support and a small fixed note cap.
 
 ## 2. Firestore Structure
 
-All data is scoped to the authenticated user via subcollections:
+All active app data is scoped under the authenticated user:
 
-```
+```text
 users/{userId}/
-  transactions/{transactionId}   — income, expense, and transfer records
-  accounts/{accountId}           — financial accounts (debit, credit, savings, cash)
-  budgets/{budgetId}             — category budgets with optional sub-category scope
-  categories/{categoryId}        — custom categories and subcategories
-  recurringTransactions/{id}     — recurring transaction templates (income or expense)
+  accounts/{accountId}
+  transactions/{transactionId}
+  budgets/{budgetId}
+  categories/{categoryId}
+  recurringTransactions/{id}
+  random/{noteId}
 ```
 
-Legacy top-level `transactions` and `recurringExpenses` collections exist as **read-only** for backward compatibility.
+Legacy top-level `transactions` and `recurringExpenses` collections are retained as read-only migration compatibility paths.
 
----
+Firestore rules validate ownership, required fields, amount limits, known enum values, timestamp shape, allowed keys, transfer metadata, budget lifecycle fields, category shape, and random note length.
 
-## 3. MVC Architecture
+## 3. Architecture
 
-**Model Layer** (`src/models/`)
+The app uses an app-flow structure with route screens, domain modules, and shared packages:
 
-| File | Responsibilities |
+| Area | Responsibilities |
 |---|---|
-| `AccountModel.ts` | `Account` interface, `normalizeAccount()`, `calculateNetWorth()`, `ACCOUNT_TYPE_LABELS`, `ACCOUNT_COLORS` |
-| `BudgetModel.ts` | Budget normalization, stable display ordering, draft/publish lifecycle, monthly/custom periods, optional sub-category matching, repeat helpers, and progress calculations |
-| `TransactionModel.ts` | `Transaction` interface, `normalizeTransaction()`, filter helpers (`filterExpenses`, `filterIncome`, `filterTransfers`, `filterByAccount`, `filterByCategory`, `groupByCategory`, `calculateTotals`) |
-| `RecurringTransactionModel.ts` | `RecurringTransaction` interface, `normalizeRecurringTransaction()`, `normalizeRecurringTransactions()`, `validateRecurringTransaction()` (validates title, amount > 0, category, frequency enum) |
+| `apps/desktop/src/app/` | Host shell concerns such as protected routes, theme, and privacy mode |
+| `apps/desktop/src/pages/` | Route-level screens for dashboard, accounts, marketing, and mobisite framing |
+| `apps/desktop/src/domains/` | Desktop domain logic, views, hooks, models, controllers, and contexts |
+| `apps/desktop/src/shared/` | App-local shared logic such as filter preferences |
+| `apps/mobisite/src/` | Phone-first transaction capture experience mounted at `/mobisite` |
+| `packages/shared/src/` | Firebase services, shared models, hooks, types, and utilities used across app shells |
+| `packages/ui/src/` | Placeholder for primitives that are genuinely reused across apps |
 
-**Hook (Data) Layer** (`src/hooks/`)
+Provider nesting in `apps/desktop/src/App.tsx`:
 
-| Hook | Collection | Key operations |
-|---|---|---|
-| `useAccounts` | `users/{uid}/accounts` | `onSnapshot`, `addAccount`, `updateAccount`, `deleteAccount`, `updateBalance(delta)` |
-| `useBudgets` | `users/{uid}/budgets` | `onSnapshot`, lifecycle-aware category budget CRUD and atomic reorder persistence via the budget service |
-| `useTransactions` | `users/{uid}/transactions` | `onSnapshot`, `addTransaction` (batch tx + balance; requires account), `addTransfer` (batch 2 tx + 2 balances; requires both accounts), `deleteTransaction` (batch delete + reverse balance; skips missing accounts) |
-| `useRecurringTransactions` | `users/{uid}/recurringTransactions` | `onSnapshot`, `addRecurringTransaction`, `updateRecurringTransaction`, `deleteRecurringTransaction` |
-
-**Controller Layer** (`src/controllers/`)
-
-| Controller | Wraps | Adds |
-|---|---|---|
-| `AccountsController` | `useAccounts` | `getAccountById`, `getAccountsByType`, `calculateTotalBalance`, `calculateNetWorth` |
-| `BudgetsController` | `useBudgets` | `getBudgetProgress(budgetId, txs)`, `getAllBudgetProgress(txs)` |
-| `TransactionsController` | `useTransactions` | `getExpenses`, `getIncome`, `getTransfers`, `getByAccount`, `getByCategory`, `getByType`, `getAll`, `getUniqueCategories`, `sortByDateDesc`, `calculateTotals`, `groupByCategory`, `deleteAllTransactions` |
-| `RecurringTransactionsController` | `useRecurringTransactions` | CRUD passthrough (`addRecurringTransaction`, `updateRecurringTransaction`, `deleteRecurringTransaction`) |
-| `ReportsController` | Pure functions (no Firestore) | `getSpendingByCategory`, `getSpendingByAccount`, `getMonthlyTrend`, `getNetWorth` |
-
-**Context Layer** (`src/context/`)
-
-| Context | Provider | Consumers |
-|---|---|---|
-| `AccountsContext` | `AccountsProvider` | Sidebar, AccountsList, AccountForm, TransferForm, ReconcileForm, AccountDetail, ReportsView |
-| `BudgetsContext` | `BudgetsProvider` | BudgetsList, BudgetForm |
-| `TransactionsContext` | `TransactionsProvider` | All transaction views, RecurringTransactionsView, RecurringTransactionsList, TransactionForm (Quick Fill), BudgetProgress calculation; exposes `recurringTransactions`, `recurringTransactionsLoading`, `addRecurringTransaction`, `updateRecurringTransaction`, `deleteRecurringTransaction` |
-| `ThemeContext` | `ThemeProvider` | Sidebar, SettingsModal |
-
-Provider nesting in `App.tsx`:
-```
+```text
 ThemeProvider
-  TransactionsProvider
-    AccountsProvider
-      BudgetsProvider
-        Router
+  Router
+    ProtectedRoute
+      FilterPreferencesProvider
+        CategoriesProvider
+          TransactionsProvider
+            AccountsProvider
+              BudgetsProvider
+                Dashboard routes
 ```
 
-**View Layer** (`src/views/`, `src/pages/`)
-
-| Component | View path | Description |
-|---|---|---|
-| `AccountsList` | `views/Accounts/` | Grid of account cards with net worth summary |
-| `AccountForm` | `views/Accounts/` | Create / edit account |
-| `TransferForm` | `views/Accounts/` | Transfer between two accounts |
-| `ReconcileForm` | `views/Accounts/` | 3-step reconciliation flow |
-| `BudgetsList` | `domains/budgets/views/` | Equal-height draft/active cards, month filtering, progress, publish/repeat actions, and persisted reordering |
-| `BudgetForm` | `domains/budgets/views/` | Theme-aware side panel for category/sub-category, amount, and monthly/custom date selection |
-| `ReportsView` | `views/Reports/` | 4 charts: category pie, account bar, monthly trend, net worth |
-| `TransactionForm` | `views/Transactions/` | Create / edit; supports income, expense, transfer types + account selector |
-| `TransactionsTable` | `views/Transactions/` | Tabular transaction list |
-| `TransactionsList` | `views/Transactions/` | Card-style list |
-| `RecurringTransactionsView` | `views/RecurringTransactions/` | Full-page recurring list with frequency/category/type filters, total summary card, add/edit/delete |
-| `RecurringTransactionsList` | `views/RecurringTransactions/` | Compact recurring list used in embedded/Settings contexts |
-| `RecurringTransactionForm` | `views/RecurringTransactions/` | Create/edit form with income/expense type toggle, category, frequency, description |
-| `AccountDetail` | `pages/` | Route `/dashboard/accounts/:accountId` — per-account history |
-| `Dashboard` | `pages/` | Main app shell, view routing |
-
----
+`/mobisite` is protected separately and uses shared hooks directly instead of the desktop dashboard provider stack.
 
 ## 4. Data Flow
 
-### Adding a Transaction
+### Adding A Transaction
 
-```
-TransactionForm --submit--> TransactionsContext.addTransaction(data)
-  --> useTransactions.addTransaction(data)
-      writeBatch:
-        batch.set(txRef, { ...data, createdAt: now })
-        batch.update(accountRef, { balance: increment(delta) })
-      batch.commit()
-  --> onSnapshot fires --> setTransactions([...]) --> all subscribed views update
+```text
+TransactionForm or mobisite form
+  -> TransactionsContext.addTransaction(...) or useTransactions.addTransaction(...)
+  -> Firestore writeBatch:
+       create users/{uid}/transactions/{id}
+       increment the selected account balance
+  -> onSnapshot updates subscribed views
 ```
 
-### Adding a Transfer
+Income increments the account balance. Expenses decrement it. Transaction creation requires an existing account and category.
 
+### Adding Or Deleting A Transfer
+
+```text
+TransferForm
+  -> useTransactions.addTransfer(...)
+  -> Firestore writeBatch:
+       create linked transfer-out transaction
+       create linked transfer-in transaction
+       decrement source account
+       increment destination account
 ```
-TransferForm --submit--> TransactionsContext.addTransfer({ fromAccountId, toAccountId, amount, ... })
-  --> useTransactions.addTransfer(data)
-      writeBatch:
-        batch.set(expenseRef,  { type: 'transfer', accountId: from, transferAccountId: to, ... })
-        batch.set(incomeRef,   { type: 'transfer', accountId: to,   transferAccountId: from, ... })
-        batch.update(fromRef,  { balance: increment(-amount) })
-        batch.update(toRef,    { balance: increment(+amount) })
-      batch.commit()
-```
+
+Deleting either side of a transfer deletes the linked pair and reverses both account balance updates.
 
 ### Budget Progress
 
-```
-BudgetsList --render--> useBudgetsContext.getAllBudgetProgress(transactions)
-  --> BudgetsController.getAllBudgetProgress(transactions)
-      --> budgets.map(b => calculateBudgetProgress(b, transactions))
-          // pure: match expense by user, category, optional sub-category/account, and date range
-          --> { budget, spent, remaining, usedPercentage, status }
+```text
+BudgetsList
+  -> BudgetsController.getAllBudgetProgress(transactions)
+  -> BudgetModel.calculateBudgetProgress(...)
 ```
 
-### Budget Lifecycle And Ordering
+Budget matching uses expense transactions, date range or rolling cycle, category, optional subcategory, and optional account scope. Reordering writes a complete display order in one Firestore batch.
 
-```
-BudgetForm --save--> createBudget(...)
-  --> validates category, amount, dates, duplicates, and the eight-budget limit
-  --> stores lifecycleStatus: 'draft' and appends displayOrder
+### Categories And Filters
 
-BudgetsList --publish--> publishBudget(id)
-  --> lifecycleStatus: 'published'
+Settings manages categories, subcategories, filter visibility, and report preferences. Category path values are reused by transactions, recurring templates, budgets, filters, reports, and import/export.
 
-BudgetsList --repeat completed period--> repeatBudget(id)
-  --> creates the next monthly/custom period as a draft
+### Recurring Templates And Quick Fill
 
-BudgetsList --drag or move controls--> reorderBudgets(orderedIds)
-  --> one Firestore batch updates displayOrder for every budget
-```
+Recurring templates are stored in `users/{uid}/recurringTransactions`. Desktop and mobisite forms can fill title, amount, type, category, subcategory, and account from a selected template.
 
-### Reports
-
-```
-ReportsView --render--> ReportsController functions (pure, no Firestore)
-  getSpendingByCategory(transactions, dateRange)  --> CategoryReport[]
-  getSpendingByAccount(transactions, accounts, dateRange) --> AccountReport[]
-  getMonthlyTrend(transactions, months)            --> MonthlyTrend[]
-  getNetWorth(accounts)                            --> NetWorthData
-```
-
-### Adding / Managing a Recurring Transaction
-
-```
-RecurringTransactionForm --submit--> TransactionsContext.addRecurringTransaction(data)
-  --> useRecurringTransactions.addRecurringTransaction(data)
-      addDoc(users/{uid}/recurringTransactions, { ...data, createdAt: Timestamp.now(), userId })
-  --> onSnapshot fires --> setRecurringTransactions([...]) --> RecurringTransactionsView, RecurringTransactionsList update
-
-RecurringTransactionForm (edit) --submit--> TransactionsContext.updateRecurringTransaction(id, updates)
-  --> useRecurringTransactions.updateRecurringTransaction(id, updates)
-      updateDoc(users/{uid}/recurringTransactions/{id}, updates)
-
-RecurringTransactionsView (delete) --confirm--> TransactionsContext.deleteRecurringTransaction(id)
-  --> useRecurringTransactions.deleteRecurringTransaction(id)
-      deleteDoc(users/{uid}/recurringTransactions/{id})
-```
-
-### Quick Fill (Recurring → New Transaction)
-
-```
-TransactionForm Quick Fill selector --> recurringTransactions.find(id)
-  --> auto-fills: title, amount, category, type (income | expense)
-  --> user adjusts remaining fields (account, date, description) and submits as a normal transaction
-```
-
-### Recurring Due-Today Drafts
-
-- Recurring expense templates with `expectedDate === today.getDate()` appear on the dashboard as confirmable drafts.
-- Income templates and templates without `expectedDate` are ignored for due-today drafts.
-- Confirming a draft creates a normal expense transaction through `addTransaction`.
-- Confirmed transactions include `recurringTransactionId` and `recurringOccurrenceDate` as `YYYY-MM-DD`.
-- A draft is hidden when a transaction already exists with the same recurring id and occurrence date.
-- There is no separate draft collection.
+Dashboard due/upcoming recurring prompts are derived from templates and existing transactions. Confirmed occurrences store `recurringTransactionId` and `recurringOccurrenceDate`; there is no separate draft collection.
 
 ### Main Account Preference
 
-- The main account preference is stored locally in `localStorage` via `packages/shared/src/accounts/mainAccountPreference.ts`.
-- Settings lets the user change it at any time.
-- Desktop transaction creation and mobisite transaction creation default to that account when it exists.
-- Forms still allow choosing a different account per transaction.
+The main account preference is stored locally through `packages/shared/src/accounts/mainAccountPreference.ts`. Desktop transaction creation and mobisite transaction creation default to that account when it still exists.
 
----
+### AI Assistant
 
-## 5. Textual Flow Diagram
+The assistant calls the `/askAI` Cloud Function with the authenticated user's question, recent local chat history, and user id. The function verifies the Firebase token, loads up to 2000 user transactions plus accounts, and sends only that scoped data to Gemini.
 
-```
-MVC Architecture:
+### Privacy Mode
 
-[Views / Pages]
-  |
-  +--> [AccountsContext]   --> [AccountsController]   --> [useAccounts]    --> Firestore accounts
-  +--> [BudgetsContext]    --> [BudgetsController]    --> [useBudgets]     --> Firestore budgets
-  +--> [TransactionsContext]--> [TransactionsController]--> [useTransactions]--> Firestore transactions
-                            --> [RecurringTransactions]--> [useRecurringTransactions]--> Firestore recurringTransactions
+Privacy mode is a client-side display state that masks sensitive values in supported dashboard surfaces. It can be toggled from the dashboard control or keyboard shortcuts.
 
-All hooks use onSnapshot() for real-time updates.
-All writes to transactions also update account.balance via writeBatch + increment() when the account exists.
-```
-
----
-
-## 6. Account Balance Rules
+## 5. Balance Rules
 
 | Operation | Balance effect |
 |---|---|
 | Add income | `account.balance += amount` |
 | Add expense | `account.balance -= amount` |
 | Add transfer | `from.balance -= amount`, `to.balance += amount` |
-| Delete income | `account.balance -= amount` (reversed) |
-| Delete expense | `account.balance += amount` (reversed) |
-| Reconcile | creates income or expense adjustment transaction |
+| Delete income | `account.balance -= amount` |
+| Delete expense | `account.balance += amount` |
+| Delete transfer pair | Reverse both linked transfer balance updates |
+| Reconcile | Create an income or expense adjustment transaction |
 
-All balance updates use `increment()` inside a `writeBatch` — no read-modify-write race conditions. If an account document is missing, balance updates are skipped for deletes/edits and creation throws an error.
+All transaction balance writes use Firestore `writeBatch` and `increment()` so account totals do not depend on read-modify-write races.

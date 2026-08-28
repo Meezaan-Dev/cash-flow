@@ -24,12 +24,16 @@ Core features:
 - Dashboard
 - Budgets
 - Import/export
+- Categories and subcategories
 
 Supporting features:
 
 - Recurring transactions
 - Reports
 - AI assistant
+- Random private notes
+- Filter preferences
+- Privacy mode
 - Marketing website components
 
 ## Product Shape
@@ -43,7 +47,7 @@ The friendly first-run path is:
 5. Use saved recurring templates as quick-fill options when adding transactions on `/mobisite`.
 6. Review transaction history, balances, budgets, recurring expenses, and reports from desktop.
 
-Core capabilities include Firebase auth, multi-account management for debit/credit/savings/cash, atomic income and expense writes, linked transfer records, account reconciliation, desktop dashboard/admin views, mobile transaction capture, recurring due-today drafts, import/export, reports, settings, and the AI assistant.
+Core capabilities include Firebase auth, multi-account management for debit/credit/savings/cash, optional credit limits, atomic income and expense writes, linked transfer records, account reconciliation, desktop dashboard/admin views, mobile transaction capture, recurring due/upcoming prompts, import/export, category management, filter preferences, reports, settings, privacy mode, random notes, and the AI assistant.
 
 Budget planning supports category-wide or optional sub-category scopes, monthly or custom date ranges, draft publishing, repeating completed periods, and persistent card ordering. A user can keep up to eight budgets, including budgets outside the currently selected month.
 
@@ -51,15 +55,15 @@ Budget planning supports category-wide or optional sub-category scopes, monthly 
 
 The app now follows an app-flow structure with domain logic separated from pages and shared app services:
 
-- `apps/desktop/src/app/`: host app shell concerns such as routes and theme wiring.
+- `apps/desktop/src/app/`: host app shell concerns such as routes, theme, and privacy mode.
 - `apps/desktop/src/pages/`: route-level screens and page-specific dashboard, account, marketing, and mobisite components.
 - `apps/desktop/src/domains/`: desktop domain logic, views, hooks, models, controllers, and contexts for accounts, transactions, budgets, categories, recurring transactions, reports, auth, and AI.
-- `apps/desktop/src/shared/`: app-local shared logic such as filters that are reused across multiple pages.
+- `apps/desktop/src/shared/`: app-local shared logic such as filter preferences that are reused across multiple pages.
 - `apps/mobisite/src/`: small mobile app mounted inside the host router at `/mobisite`.
 - `packages/shared/src/`: Firebase, shared types, models, hooks, and date/currency/category utilities used across app shells.
 - `packages/ui/src/`: shared UI package placeholder for reusable primitives as they are extracted.
 
-Firebase data is scoped under `users/{userId}/` subcollections for accounts, transactions, budgets, categories, and recurring transaction templates.
+Firebase data is scoped under `users/{userId}/` subcollections for accounts, transactions, budgets, categories, recurring transaction templates, and random notes. Security rules validate ownership, allowed fields, enums, timestamps, money bounds, transfer metadata, budget lifecycle fields, category shape, and random note length.
 
 There is only one deployed SPA. `apps/mobisite` is internal separation, not a second server or separate deployment.
 
@@ -69,8 +73,10 @@ There is only one deployed SPA. `apps/mobisite` is internal separation, not a se
 - Transaction writes that change balances must stay atomic with Firestore `writeBatch` and `increment()`.
 - Budget reorder writes must stay atomic so every document receives a consistent `displayOrder`.
 - Transfers are represented as two linked transaction records and two account balance updates.
+- Transfer records must keep shared `transferId` and opposite `transferDirection` metadata.
+- Recurring confirmations should store `recurringTransactionId` and `recurringOccurrenceDate`.
 - Keep data normalization in domain models and Firebase behavior in domain hooks.
-- Use shared types from `src/types/` instead of redefining domain shapes in UI components.
+- Use shared types from `apps/desktop/src/types/` or `packages/shared/src/` instead of redefining domain shapes in UI components.
 - Keep the UI friendly and direct; do not turn the app into a marketing surface.
 - Keep `/mobisite` intentionally small: add income/expense, quick-fill from recurring templates, and view the simple list.
 - Use the route split to separate concerns: desktop manages the system; mobisite captures transactions quickly.
