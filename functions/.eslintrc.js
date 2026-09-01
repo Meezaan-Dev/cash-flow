@@ -4,11 +4,16 @@ module.exports = {
 		es6: true,
 		node: true,
 	},
-	extends: ['eslint:recommended'],
+	parser: '@typescript-eslint/parser',
+	parserOptions: {
+		sourceType: 'module',
+	},
+	plugins: ['@typescript-eslint'],
+	extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
 	ignorePatterns: [
 		'/lib/**/*', // Ignore built files.
 	],
 	rules: {
-		quotes: ['error', 'double'],
+		quotes: ['error', 'single'],
 	},
 };
