@@ -21,7 +21,7 @@ const Footer: React.FC<FooterProps> = ({ onAuthClick }) => {
 								Ready to take control?
 							</h2>
 							<p className="text-lg text-white/75 mb-10 max-w-2xl mx-auto leading-relaxed">
-								Start tracking accounts, transactions, budgets, reports, and recurring templates in one private workspace. Free to get started, no credit card required.
+								Start with a calm dashboard home, full sidebar navigation, side-panel transaction capture, planning, budgets, and reports in one private workspace.
 							</p>
 							<button
 								onClick={() => onAuthClick?.('register')}

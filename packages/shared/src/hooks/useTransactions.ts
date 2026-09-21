@@ -113,7 +113,7 @@ export const useTransactions = () => {
 
 		return () => unsubscribe();
 	}, [user]);
-	const addTransaction = async (data: AddTransactionData) => {
+	const addTransaction = async (data: AddTransactionData): Promise<string> => {
 		if (!user) throw new Error('User not authenticated');
 		if (data.type !== 'income' && data.type !== 'expense') {
 			throw new Error('Transaction type must be income or expense.');
@@ -188,6 +188,7 @@ export const useTransactions = () => {
 		batch.update(accountRef, { balance: increment(balanceDelta) });
 
 		await batch.commit();
+		return txRef.id;
 	};
 
 	const addTransfer = async (data: AddTransferData) => {

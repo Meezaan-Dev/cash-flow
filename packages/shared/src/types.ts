@@ -15,6 +15,7 @@ export type ViewType =
 	| 'list'
 	| 'accounts'
 	| 'budgets'
+	| 'planning'
 	| 'transfer'
 	| 'reconcile'
 	| 'recurring'

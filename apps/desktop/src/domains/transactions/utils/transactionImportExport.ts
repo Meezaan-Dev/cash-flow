@@ -115,7 +115,7 @@ const validateImportRow = (row: Record<string, unknown>, rowIndex: number): stri
 export const importTransactionsFromFile = async (
 	file: File,
 	existingTransactions: Transaction[],
-	addTransaction: (data: { type: 'income' | 'expense'; accountId: string; title: string; category: string; subcategory?: string; description?: string; amount: number }) => Promise<void>,
+	addTransaction: (data: { type: 'income' | 'expense'; accountId: string; title: string; category: string; subcategory?: string; description?: string; amount: number }) => Promise<unknown>,
 	defaultAccountId: string = ''
 ): Promise<ImportResult> => {
 	if (!defaultAccountId) {

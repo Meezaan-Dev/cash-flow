@@ -151,6 +151,66 @@ service cloud.firestore {
         optionalTimestamp(data, 'updatedAt');
     }
 
+    function optionalMoney(data, field) {
+      return !(field in data) || validMoney(data[field]);
+    }
+
+    function optionalNonNegativeMoney(data, field) {
+      return !(field in data) ||
+        (data[field] is number && data[field] >= 0 && data[field] <= 1000000000000);
+    }
+
+    function validMonthKey(value) {
+      return value is string && value.matches('^\\d{4}-(0[1-9]|1[0-2])$');
+    }
+
+    function validPlannedExpense(data, userId) {
+      return data.keys().hasOnly([
+          'userId', 'title', 'amount', 'targetMonth', 'expectedDate',
+          'category', 'subcategory', 'accountId', 'notes', 'url',
+          'priority', 'status', 'transactionId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId == userId &&
+        requiredString(data, 'title', 200) &&
+        validMoney(data.amount) &&
+        (!('targetMonth' in data) || validMonthKey(data.targetMonth)) &&
+        optionalTimestamp(data, 'expectedDate') &&
+        requiredString(data, 'category', 80) &&
+        optionalString(data, 'subcategory', 80) &&
+        optionalString(data, 'accountId', 1500) &&
+        optionalString(data, 'notes', 2000) &&
+        optionalString(data, 'url', 2000) &&
+        (!('priority' in data) || data.priority in ['low', 'medium', 'high']) &&
+        data.status in ['wishlist', 'planned', 'purchased', 'cancelled'] &&
+        optionalString(data, 'transactionId', 1500) &&
+        data.createdAt is timestamp &&
+        optionalTimestamp(data, 'updatedAt');
+    }
+
+    function validPaymentPlan(data, userId) {
+      return data.keys().hasOnly([
+          'userId', 'itemName', 'originalTotal', 'basePaidAmount',
+          'expectedPaymentAmount', 'startDate', 'expectedCompletionDate',
+          'category', 'url', 'notes', 'status', 'linkedTransactionIds',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.userId == userId &&
+        requiredString(data, 'itemName', 200) &&
+        validMoney(data.originalTotal) &&
+        optionalNonNegativeMoney(data, 'basePaidAmount') &&
+        optionalMoney(data, 'expectedPaymentAmount') &&
+        optionalTimestamp(data, 'startDate') &&
+        optionalTimestamp(data, 'expectedCompletionDate') &&
+        optionalString(data, 'category', 80) &&
+        optionalString(data, 'url', 2000) &&
+        optionalString(data, 'notes', 2000) &&
+        data.status in ['active', 'completed', 'cancelled'] &&
+        data.linkedTransactionIds is list &&
+        data.linkedTransactionIds.size() <= 200 &&
+        data.createdAt is timestamp &&
+        optionalTimestamp(data, 'updatedAt');
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow write: if false;
@@ -208,6 +268,24 @@ service cloud.firestore {
         allow create: if isOwner(userId) && validRandomNote(request.resource.data, userId);
         allow update: if isOwner(userId) &&
           validRandomNote(request.resource.data, userId) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      match /plannedExpenses/{plannedExpenseId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validPlannedExpense(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          validPlannedExpense(request.resource.data, userId) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      match /paymentPlans/{paymentPlanId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validPaymentPlan(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+          validPaymentPlan(request.resource.data, userId) &&
           request.resource.data.userId == resource.data.userId &&
           request.resource.data.createdAt == resource.data.createdAt;
       }

@@ -1,6 +1,6 @@
 /** Marketing-style Tailwind class maps with dark-mode variants. */
 
-export const pageBg = 'bg-gray-50 dark:bg-gray-950';
+export const pageBg = 'bg-white dark:bg-gray-950';
 
 export const pageBgAlt = 'bg-white dark:bg-gray-900';
 
@@ -24,13 +24,28 @@ export const primaryCta =
 	'rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500';
 
 export const outlinePill =
-	'rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800';
+	'rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800';
 
 export const navItemActive =
 	'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400';
 
 export const navItemInactive =
-	'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-50';
+	'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-50';
+
+export const sidebarPanel =
+	'border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950';
+
+export const liquidGlassPanel =
+	'border border-white/55 bg-white/55 shadow-[0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl dark:border-white/10 dark:bg-gray-950/45 dark:shadow-[0_24px_80px_rgba(0,0,0,0.45)]';
+
+export const liquidGlassSoft =
+	'border border-white/45 bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_12px_36px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_16px_42px_rgba(0,0,0,0.32)]';
+
+export const liquidGlassActive =
+	'border border-white/70 bg-white/70 text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_14px_36px_rgba(37,99,235,0.18)] dark:border-blue-300/25 dark:bg-blue-400/15 dark:text-blue-200';
+
+export const liquidGlassButton =
+	'rounded-full border border-white/60 bg-white/55 text-gray-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_12px_30px_rgba(37,99,235,0.16)] backdrop-blur-xl hover:bg-white/75 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15';
 
 export const currencyBase = 'font-mono font-semibold';
 

@@ -9,7 +9,7 @@ const steps = [
 	},
 	{
 		title: 'Plan before the month gets away',
-		body: 'Create budget drafts, choose the dates that matter, and compare planned spending with real activity.',
+		body: 'Use planning for upcoming expenses, a simple wishlist with links, payment-plan progress, and budget drafts compared to real activity.',
 	},
 	{
 		title: 'Review with less guesswork',
@@ -24,7 +24,7 @@ const benefits = [
 	},
 	{
 		title: 'Better day-to-day visibility',
-		body: 'Search, date ranges, category filters, and account views make it easier to understand a specific period.',
+		body: 'A simplified home view shows available balance, what is coming up, and recent activity before you dive into filters and reports.',
 	},
 	{
 		title: 'Confidence across devices',
@@ -97,7 +97,7 @@ const ProblemSolution: React.FC = () => {
 						{benefits.map((item, i) => (
 							<motion.div
 								key={item.title}
-								className="flex gap-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4"
+								className="flex gap-3 rounded-xl border border-gray-100 bg-white p-4"
 								initial={{ opacity: 0, y: 16 }}
 								whileInView={{ opacity: 1, y: 0 }}
 								viewport={{ once: true }}
@@ -115,7 +115,7 @@ const ProblemSolution: React.FC = () => {
 			</section>
 
 			{/* ── Transaction deep-dive ── */}
-			<section className="overflow-hidden bg-gray-50 px-4 py-24 md:py-32 sm:px-6 lg:px-8" ref={ref}>
+			<section className="overflow-hidden bg-white px-4 py-24 md:py-32 sm:px-6 lg:px-8" ref={ref}>
 				<div className="mx-auto max-w-6xl">
 					<div className="grid gap-16 lg:grid-cols-2 lg:items-center">
 						{/* Parallax card */}
@@ -124,15 +124,17 @@ const ProblemSolution: React.FC = () => {
 								className="relative z-10 rounded-2xl border border-gray-200 bg-white shadow-xl p-8"
 								style={{ y: cardY }}
 							>
-								<div className="flex items-center justify-between pb-5 border-b border-gray-100 mb-6">
-									<h4 className="font-semibold text-base text-gray-900">Recent Transactions</h4>
-									<button className="text-xs font-medium text-blue-600 hover:text-blue-500 transition-colors">
-										View all
-									</button>
+								<p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+									Available
+								</p>
+								<p className="mt-1 font-mono text-3xl font-semibold text-gray-950">R 18,550</p>
+								<div className="mt-5 flex items-center justify-between border-b border-gray-100 pb-4">
+									<h4 className="font-semibold text-base text-gray-900">Recent activity</h4>
+									<span className="text-xs font-medium text-blue-600">View all</span>
 								</div>
 								<div className="space-y-2">
 									{transactions.map((tx, i) => (
-										<div key={i} className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-gray-50 transition-colors">
+										<div key={i} className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-gray-100 transition-colors">
 											<div className="flex items-center gap-3">
 												<div className={`flex h-9 w-9 items-center justify-center rounded-xl ${tx.type === 'income' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
 													{tx.type === 'income' ? <TrendingUp className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
@@ -159,13 +161,13 @@ const ProblemSolution: React.FC = () => {
 								Know exactly<br />where it goes.
 							</h2>
 							<p className="text-lg leading-relaxed text-gray-500">
-								Stop guessing at the end of the month. CashFlow categorises your spending and presents it in a way that actually makes sense.
+								Stop guessing at the end of the month. See what is available now, what is coming up, and add transactions from a compact side panel.
 							</p>
 							<ul className="space-y-4">
 								{[
-									'Custom categories and subcategories',
-									'Filter by account, category, type, and date',
-									'Recurring templates with Quick Fill',
+									'Calm dashboard home with available balance front and center',
+									'Full sidebar navigation on desktop',
+									'Side-panel transaction capture with Quick Fill from recurring templates',
 									'CSV and JSON export at any time',
 								].map((item) => (
 									<li key={item} className="flex items-center gap-3">

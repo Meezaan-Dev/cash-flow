@@ -12,6 +12,7 @@ Cash Flow is one deployed SPA. `apps/desktop/src/App.tsx` owns routing for both 
 | `/dashboard/accounts` | Desktop accounts management. |
 | `/dashboard/accounts/:accountId` | Desktop per-account history/detail view. |
 | `/dashboard/budgets` | Desktop budget management. |
+| `/dashboard/planning` | Desktop planned expenses, wishlist bookmarks, and payment-plan progress. |
 | `/dashboard/recurring` | Desktop recurring transaction management. |
 | `/dashboard/reports` | Desktop reports. |
 | `/dashboard/random` | Desktop freeform private notes area. |
@@ -39,6 +40,7 @@ Out of scope for `/mobisite`:
 - Account management
 - Transfers
 - Budgets
+- Planning
 - Recurring management
 - Reports
 - Settings

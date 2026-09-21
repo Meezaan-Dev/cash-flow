@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const faqs = [
 	{
 		question: 'Is CashFlow free to use?',
-		answer: 'Yes. You can register and start tracking your accounts, transactions, budgets, and reports without a credit card.',
+		answer: 'Yes. You can register and start tracking accounts, transactions, planning, budgets, and reports without a credit card.',
 	},
 	{
 		question: 'How is my financial data stored?',
@@ -17,7 +17,11 @@ const faqs = [
 	},
 	{
 		question: 'Does CashFlow support recurring expenses?',
-		answer: 'Yes. Save regular bills or income as recurring items, then use Quick Fill to create new transactions faster when they come up.',
+		answer: 'Yes. Save regular bills or income as recurring items, then use Quick Fill in the transaction side panel to create new entries faster when they come up.',
+	},
+	{
+		question: 'What is planning on the dashboard?',
+		answer: 'Planning covers upcoming expenses, a simple wishlist with optional links and estimated prices, and payment-plan progress—separate from your day-to-day transaction list.',
 	},
 	{
 		question: 'Can CashFlow help me understand my spending?',
@@ -36,7 +40,7 @@ const FAQ: React.FC = () => {
 	return (
 		<section
 			id="faq"
-			className="bg-gray-50 px-4 py-24 sm:px-6 lg:px-8"
+			className="bg-white px-4 py-24 sm:px-6 lg:px-8"
 		>
 			<div className="mx-auto max-w-2xl">
 				<div className="text-center mb-12">

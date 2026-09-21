@@ -8,6 +8,7 @@ const mockAddTransfer = jest.fn();
 const mockOnOpenHistory = jest.fn();
 const mockOnOpenSettings = jest.fn();
 const mockOnOpenBudgets = jest.fn();
+const mockOnOpenPlanning = jest.fn();
 const mockOnCreateTransaction = jest.fn();
 const mockOnOpenTransactions = jest.fn();
 const mockOnSelectTransaction = jest.fn();
@@ -57,6 +58,37 @@ let mockRecurringTransactions = [
 		expectedDate: today.getDate(),
 	},
 ];
+let mockPlannedExpenses = [
+	{
+		id: 'planned-shoes',
+		userId: 'user-1',
+		title: 'New shoes',
+		amount: 800,
+		targetMonth: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`,
+		category: 'personal',
+		status: 'planned',
+	},
+	{
+		id: 'wishlist-laptop',
+		userId: 'user-1',
+		title: 'Laptop',
+		amount: 12000,
+		category: 'tech',
+		status: 'wishlist',
+	},
+];
+let mockPaymentPlans = [
+	{
+		id: 'plan-phone',
+		userId: 'user-1',
+		itemName: 'Phone',
+		originalTotal: 12000,
+		basePaidAmount: 6000,
+		expectedPaymentAmount: 2000,
+		status: 'active',
+		linkedTransactionIds: [],
+	},
+];
 
 jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 	useTransactionsContext: () => ({
@@ -70,6 +102,33 @@ jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 	useBudgetsContext: () => ({
 		budgets: [],
+	}),
+}));
+
+jest.mock('@/domains/planning/context/PlanningContext', () => ({
+	usePlanningContext: () => ({
+		plannedExpenses: mockPlannedExpenses,
+		paymentPlans: mockPaymentPlans,
+		calculatePlannedExpenseTotal: () =>
+			mockPlannedExpenses
+				.filter((expense) => expense.status === 'planned')
+				.reduce((sum, expense) => sum + expense.amount, 0),
+		calculatePaymentPlansProgress: () =>
+			mockPaymentPlans.map((plan) => {
+				const paid = plan.basePaidAmount;
+				const remaining = Math.max(plan.originalTotal - paid, 0);
+				return {
+					plan,
+					paid,
+					remaining,
+					percentComplete: (paid / plan.originalTotal) * 100,
+					paymentsRemaining: Math.ceil(remaining / (plan.expectedPaymentAmount ?? 1)),
+				};
+			}),
+		getRemainingPlannedExpenses: () =>
+			mockPlannedExpenses.filter((expense) => expense.status === 'planned'),
+		getCurrentMonthKey: () =>
+			`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`,
 	}),
 }));
 
@@ -140,6 +199,7 @@ jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 const overviewProps = {
 	onOpenHistory: mockOnOpenHistory,
 	onOpenBudgets: mockOnOpenBudgets,
+	onOpenPlanning: mockOnOpenPlanning,
 	onOpenSettings: mockOnOpenSettings,
 	onCreateTransaction: mockOnCreateTransaction,
 	onOpenTransactions: mockOnOpenTransactions,
@@ -197,34 +257,68 @@ describe('DashboardOverview', () => {
 				expectedDate: today.getDate(),
 			},
 		];
+		mockPlannedExpenses = [
+			{
+				id: 'planned-shoes',
+				userId: 'user-1',
+				title: 'New shoes',
+				amount: 800,
+				targetMonth: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`,
+				category: 'personal',
+				status: 'planned',
+			},
+			{
+				id: 'wishlist-laptop',
+				userId: 'user-1',
+				title: 'Laptop',
+				amount: 12000,
+				category: 'tech',
+				status: 'wishlist',
+			},
+		];
+		mockPaymentPlans = [
+			{
+				id: 'plan-phone',
+				userId: 'user-1',
+				itemName: 'Phone',
+				originalTotal: 12000,
+				basePaidAmount: 6000,
+				expectedPaymentAmount: 2000,
+				status: 'active',
+				linkedTransactionIds: [],
+			},
+		];
 	});
 
-	it('renders the focused dashboard home sections without digest or account panels', () => {
+	it('renders the simplified dashboard home sections', () => {
 		renderOverview();
 
 		expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
-		expect(screen.getByText(/Net worth/i)).toBeInTheDocument();
-		expect(screen.getByText('Next 7 days')).toBeInTheDocument();
-		expect(screen.getByText('Planned recurring transactions')).toBeInTheDocument();
+		expect(screen.getAllByText(/Net worth/i).length).toBeGreaterThan(0);
+		expect(screen.getAllByText('Available').length).toBeGreaterThan(0);
+		expect(screen.getByText('Spent this month')).toBeInTheDocument();
+		expect(screen.getAllByText('Coming up').length).toBeGreaterThan(0);
+		expect(screen.getByText('New shoes')).toBeInTheDocument();
 		expect(screen.getByText('Recent')).toBeInTheDocument();
 		expect(screen.getByText('Latest transactions')).toBeInTheDocument();
-		expect(screen.getByText('Budget health')).toBeInTheDocument();
-		expect(screen.queryByText('Available balance')).not.toBeInTheDocument();
-		expect(screen.queryByText('Income')).not.toBeInTheDocument();
-		expect(screen.queryByText('Expenses')).not.toBeInTheDocument();
-		expect(screen.queryByText('Net change')).not.toBeInTheDocument();
+		expect(screen.queryByText('Money now')).not.toBeInTheDocument();
+		expect(screen.queryByText('Projected')).not.toBeInTheDocument();
+		expect(screen.queryByText('Progress')).not.toBeInTheDocument();
+		expect(screen.queryByText('Quick actions')).not.toBeInTheDocument();
+		expect(screen.queryByText('Budget health')).not.toBeInTheDocument();
+		expect(screen.queryByText('Phone')).not.toBeInTheDocument();
 		expect(screen.queryByText('Accounts')).not.toBeInTheDocument();
 		expect(screen.queryByRole('region', { name: /ai assistant/i })).not.toBeInTheDocument();
 	});
 
-	it('shows the last 10 transactions on the dashboard home', () => {
+	it('shows the last 5 transactions on the dashboard home', () => {
 		mockTransactions = Array.from({ length: 12 }, (_, index) => makeTransaction(index));
 
 		renderOverview();
 
 		expect(screen.getByText('Transaction 0')).toBeInTheDocument();
-		expect(screen.getByText('Transaction 9')).toBeInTheDocument();
-		expect(screen.queryByText('Transaction 10')).not.toBeInTheDocument();
+		expect(screen.getByText('Transaction 4')).toBeInTheDocument();
+		expect(screen.queryByText('Transaction 5')).not.toBeInTheDocument();
 		expect(screen.queryByText('Transaction 11')).not.toBeInTheDocument();
 	});
 
@@ -243,9 +337,9 @@ describe('DashboardOverview', () => {
 		renderOverview();
 
 		expect(screen.getByText('Rent')).toBeInTheDocument();
-		expect(screen.getByText('Today')).toBeInTheDocument();
+		expect(screen.getAllByText(/Recurring/i).length).toBeGreaterThan(0);
 
-		fireEvent.click(screen.getByRole('button', { name: 'Rent' }));
+		fireEvent.click(screen.getByRole('button', { name: /rent/i }));
 		fireEvent.click(screen.getByRole('button', { name: /apply as is/i }));
 
 		await waitFor(() =>
@@ -278,7 +372,7 @@ describe('DashboardOverview', () => {
 
 		expect(screen.getByText('Monthly Pay')).toBeInTheDocument();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Monthly Pay' }));
+		fireEvent.click(screen.getByRole('button', { name: /monthly pay/i }));
 		fireEvent.click(screen.getByRole('button', { name: /apply as is/i }));
 
 		await waitFor(() =>
@@ -297,7 +391,7 @@ describe('DashboardOverview', () => {
 	it('opens the edit flow for a single recurring occurrence', () => {
 		renderOverview();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Rent' }));
+		fireEvent.click(screen.getByRole('button', { name: /rent/i }));
 		fireEvent.click(screen.getByRole('button', { name: /edit this transaction/i }));
 
 		expect(mockOnEditRecurringDraft).toHaveBeenCalledWith(
@@ -308,12 +402,14 @@ describe('DashboardOverview', () => {
 		);
 	});
 
-	it('shows an empty state when no recurring transactions are due soon', () => {
+	it('shows an empty state when no coming up items need attention', () => {
 		mockRecurringTransactions = [];
+		mockPlannedExpenses = [];
 
 		renderOverview();
 
-		expect(screen.getByText('Nothing due soon')).toBeInTheDocument();
-		expect(screen.getByText(/Recurring transactions due in the next 7 days/i)).toBeInTheDocument();
+		expect(
+			screen.getByText(/Nothing due soon and no planned expenses remaining this month/i)
+		).toBeInTheDocument();
 	});
 });

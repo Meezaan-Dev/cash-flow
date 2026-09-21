@@ -30,6 +30,7 @@ The app currently includes:
 - Accounts with debit, credit, savings, cash, credit-limit, balance, transfer, and reconcile flows.
 - Transactions with income, expense, transfer, category, subcategory, filters, bulk category edits, and CSV/JSON import/export.
 - Budgets with draft/published states, monthly/custom periods, optional account and subcategory scope, repeat actions, and ordering.
+- Planning for planned expenses, wishlist URL bookmarks, and payment-plan progress linked to real expense transactions.
 - Recurring transaction templates, due/upcoming dashboard prompts, and mobile/desktop Quick Fill.
 - Reports for spending, subcategory breakdowns, account activity, trends, and net worth.
 - Settings for theme, privacy mode, main account preference, categories, filters, data tools, and sign out.
