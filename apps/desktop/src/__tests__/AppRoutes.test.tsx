@@ -11,12 +11,14 @@ const mockCategoriesProvider = makeProviderMock();
 const mockTransactionsProvider = makeProviderMock();
 const mockAccountsProvider = makeProviderMock();
 const mockBudgetsProvider = makeProviderMock();
+const mockPlanningProvider = makeProviderMock();
 const providerMocks = [
 	mockFilterPreferencesProvider,
 	mockCategoriesProvider,
 	mockTransactionsProvider,
 	mockAccountsProvider,
 	mockBudgetsProvider,
+	mockPlanningProvider,
 ];
 
 const setMobileViewport = (isMobile: boolean) => {
@@ -70,6 +72,10 @@ jest.mock('@/domains/accounts/context/AccountsContext', () => ({
 
 jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 	BudgetsProvider: mockBudgetsProvider,
+}));
+
+jest.mock('@/domains/planning/context/PlanningContext', () => ({
+	PlanningProvider: mockPlanningProvider,
 }));
 
 jest.mock('@/services/firebase', () => ({

@@ -51,6 +51,7 @@ jest.mock('@/pages/dashboard/components/Sidebar', () => ({
 		<>
 			<button onClick={onCreate}>Create transaction</button>
 			<button onClick={() => onViewChange('budgets')}>Open budgets</button>
+			<button onClick={() => onViewChange('planning')}>Open planning</button>
 			<button onClick={() => onViewChange('random')}>Open random</button>
 		</>
 	),
@@ -114,6 +115,11 @@ jest.mock('@/domains/budgets/views/BudgetsList', () => ({
 	default: () => <div>Budgets list</div>,
 }));
 
+jest.mock('@/domains/planning/views/PlanningView', () => ({
+	__esModule: true,
+	default: () => <div>Planning view</div>,
+}));
+
 jest.mock('@/domains/reports/views/ReportsView', () => ({
 	__esModule: true,
 	default: () => <div>Reports view</div>,
@@ -150,6 +156,7 @@ const renderDashboard = (initialPath = '/dashboard') =>
 				<Route path="/dashboard" element={<Dashboard />} />
 				<Route path="/dashboard/transactions" element={<Dashboard />} />
 				<Route path="/dashboard/budgets" element={<Dashboard />} />
+				<Route path="/dashboard/planning" element={<Dashboard />} />
 				<Route path="/dashboard/random" element={<Dashboard />} />
 				<Route path="/dashboard/settings" element={<Dashboard />} />
 			</Routes>
@@ -198,6 +205,13 @@ describe('Dashboard', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Open random' }));
 		expect(screen.getByText('Random notes')).toBeInTheDocument();
+	});
+
+	it('navigates to planning from the dashboard shell', () => {
+		renderDashboard();
+
+		fireEvent.click(screen.getByRole('button', { name: 'Open planning' }));
+		expect(screen.getByText('Planning view')).toBeInTheDocument();
 	});
 
 	it('toggles privacy mode from the panic button', () => {

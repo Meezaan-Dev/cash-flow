@@ -92,6 +92,49 @@ Categories live per user. Renames update related transactions, recurring templat
 - `createdAt?: Date | { toDate: () => Date }`
 - `updatedAt?: Date | { toDate: () => Date }`
 
+**PlannedExpense**
+
+- `id: string`
+- `userId: string`
+- `title: string`
+- `amount: number`
+- `targetMonth?: string`
+- `expectedDate?: Date | { toDate: () => Date }`
+- `category: string`
+- `subcategory?: string`
+- `accountId?: string`
+- `notes?: string`
+- `url?: string`
+- `priority?: 'low' | 'medium' | 'high'`
+- `status: 'wishlist' | 'planned' | 'purchased' | 'cancelled'`
+- `transactionId?: string`
+- `createdAt?: Date | { toDate: () => Date }`
+- `updatedAt?: Date | { toDate: () => Date }`
+
+Wishlist items are planned expenses with `status: 'wishlist'`. The desktop form collects **title**, optional **url**, and **amount** only; the app stores `category: 'Wishlist'` for Firestore validation. Wishlist rows do not use `targetMonth`. Only current-month `planned` items contribute to projected available money.
+
+Planning writes use `users/{userId}/plannedExpenses` and `users/{userId}/paymentPlans`. After changing [`firestore.rules`](../firestore.rules), deploy rules before testing adds in Firebase: `firebase deploy --only firestore:rules`.
+
+**PaymentPlan**
+
+- `id: string`
+- `userId: string`
+- `itemName: string`
+- `originalTotal: number`
+- `basePaidAmount: number`
+- `expectedPaymentAmount?: number`
+- `startDate?: Date | { toDate: () => Date }`
+- `expectedCompletionDate?: Date | { toDate: () => Date }`
+- `category?: string`
+- `url?: string`
+- `notes?: string`
+- `status: 'active' | 'completed' | 'cancelled'`
+- `linkedTransactionIds: string[]`
+- `createdAt?: Date | { toDate: () => Date }`
+- `updatedAt?: Date | { toDate: () => Date }`
+
+Payment-plan progress is derived from `basePaidAmount` plus linked real expense transactions. It is not a separate ledger.
+
 **RandomNote**
 
 - `id: string`
@@ -111,6 +154,8 @@ users/{userId}/
   accounts/{accountId}
   transactions/{transactionId}
   budgets/{budgetId}
+  plannedExpenses/{plannedExpenseId}
+  paymentPlans/{paymentPlanId}
   categories/{categoryId}
   recurringTransactions/{id}
   random/{noteId}
@@ -118,7 +163,7 @@ users/{userId}/
 
 Legacy top-level `transactions` and `recurringExpenses` collections are retained as read-only migration compatibility paths.
 
-Firestore rules validate ownership, required fields, amount limits, known enum values, timestamp shape, allowed keys, transfer metadata, budget lifecycle fields, category shape, and random note length.
+Firestore rules validate ownership, required fields, amount limits, known enum values, timestamp shape, allowed keys, transfer metadata, budget lifecycle fields, planning fields, category shape, and random note length.
 
 ## 3. Architecture
 
@@ -145,7 +190,8 @@ ThemeProvider
           TransactionsProvider
             AccountsProvider
               BudgetsProvider
-                Dashboard routes
+                PlanningProvider
+                  Dashboard routes
 ```
 
 `/mobisite` is protected separately and uses shared hooks directly instead of the desktop dashboard provider stack.
@@ -188,6 +234,19 @@ BudgetsList
 ```
 
 Budget matching uses expense transactions, date range or rolling cycle, category, optional subcategory, and optional account scope. Reordering writes a complete display order in one Firestore batch.
+
+### Planning Projection
+
+```text
+PlanningView
+  -> users/{uid}/plannedExpenses and users/{uid}/paymentPlans
+  -> Dashboard projection:
+       current available balance - current-month planned expenses
+```
+
+Planned expenses never update account balances. Converting a planned expense first creates a normal expense transaction through the existing transaction write path, then marks the planned expense as `purchased` with the resulting `transactionId`.
+
+Payment plans link to existing expense transactions with `linkedTransactionIds`. Progress is `basePaidAmount + linked expense totals`; account balances remain controlled by the original transactions.
 
 ### Categories And Filters
 

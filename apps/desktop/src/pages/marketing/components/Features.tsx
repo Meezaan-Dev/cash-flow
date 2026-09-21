@@ -5,9 +5,10 @@ import {
 	BriefcaseBusiness,
 	Cpu,
 	FileText,
-	LayoutGrid,
 	List,
 	RefreshCw,
+	ShoppingBag,
+	Smartphone,
 	Target,
 	type LucideIcon,
 } from 'lucide-react';
@@ -230,9 +231,15 @@ const features: Feature[] = [
 	},
 	{
 		icon: List,
-		title: 'Income and expenses',
-		desc: 'Log daily activity quickly, including transfers between accounts.',
+		title: 'Quick capture',
+		desc: 'Add income, expenses, and transfers from a side panel without leaving your dashboard.',
 		illustration: <IllustrationTransactions />,
+	},
+	{
+		icon: ShoppingBag,
+		title: 'Planning & wishlist',
+		desc: 'Track planned spending, bookmark wishlist items with links, and follow payment-plan progress.',
+		illustration: <IllustrationRecurring />,
 	},
 	{
 		icon: Target,
@@ -265,9 +272,9 @@ const features: Feature[] = [
 		illustration: <IllustrationAI />,
 	},
 	{
-		icon: LayoutGrid,
-		title: 'Cloud sync',
-		desc: 'Synced across devices with light and dark mode built in.',
+		icon: Smartphone,
+		title: 'Desktop + mobile',
+		desc: 'Full sidebar admin on desktop and fast capture on /mobisite, synced with light and dark mode.',
 		illustration: <IllustrationSync />,
 	},
 ];
@@ -276,7 +283,7 @@ const Features: React.FC = () => {
 	return (
 		<section
 			id="features"
-			className="bg-gray-50 px-4 py-24 sm:px-6 lg:px-8"
+			className="bg-white px-4 py-24 sm:px-6 lg:px-8"
 		>
 			<div className="mx-auto max-w-6xl">
 				<div className="mx-auto max-w-2xl text-center mb-16">

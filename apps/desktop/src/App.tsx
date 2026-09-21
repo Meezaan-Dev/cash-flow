@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/app/theme/context/ThemeContext';
 import { TransactionsProvider } from '@/domains/transactions/context/TransactionsContext';
 import { AccountsProvider } from '@/domains/accounts/context/AccountsContext';
 import { BudgetsProvider } from '@/domains/budgets/context/BudgetsContext';
+import { PlanningProvider } from '@/domains/planning/context/PlanningContext';
 import { CategoriesProvider } from '@/domains/categories/context/CategoriesContext';
 import { FilterPreferencesProvider } from '@/shared/filters/context/FilterPreferencesContext';
 import ProtectedRoute from '@/app/routes/ProtectedRoute';
@@ -16,7 +17,9 @@ const DashboardDataProviders = ({ children }: { children: ReactNode }) => (
 		<CategoriesProvider>
 			<TransactionsProvider>
 				<AccountsProvider>
-					<BudgetsProvider>{children}</BudgetsProvider>
+					<BudgetsProvider>
+						<PlanningProvider>{children}</PlanningProvider>
+					</BudgetsProvider>
 				</AccountsProvider>
 			</TransactionsProvider>
 		</CategoriesProvider>

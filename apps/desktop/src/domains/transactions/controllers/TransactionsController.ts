@@ -39,7 +39,7 @@ interface AddTransferData {
 interface TransactionsControllerReturn {
 	transactions: Transaction[];
 	loading: boolean;
-	addTransaction: (data: AddTransactionData) => Promise<void>;
+	addTransaction: (data: AddTransactionData) => Promise<string>;
 	addTransfer: (data: AddTransferData) => Promise<void>;
 	updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
 	bulkUpdateTransactionCategories: (

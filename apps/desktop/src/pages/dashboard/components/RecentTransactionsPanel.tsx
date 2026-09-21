@@ -22,6 +22,7 @@ interface RecentTransactionsPanelProps {
 	onOpenHistory: () => void;
 	compact?: boolean;
 	limit?: number;
+	className?: string;
 }
 
 const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
@@ -31,6 +32,7 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 	onOpenHistory,
 	compact = false,
 	limit,
+	className,
 }) => {
 	const displayLimit = limit ?? (compact ? 5 : 6);
 	const recentTransactions = useMemo(
@@ -51,8 +53,8 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 	);
 
 	return (
-		<section className={cn('flex flex-col p-5', cardSurface)}>
-			<div className="mb-4 flex flex-shrink-0 items-start justify-between gap-3">
+		<section className={cn('flex flex-col overflow-hidden', cardSurface, className)}>
+			<div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-gray-800">
 				<div>
 					<p className={sectionLabel}>Recent</p>
 					<h2 className="mt-1 text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
@@ -62,14 +64,14 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 				<button
 					type="button"
 					onClick={onOpenHistory}
-					className="rounded-full px-3 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-50"
+					className="rounded-full px-3 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-50"
 				>
 					View all
 				</button>
 			</div>
 
 			{recentTransactions.length === 0 ? (
-				<div className="flex flex-1 flex-col items-center justify-center text-center">
+				<div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
 					<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950">
 						<FiDollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
 					</div>
@@ -79,7 +81,7 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 					</p>
 				</div>
 			) : (
-				<div className="flex-1">
+				<div className="flex-1 px-2">
 					{recentTransactions.map((transaction, index) => {
 						const isPositive = transaction.type === 'income';
 						const isTransfer = transaction.type === 'transfer';
@@ -91,7 +93,7 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 								type="button"
 								onClick={() => onSelect(transaction)}
 								className={cn(
-									'group flex w-full items-center justify-between py-2.5 text-left transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/30',
+									'group flex w-full items-center justify-between py-2.5 text-left transition-colors hover:bg-gray-100/80 dark:hover:bg-gray-800/30',
 									index < recentTransactions.length - 1 && rowDivider
 								)}
 							>

@@ -19,9 +19,16 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/app/ui/select';
-import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
+import {
+	SidePanelClose,
+	SidePanelContent,
+	SidePanelDescription,
+	SidePanelTitle,
+} from '@/components/app/ui/side-panel';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { mergeCategoryOptions } from '@cash-flow/shared/categories/categories';
+import { cn } from '@/lib/utils';
+import { cardSurface, sectionLabel } from '@/styles/marketingStyles';
 
 interface TransactionFormProps {
 	onClose: () => void;
@@ -274,79 +281,102 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	const transactionTypes: TransactionType[] = transaction
 		? ['income', 'expense']
 		: ['income', 'expense', 'transfer'];
+	const inputClass = 'h-10 rounded-xl border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950';
 
 	if (transaction?.type === 'transfer') {
 		return (
-			<FormPageShell>
-				<FormPageCard>
-					<h2 className="text-3xl font-bold tracking-tight">Transfer details</h2>
-					<p className="mt-3 text-sm text-muted-foreground">
-						Transfers cannot be edited because both linked records and account balances must stay in
-						sync. Delete this transfer and create it again to make changes.
-					</p>
-					<Button type="button" variant="outline" onClick={onClose} className="mt-6">
-						Close
-					</Button>
-				</FormPageCard>
-			</FormPageShell>
+			<SidePanelContent>
+				<div className="flex min-h-0 flex-1 flex-col">
+					<header className="border-b border-gray-200 bg-white px-6 py-6 pr-16 dark:border-gray-800 dark:bg-gray-950">
+						<p className={sectionLabel}>Transfer</p>
+						<SidePanelTitle className="mt-2 text-2xl font-semibold tracking-tight">
+							Transfer details
+						</SidePanelTitle>
+						<SidePanelDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							Transfers cannot be edited because both linked records and account balances must
+							stay in sync.
+						</SidePanelDescription>
+					</header>
+					<div className="flex flex-1 flex-col justify-between p-6">
+						<p className="text-sm text-gray-600 dark:text-gray-300">
+							Delete this transfer and create it again if you need to make changes.
+						</p>
+						<SidePanelClose asChild>
+							<Button type="button" variant="outline" className="mt-8 h-11 w-full rounded-xl">
+								Close
+							</Button>
+						</SidePanelClose>
+					</div>
+				</div>
+			</SidePanelContent>
 		);
 	}
 
 	return (
-		<FormPageShell>
-			<FormPageCard>
-				{/* Header */}
-				<div className="mb-8 border-b pb-6">
-					<h2 className="text-3xl font-bold tracking-tight">
-						{transaction ? 'Edit Transaction' : 'New Transaction'}
-					</h2>
-					<p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
-						{transaction
-							? 'Update your transaction details'
-							: 'Add a new income, expense, or transfer'}
+		<SidePanelContent>
+			<form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col" aria-busy={isSubmitting}>
+				<header className="border-b border-gray-200 bg-white px-6 py-6 pr-16 dark:border-gray-800 dark:bg-gray-950">
+					<p className={sectionLabel}>
+						{transaction ? 'Edit' : 'New'}
 					</p>
-				</div>
+					<SidePanelTitle className="mt-2 text-2xl font-semibold tracking-tight">
+						{transaction ? 'Edit transaction' : 'Add transaction'}
+					</SidePanelTitle>
+					<SidePanelDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						{transaction
+							? 'Update amount, category, or date.'
+							: 'Quick capture for income, expense, or transfer.'}
+					</SidePanelDescription>
+				</header>
 
-				{/* Recurring – Smart Autofill */}
-				{!transaction && recurringTransactions.length > 0 && (
-					<div className="mb-8 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-4 dark:border-gray-700 dark:bg-gray-800/40">
-						<div className="mb-3 flex items-center gap-2 text-sm font-medium">
-							<FiRefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-							<Label htmlFor="quick-fill">Quick fill from a recurring expense</Label>
-						</div>
-						<Select
-							value={selectedRecurringId || '__none__'}
-							onValueChange={(value) =>
-								setSelectedRecurringId(value === '__none__' ? null : value)
-							}
-						>
-							<SelectTrigger id="quick-fill" className="h-11 rounded-lg">
-								<SelectValue placeholder="Choose an expense to autofill" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__none__">Start fresh</SelectItem>
-								{recurringTransactions.map((expense) => (
-									<SelectItem key={expense.id} value={expense.id!}>
-										<span className="font-medium">{expense.title}</span>
-										<span className="text-muted-foreground"> • {formatCurrency(expense.amount)}</span>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-				)}
-
-				<form onSubmit={handleSubmit} className="space-y-6" aria-busy={isSubmitting}>
+				<div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-white p-4 dark:bg-gray-950 sm:p-6">
 					{error && (
-						<div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+						<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
 							{error}
 						</div>
 					)}
 
-					{/* Transaction Type — 3 buttons */}
-					<div className="space-y-1.5">
-						<Label className="text-sm font-medium">Transaction type *</Label>
-						<div className={`grid ${transaction ? 'grid-cols-2' : 'grid-cols-3'} gap-3`}>
+					{!transaction && recurringTransactions.length > 0 && (
+						<section className={cn(cardSurface, 'p-4')}>
+							<div className="mb-3 flex items-center gap-2">
+								<FiRefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+								<Label htmlFor="quick-fill" className="text-sm font-medium">
+									Quick fill
+								</Label>
+							</div>
+							<Select
+								value={selectedRecurringId || '__none__'}
+								onValueChange={(value) =>
+									setSelectedRecurringId(value === '__none__' ? null : value)
+								}
+							>
+								<SelectTrigger id="quick-fill" className={inputClass}>
+									<SelectValue placeholder="From a recurring template" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__none__">Start fresh</SelectItem>
+									{recurringTransactions.map((expense) => (
+										<SelectItem key={expense.id} value={expense.id!}>
+											<span className="font-medium">{expense.title}</span>
+											<span className="text-muted-foreground">
+												{' '}
+												· {formatCurrency(expense.amount)}
+											</span>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</section>
+					)}
+
+					<section className={cn(cardSurface, 'space-y-3 p-4')}>
+						<p className={sectionLabel}>Type</p>
+						<div
+							className={cn(
+								'grid gap-2',
+								transaction ? 'grid-cols-2' : 'grid-cols-3'
+							)}
+						>
 							{transactionTypes.map((t) => (
 								<Button
 									key={t}
@@ -354,215 +384,219 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 									variant={type === t ? 'marketing' : 'outline'}
 									onClick={() => handleTypeChange(t)}
 									disabled={isSubmitting}
-									className="h-14 rounded-2xl capitalize"
+									className="h-10 rounded-xl capitalize"
 								>
 									{t}
 								</Button>
 							))}
 						</div>
-					</div>
+					</section>
 
-					{/* Account Selector */}
-					{accounts.length > 0 && (
-						<div className="space-y-1.5">
-							<Label htmlFor="transaction-account" className="text-sm font-medium">
-								{type === 'transfer' ? 'From Account' : 'Account'} *
-							</Label>
-							<Select value={accountId} onValueChange={setAccountId} disabled={isSubmitting}>
-								<SelectTrigger id="transaction-account">
-									<SelectValue placeholder="Select account" />
-								</SelectTrigger>
-								<SelectContent>
-									{accounts.map((a) => (
-										<SelectItem key={a.id} value={a.id!}>
-											<span className="flex items-center gap-2">
-												<span
-													className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
-													style={{ backgroundColor: a.color ?? '#6366f1' }}
-												/>
-												{a.name} ({formatCurrency(a.balance)})
-											</span>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					)}
-
-					{/* Transfer To Account */}
-					{type === 'transfer' && (
-						<div className="space-y-1.5">
-							<Label htmlFor="transaction-transfer-account" className="text-sm font-medium">
-								To Account *
-							</Label>
-							<Select
-								value={transferAccountId}
-								onValueChange={setTransferAccountId}
-								disabled={isSubmitting}
-							>
-								<SelectTrigger id="transaction-transfer-account">
-									<SelectValue placeholder="Select destination account" />
-								</SelectTrigger>
-								<SelectContent>
-									{availableTransferAccounts.map((a) => (
-										<SelectItem key={a.id} value={a.id!}>
-											<span className="flex items-center gap-2">
-												<span
-													className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
-													style={{ backgroundColor: a.color ?? '#6366f1' }}
-												/>
-												{a.name} ({formatCurrency(a.balance)})
-											</span>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					)}
-
-					{/* Title + Amount */}
-					<div className="grid gap-6 md:grid-cols-2">
-						<div className="space-y-1.5">
-							<Label htmlFor="transaction-title" className="text-sm font-medium">
-								Title *
-							</Label>
-							<Input
-								id="transaction-title"
-								value={title}
-								onChange={(e) => setTitle(e.target.value)}
-								placeholder="Title"
-								disabled={isSubmitting}
-								required
-							/>
-						</div>
-						<div className="space-y-1.5">
-							<Label htmlFor="transaction-amount" className="text-sm font-medium">
-								Amount *
-							</Label>
-							<Input
-								id="transaction-amount"
-								type="number"
-								value={amount}
-								onChange={(e) => setAmount(Number(e.target.value))}
-								placeholder="Amount"
-								min="0.01"
-								step="0.01"
-								disabled={isSubmitting}
-								required
-							/>
-						</div>
-					</div>
-
-					{/* Category + Date — hide category for transfers */}
-					<div className="grid gap-6 md:grid-cols-2">
-						{type !== 'transfer' && (
-							<div className="space-y-1.5">
-								<Label htmlFor="transaction-category" className="text-sm font-medium">
-									Category *
-								</Label>
-								<Select
-									value={category}
-									onValueChange={handleCategoryChange}
+					<section className={cn(cardSurface, 'space-y-4 p-4')}>
+						<p className={sectionLabel}>Details</p>
+						<div className="grid gap-4 sm:grid-cols-2">
+							<div className="space-y-1.5 sm:col-span-2">
+								<Label htmlFor="transaction-title">Title *</Label>
+								<Input
+									id="transaction-title"
+									value={title}
+									onChange={(e) => setTitle(e.target.value)}
+									placeholder="What was this?"
 									disabled={isSubmitting}
-								>
-									<SelectTrigger id="transaction-category">
-										<SelectValue placeholder="Select category" />
+									className={inputClass}
+									required
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<Label htmlFor="transaction-amount">Amount *</Label>
+								<Input
+									id="transaction-amount"
+									type="number"
+									value={amount}
+									onChange={(e) => setAmount(Number(e.target.value))}
+									min="0.01"
+									step="0.01"
+									disabled={isSubmitting}
+									className={inputClass}
+									required
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<Label htmlFor="transaction-date">Date</Label>
+								<Input
+									id="transaction-date"
+									type="date"
+									value={date}
+									onChange={(e) => setDate(e.target.value)}
+									disabled={isSubmitting}
+									className={inputClass}
+								/>
+							</div>
+						</div>
+					</section>
+
+					<section className={cn(cardSurface, 'space-y-4 p-4')}>
+						<p className={sectionLabel}>Account</p>
+						{accounts.length > 0 && (
+							<div className="space-y-1.5">
+								<Label htmlFor="transaction-account">
+									{type === 'transfer' ? 'From account' : 'Account'} *
+								</Label>
+								<Select value={accountId} onValueChange={setAccountId} disabled={isSubmitting}>
+									<SelectTrigger id="transaction-account" className={inputClass}>
+										<SelectValue placeholder="Select account" />
 									</SelectTrigger>
 									<SelectContent>
-										{availableCategories.map((cat) => (
-											<SelectItem key={cat.value} value={cat.value}>
-												{cat.label}
+										{accounts.map((a) => (
+											<SelectItem key={a.id} value={a.id!}>
+												<span className="flex items-center gap-2">
+													<span
+														className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
+														style={{ backgroundColor: a.color ?? '#6366f1' }}
+													/>
+													{a.name} ({formatCurrency(a.balance)})
+												</span>
 											</SelectItem>
 										))}
 									</SelectContent>
 								</Select>
 							</div>
 						)}
-						<div
-							className={`space-y-1.5 ${
-								type === 'transfer' ? 'col-span-1 md:col-span-2' : ''
-							}`}
-						>
-							<Label htmlFor="transaction-date" className="text-sm font-medium">
-								Date
-							</Label>
-							<Input
-								id="transaction-date"
-								type="date"
-								value={date}
-								onChange={(e) => setDate(e.target.value)}
-								disabled={isSubmitting}
-							/>
-						</div>
-					</div>
+						{type === 'transfer' && (
+							<div className="space-y-1.5">
+								<Label htmlFor="transaction-transfer-account">To account *</Label>
+								<Select
+									value={transferAccountId}
+									onValueChange={setTransferAccountId}
+									disabled={isSubmitting}
+								>
+									<SelectTrigger id="transaction-transfer-account" className={inputClass}>
+										<SelectValue placeholder="Select destination" />
+									</SelectTrigger>
+									<SelectContent>
+										{availableTransferAccounts.map((a) => (
+											<SelectItem key={a.id} value={a.id!}>
+												<span className="flex items-center gap-2">
+													<span
+														className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
+														style={{ backgroundColor: a.color ?? '#6366f1' }}
+													/>
+													{a.name} ({formatCurrency(a.balance)})
+												</span>
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						)}
+						{type === 'transfer' && (
+							<div className="space-y-1.5">
+								<Label htmlFor="transaction-description">Notes</Label>
+								<Textarea
+									id="transaction-description"
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+									placeholder="Optional"
+									rows={2}
+									disabled={isSubmitting}
+									className="min-h-[72px] rounded-xl border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+								/>
+							</div>
+						)}
+					</section>
 
-					{type !== 'transfer' && availableSubcategories.length > 0 && (
-						<div className="space-y-1.5">
-							<Label htmlFor="transaction-subcategory" className="text-sm font-medium">
-								Subcategory
-							</Label>
-							<Select
-								value={subcategory || '__none__'}
-								onValueChange={(value) =>
-									setSubcategory(value === '__none__' ? '' : value)
-								}
-								disabled={isSubmitting}
-							>
-								<SelectTrigger id="transaction-subcategory">
-									<SelectValue placeholder="Select subcategory" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="__none__">
-										No subcategory
-									</SelectItem>
-									{availableSubcategories.map((cat) => (
-										<SelectItem key={cat.value} value={cat.value}>
-											{cat.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
+					{type !== 'transfer' && (
+						<section className={cn(cardSurface, 'space-y-4 p-4')}>
+							<p className={sectionLabel}>Category</p>
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="space-y-1.5">
+									<Label htmlFor="transaction-category">Category *</Label>
+									<Select
+										value={category}
+										onValueChange={handleCategoryChange}
+										disabled={isSubmitting}
+									>
+										<SelectTrigger id="transaction-category" className={inputClass}>
+											<SelectValue placeholder="Select category" />
+										</SelectTrigger>
+										<SelectContent>
+											{availableCategories.map((cat) => (
+												<SelectItem key={cat.value} value={cat.value}>
+													{cat.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+								{availableSubcategories.length > 0 && (
+									<div className="space-y-1.5">
+										<Label htmlFor="transaction-subcategory">Subcategory</Label>
+										<Select
+											value={subcategory || '__none__'}
+											onValueChange={(value) =>
+												setSubcategory(value === '__none__' ? '' : value)
+											}
+											disabled={isSubmitting}
+										>
+											<SelectTrigger id="transaction-subcategory" className={inputClass}>
+												<SelectValue placeholder="Optional" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="__none__">No subcategory</SelectItem>
+												{availableSubcategories.map((cat) => (
+													<SelectItem key={cat.value} value={cat.value}>
+														{cat.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								)}
+							</div>
+							<div className="space-y-1.5">
+								<Label htmlFor="transaction-description">Notes</Label>
+								<Textarea
+									id="transaction-description"
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+									placeholder="Optional"
+									rows={2}
+									disabled={isSubmitting}
+									className="min-h-[72px] rounded-xl border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+								/>
+							</div>
+						</section>
 					)}
+				</div>
 
-					{/* Description */}
-					<div className="space-y-1.5">
-						<Label htmlFor="transaction-description" className="text-sm font-medium">
-							Notes
-						</Label>
-						<Textarea
-							id="transaction-description"
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							placeholder="Optional notes"
-							rows={3}
-							disabled={isSubmitting}
-						/>
-					</div>
-
-					{/* Actions */}
-					<div className="flex gap-3 pt-4">
+				<footer className="sticky bottom-0 flex gap-3 border-t border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-950 sm:px-6">
+					<SidePanelClose asChild>
 						<Button
-							type="submit"
-							variant="marketing"
-							className="h-12 flex-1"
-							disabled={isSubmitting || (type === 'transfer' && !transferAccountId)}
+							type="button"
+							variant="outline"
+							className="h-11 flex-1 rounded-xl"
+							disabled={isSubmitting}
 						>
-							{isSubmitting
-								? transaction
-									? 'Updating...'
-									: 'Adding...'
-								: transaction
-									? 'Update Transaction'
-									: 'Add Transaction'}
-						</Button>
-						<Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
 							Cancel
 						</Button>
-					</div>
-				</form>
-			</FormPageCard>
-		</FormPageShell>
+					</SidePanelClose>
+					<Button
+						type="submit"
+						variant="marketing"
+						className="h-11 flex-[1.4] rounded-xl"
+						disabled={isSubmitting || (type === 'transfer' && !transferAccountId)}
+					>
+						{isSubmitting
+							? transaction
+								? 'Saving...'
+								: 'Adding...'
+							: transaction
+								? 'Save changes'
+								: 'Add transaction'}
+					</Button>
+				</footer>
+			</form>
+		</SidePanelContent>
 	);
 };
 

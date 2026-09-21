@@ -155,7 +155,7 @@ export const DataListHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 }) => (
 	<div
 		className={cn(
-			'hidden grid-cols-[minmax(220px,0.9fr)_minmax(220px,1.1fr)_minmax(280px,1fr)] border-b border-gray-200 bg-gray-50/80 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400 md:grid',
+			'hidden grid-cols-[minmax(220px,0.9fr)_minmax(220px,1.1fr)_minmax(280px,1fr)] border-b border-gray-200 bg-white px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400 md:grid',
 			className
 		)}
 		{...props}
@@ -168,7 +168,7 @@ export const DataListRow: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 }) => (
 	<div
 		className={cn(
-			'group relative grid gap-4 border-b border-gray-100 px-5 py-4 transition-colors last:border-b-0 hover:bg-gray-50/70 dark:border-gray-800 dark:hover:bg-gray-800/30 md:grid-cols-[minmax(220px,0.9fr)_minmax(220px,1.1fr)_minmax(280px,1fr)] md:items-center',
+			'group relative grid gap-4 border-b border-gray-100 px-5 py-4 transition-colors last:border-b-0 hover:bg-gray-100/80 dark:border-gray-800 dark:hover:bg-gray-800/30 md:grid-cols-[minmax(220px,0.9fr)_minmax(220px,1.1fr)_minmax(280px,1fr)] md:items-center',
 			className
 		)}
 		{...props}

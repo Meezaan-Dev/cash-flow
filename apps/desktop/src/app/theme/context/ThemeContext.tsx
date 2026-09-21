@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Theme, ThemeContextType } from '@/types';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -12,6 +12,15 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 		localStorage.setItem('theme', newTheme);
 		setThemeState(newTheme);
 	};
+
+	useEffect(() => {
+		const root = document.documentElement;
+		if (theme === 'dark') {
+			root.classList.add('dark');
+		} else {
+			root.classList.remove('dark');
+		}
+	}, [theme]);
 
 	return (
 		<ThemeContext.Provider value={{ theme, setTheme }}>
