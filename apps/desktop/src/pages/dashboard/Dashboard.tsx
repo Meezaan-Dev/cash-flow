@@ -37,6 +37,7 @@ import {
 	exportTransactionsToJson,
 	importTransactionsFromFile,
 } from '@/domains/transactions/utils/transactionImportExport';
+import { downloadExportFiles } from '@/shared/export/downloadExportFiles';
 import { frostedPanel, modalShell, pageBg } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
 import {
@@ -466,15 +467,13 @@ const DashboardContent: React.FC = () => {
 					const mimeType = format === 'csv'
 						? 'text/csv;charset=utf-8'
 						: 'application/json;charset=utf-8';
-					const blob = new Blob([content], { type: mimeType });
-					const url = URL.createObjectURL(blob);
-					const a = document.createElement('a');
-					a.href = url;
-					a.download = `transactions-${new Date().toISOString().slice(0, 10)}.${format}`;
-					document.body.appendChild(a);
-					a.click();
-					a.remove();
-					URL.revokeObjectURL(url);
+					downloadExportFiles([
+						{
+							filename: `transactions-${new Date().toISOString().slice(0, 10)}.${format}`,
+							content,
+							mimeType,
+						},
+					]);
 					toast({
 						title: 'Export successful',
 						description: `${filteredTransactions.length} transactions exported to ${format.toUpperCase()}`,

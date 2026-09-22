@@ -6,6 +6,7 @@ import PlanningView from '@/domains/planning/views/PlanningView';
 const mockAddPlannedExpense = jest.fn();
 const mockUpdatePlannedExpense = jest.fn();
 const mockDeletePlannedExpense = jest.fn();
+const mockReorderPlannedExpenses = jest.fn();
 const mockAddPaymentPlan = jest.fn();
 const mockUpdatePaymentPlan = jest.fn();
 const mockDeletePaymentPlan = jest.fn();
@@ -28,6 +29,8 @@ jest.mock('@/domains/planning/context/PlanningContext', () => ({
 				targetMonth: currentMonth,
 				category: 'personal',
 				status: 'planned',
+				priority: 'high',
+				displayOrder: 0,
 			},
 			{
 				id: 'wishlist-1',
@@ -36,12 +39,14 @@ jest.mock('@/domains/planning/context/PlanningContext', () => ({
 				amount: 450,
 				category: 'home',
 				status: 'wishlist',
+				displayOrder: 1,
 			},
 		],
 		paymentPlans: [],
 		addPlannedExpense: mockAddPlannedExpense,
 		updatePlannedExpense: mockUpdatePlannedExpense,
 		deletePlannedExpense: mockDeletePlannedExpense,
+		reorderPlannedExpenses: mockReorderPlannedExpenses,
 		addPaymentPlan: mockAddPaymentPlan,
 		updatePaymentPlan: mockUpdatePaymentPlan,
 		deletePaymentPlan: mockDeletePaymentPlan,
@@ -204,6 +209,41 @@ describe('PlanningView', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockAddPlannedExpense.mockResolvedValue('planned-new');
+		mockUpdatePlannedExpense.mockResolvedValue(undefined);
+		mockReorderPlannedExpenses.mockResolvedValue(undefined);
+	});
+
+	it('filters plans and wishlist with active-tab totals', async () => {
+		const user = userEvent.setup();
+		render(<PlanningView />);
+
+		expect(screen.getByText('Running shoes')).toBeInTheDocument();
+		expect(screen.getByText('Desk lamp')).toBeInTheDocument();
+		expect(screen.getByText('Total amount')).toBeInTheDocument();
+		expect(screen.getByText('High priority')).toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: /^planned$/i }));
+
+		expect(screen.getByText('Running shoes')).toBeInTheDocument();
+		expect(screen.queryByText('Desk lamp')).not.toBeInTheDocument();
+		expect(screen.getByText('Items')).toBeInTheDocument();
+
+		await user.click(screen.getAllByRole('button', { name: /^wishlist$/i })[1]);
+
+		expect(screen.queryByText('Running shoes')).not.toBeInTheDocument();
+		expect(screen.getByText('Desk lamp')).toBeInTheDocument();
+		expect(screen.getByText('Total amount')).toBeInTheDocument();
+	});
+
+	it('persists row order from the move controls', async () => {
+		const user = userEvent.setup();
+		render(<PlanningView />);
+
+		await user.click(screen.getByRole('button', { name: /move desk lamp up/i }));
+
+		await waitFor(() =>
+			expect(mockReorderPlannedExpenses).toHaveBeenCalledWith(['wishlist-1', 'planned-1'])
+		);
 	});
 
 	it('starts new planning from intent choices', async () => {
@@ -250,7 +290,7 @@ describe('PlanningView', () => {
 		const user = userEvent.setup();
 		render(<PlanningView />);
 
-		await user.click(screen.getByRole('button', { name: /^wishlist$/i }));
+		await user.click(screen.getAllByRole('button', { name: /^wishlist$/i })[0]);
 
 		expect(screen.getByText('Title, optional link, and estimated price.')).toBeInTheDocument();
 
@@ -268,6 +308,34 @@ describe('PlanningView', () => {
 				url: 'https://example.com/desk',
 				status: 'wishlist',
 			})
+		);
+	});
+
+	it('plans a wishlist item through the planned-expense wizard', async () => {
+		const user = userEvent.setup();
+		render(<PlanningView />);
+
+		await user.click(screen.getByRole('button', { name: /plan it/i }));
+		expect(screen.getByDisplayValue('Desk lamp')).toBeInTheDocument();
+		expect(screen.getByDisplayValue('450')).toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: /continue/i }));
+		fireEvent.click(screen.getAllByRole('combobox')[0]);
+		fireEvent.click(screen.getByRole('option', { name: 'Home' }));
+		await user.click(screen.getByRole('button', { name: /continue/i }));
+		await user.click(screen.getByRole('button', { name: /save/i }));
+
+		await waitFor(() =>
+			expect(mockUpdatePlannedExpense).toHaveBeenCalledWith(
+				'wishlist-1',
+				expect.objectContaining({
+					title: 'Desk lamp',
+					amount: 450,
+					category: 'home',
+					status: 'planned',
+					displayOrder: 1,
+				})
+			)
 		);
 	});
 });

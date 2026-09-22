@@ -9,6 +9,7 @@ import {
 	query,
 	Timestamp,
 	updateDoc,
+	writeBatch,
 	type UpdateData,
 } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
@@ -139,6 +140,19 @@ const sanitizePlannedExpense = (
 			throw new Error('Planned expense status is invalid.');
 		}
 		sanitized.status = payload.status;
+	}
+	if (payload.displayOrder !== undefined) {
+		if (!Number.isInteger(payload.displayOrder) || payload.displayOrder < 0) {
+			throw new Error('Display order is invalid.');
+		}
+		sanitized.displayOrder = payload.displayOrder;
+	}
+	if (
+		allowFieldDelete &&
+		Object.prototype.hasOwnProperty.call(payload, 'displayOrder') &&
+		payload.displayOrder === undefined
+	) {
+		sanitized.displayOrder = deleteField();
 	}
 	if (Object.prototype.hasOwnProperty.call(payload, 'transactionId')) {
 		const transactionId = normalizeOptionalText(
@@ -304,8 +318,19 @@ export const usePlanning = () => {
 
 	const addPlannedExpense = async (expense: AddPlannedExpenseData) => {
 		if (!user) throw new Error('User not authenticated');
+		const matchingStatus = plannedExpenses.filter(
+			(item) => item.status === expense.status
+		);
+		const nextDisplayOrder =
+			expense.displayOrder ??
+			matchingStatus.reduce(
+				(highest, item) => Math.max(highest, item.displayOrder ?? -1),
+				-1
+			) +
+				1;
 		await addDoc(collection(db, 'users', user.uid, 'plannedExpenses'), {
 			...sanitizePlannedExpense(expense, false),
+			displayOrder: nextDisplayOrder,
 			status: expense.status,
 			userId: user.uid,
 			createdAt: Timestamp.now(),
@@ -331,6 +356,29 @@ export const usePlanning = () => {
 		if (!user) throw new Error('User not authenticated');
 		const expenseId = normalizeRequiredText(id, 'Planned expense', TEXT_LIMITS.documentId);
 		await deleteDoc(doc(db, 'users', user.uid, 'plannedExpenses', expenseId));
+	};
+
+	const reorderPlannedExpenses = async (orderedExpenseIds: string[]) => {
+		if (!user) throw new Error('User not authenticated');
+		const uniqueIds = new Set(orderedExpenseIds);
+		if (uniqueIds.size !== orderedExpenseIds.length) {
+			throw new Error('Planned expense order contains duplicate entries.');
+		}
+
+		const batch = writeBatch(db);
+		const updatedAt = Timestamp.now();
+		orderedExpenseIds.forEach((expenseId, displayOrder) => {
+			const normalizedId = normalizeRequiredText(
+				expenseId,
+				'Planned expense',
+				TEXT_LIMITS.documentId
+			);
+			batch.update(doc(db, 'users', user.uid, 'plannedExpenses', normalizedId), {
+				displayOrder,
+				updatedAt,
+			});
+		});
+		await batch.commit();
 	};
 
 	const addPaymentPlan = async (plan: AddPaymentPlanData) => {
@@ -369,6 +417,7 @@ export const usePlanning = () => {
 		addPlannedExpense,
 		updatePlannedExpense,
 		deletePlannedExpense,
+		reorderPlannedExpenses,
 		addPaymentPlan,
 		updatePaymentPlan,
 		deletePaymentPlan,

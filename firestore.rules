@@ -168,7 +168,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'userId', 'title', 'amount', 'targetMonth', 'expectedDate',
           'category', 'subcategory', 'accountId', 'notes', 'url',
-          'priority', 'status', 'transactionId', 'createdAt', 'updatedAt'
+          'priority', 'status', 'displayOrder', 'transactionId', 'createdAt', 'updatedAt'
         ]) &&
         data.userId == userId &&
         requiredString(data, 'title', 200) &&
@@ -182,6 +182,7 @@ service cloud.firestore {
         optionalString(data, 'url', 2000) &&
         (!('priority' in data) || data.priority in ['low', 'medium', 'high']) &&
         data.status in ['wishlist', 'planned', 'purchased', 'cancelled'] &&
+        (!('displayOrder' in data) || data.displayOrder is int) &&
         optionalString(data, 'transactionId', 1500) &&
         data.createdAt is timestamp &&
         optionalTimestamp(data, 'updatedAt');

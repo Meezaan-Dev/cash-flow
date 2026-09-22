@@ -107,6 +107,7 @@ Categories live per user. Renames update related transactions, recurring templat
 - `url?: string`
 - `priority?: 'low' | 'medium' | 'high'`
 - `status: 'wishlist' | 'planned' | 'purchased' | 'cancelled'`
+- `displayOrder?: number`
 - `transactionId?: string`
 - `createdAt?: Date | { toDate: () => Date }`
 - `updatedAt?: Date | { toDate: () => Date }`

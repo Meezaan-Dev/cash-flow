@@ -19,6 +19,7 @@ export interface PlannedExpense {
 	url?: string;
 	priority?: PlannedExpensePriority;
 	status: PlannedExpenseStatus;
+	displayOrder?: number;
 	transactionId?: string;
 	createdAt?: Date;
 	updatedAt?: Date;
@@ -64,6 +65,7 @@ type PlannedExpenseDoc = {
 	url?: string;
 	priority?: string;
 	status?: string;
+	displayOrder?: number;
 	transactionId?: string;
 	createdAt?: unknown;
 	updatedAt?: unknown;
@@ -124,6 +126,7 @@ export const normalizePlannedExpense = (doc: PlannedExpenseDoc): PlannedExpense 
 		url: doc.url || undefined,
 		priority,
 		status,
+		displayOrder: typeof doc.displayOrder === 'number' ? doc.displayOrder : undefined,
 		transactionId: doc.transactionId || undefined,
 		...(createdAt ? { createdAt } : {}),
 		...(updatedAt ? { updatedAt } : {}),
@@ -132,6 +135,21 @@ export const normalizePlannedExpense = (doc: PlannedExpenseDoc): PlannedExpense 
 
 export const normalizePlannedExpenses = (docs: PlannedExpenseDoc[]): PlannedExpense[] =>
 	docs.map(normalizePlannedExpense);
+
+export const sortPlannedExpensesByDisplayOrder = (
+	expenses: PlannedExpense[]
+): PlannedExpense[] =>
+	[...expenses].sort((left, right) => {
+		const leftOrder = left.displayOrder ?? Number.MAX_SAFE_INTEGER;
+		const rightOrder = right.displayOrder ?? Number.MAX_SAFE_INTEGER;
+		if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+
+		const leftCreated = left.createdAt?.getTime() ?? 0;
+		const rightCreated = right.createdAt?.getTime() ?? 0;
+		if (leftCreated !== rightCreated) return leftCreated - rightCreated;
+
+		return left.title.localeCompare(right.title);
+	});
 
 export const normalizePaymentPlan = (doc: PaymentPlanDoc): PaymentPlan => {
 	const startDate = parseDbDateOrNull(doc.startDate);

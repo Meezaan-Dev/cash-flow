@@ -26,6 +26,7 @@ export interface PlanningControllerReturn {
 		updates: UpdatePlannedExpenseData
 	) => Promise<void>;
 	deletePlannedExpense: (id: string) => Promise<void>;
+	reorderPlannedExpenses: (orderedExpenseIds: string[]) => Promise<void>;
 	addPaymentPlan: (plan: AddPaymentPlanData) => Promise<void>;
 	updatePaymentPlan: (id: string, updates: UpdatePaymentPlanData) => Promise<void>;
 	deletePaymentPlan: (id: string) => Promise<void>;
