@@ -4,6 +4,7 @@ import {
 	getRemainingPlannedExpenses,
 	normalizePaymentPlan,
 	normalizePlannedExpense,
+	sortPlannedExpensesByDisplayOrder,
 	type PaymentPlan,
 	type PlannedExpense,
 } from '../PlanningModel';
@@ -46,6 +47,7 @@ describe('PlanningModel', () => {
 			category: 'transport',
 			status: 'wishlist',
 			priority: 'high',
+			displayOrder: 2,
 		});
 
 		expect(expense).toMatchObject({
@@ -56,8 +58,23 @@ describe('PlanningModel', () => {
 			category: 'transport',
 			status: 'wishlist',
 			priority: 'high',
+			displayOrder: 2,
 		});
 		expect(expense.expectedDate).toEqual(new Date('2026-09-12T12:00:00'));
+	});
+
+	it('sorts planned expenses by persisted display order with unordered items last', () => {
+		const expenses = [
+			makePlannedExpense({ id: 'unordered', title: 'Unordered' }),
+			makePlannedExpense({ id: 'second', title: 'Second', displayOrder: 1 }),
+			makePlannedExpense({ id: 'first', title: 'First', displayOrder: 0 }),
+		];
+
+		expect(sortPlannedExpensesByDisplayOrder(expenses).map((item) => item.id)).toEqual([
+			'first',
+			'second',
+			'unordered',
+		]);
 	});
 
 	it('only includes planned expenses for the selected month in projection totals', () => {

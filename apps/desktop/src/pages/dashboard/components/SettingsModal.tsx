@@ -31,6 +31,9 @@ import { Input } from '@/components/app/ui/input';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
+import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
+import { usePlanningContext } from '@/domains/planning/context/PlanningContext';
+import { useRandomNote } from '@/domains/random/hooks/useRandomNote';
 import { useFilterPreferences, FilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
 import { modalShell, navItemActive, navItemInactive } from '@/styles/marketingStyles';
 import { cn } from '@/lib/utils';
@@ -40,6 +43,11 @@ import { Transaction } from '@/types';
 import { useToast } from '@/components/app/ui/use-toast';
 import { usePrivacyMode } from '@/app/privacy/PrivacyModeContext';
 import { SensitiveText } from '@/app/privacy/SensitiveValue';
+import {
+	buildWholeAppExportFiles,
+	type ExportFormat,
+} from '@/shared/export/appDataExport';
+import { downloadExportFiles } from '@/shared/export/downloadExportFiles';
 
 interface SettingsModalProps {
 	open: boolean;
@@ -58,8 +66,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
 	const { toast } = useToast();
 	const { isPrivacyMode } = usePrivacyMode();
-	const { transactions, deleteAllTransactions } = useTransactionsContext();
+	const {
+		transactions,
+		recurringTransactions,
+		deleteAllTransactions,
+	} = useTransactionsContext();
 	const { accounts } = useAccountsContext();
+	const { budgets } = useBudgetsContext();
+	const { plannedExpenses, paymentPlans } = usePlanningContext();
+	const { notes: randomNotes } = useRandomNote();
 	const { mainAccountId, setMainAccountId } = useMainAccountPreference();
 	const {
 		categories,
@@ -180,6 +195,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 				variant: 'destructive',
 			});
 		}
+	};
+
+	const handleWholeAppExport = (format: ExportFormat) => {
+		const files = buildWholeAppExportFiles(format, {
+			accounts,
+			transactions,
+			budgets,
+			categories,
+			recurringTransactions,
+			plannedExpenses,
+			paymentPlans,
+			randomNotes,
+		});
+		downloadExportFiles(files);
+		toast({
+			title: 'Export successful',
+			description:
+				format === 'json'
+					? 'All available app data exported to JSON.'
+					: `${files.length} CSV files downloaded for your app data.`,
+		});
 	};
 
 	const handleAddCategory = async () => {
@@ -481,42 +517,74 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 											Data
 										</h3>
 										<div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
-											<p className="text-sm text-gray-500 dark:text-gray-400">
-												Import transactions from CSV/JSON. Duplicates are
-												automatically skipped.
-											</p>
-											<div className="flex flex-col gap-2 sm:flex-row">
-												<input
-													type="file"
-													accept=".csv,.json,application/json,text/csv"
-													id="settings-import-input"
-													className="hidden"
-													onChange={async (e) => {
-														const file = e.target.files?.[0];
-														if (file && onImport) await onImport(file);
-														e.currentTarget.value = '';
-													}}
-												/>
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() =>
-														document
-															.getElementById('settings-import-input')
-															?.click()
-													}
-													className="w-full sm:w-auto"
-												>
-													Import
-												</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => setExportDialogOpen(true)}
-									className="w-full sm:w-auto"
-								>
-									Export
-								</Button>
+											<div className="space-y-2">
+												<p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+													Transactions
+												</p>
+												<p className="text-sm text-gray-500 dark:text-gray-400">
+													Import transactions from CSV/JSON. Duplicates are
+													automatically skipped.
+												</p>
+												<div className="flex flex-col gap-2 sm:flex-row">
+													<input
+														type="file"
+														accept=".csv,.json,application/json,text/csv"
+														id="settings-import-input"
+														className="hidden"
+														onChange={async (e) => {
+															const file = e.target.files?.[0];
+															if (file && onImport) await onImport(file);
+															e.currentTarget.value = '';
+														}}
+													/>
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() =>
+															document
+																.getElementById('settings-import-input')
+																?.click()
+														}
+														className="w-full sm:w-auto"
+													>
+														Import
+													</Button>
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => setExportDialogOpen(true)}
+														className="w-full sm:w-auto"
+													>
+														Export transactions
+													</Button>
+												</div>
+											</div>
+											<div className="space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+												<p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+													Full app export
+												</p>
+												<p className="text-sm text-gray-500 dark:text-gray-400">
+													Download accounts, transactions, budgets, planning, categories,
+													recurring transactions, and random notes.
+												</p>
+												<div className="flex flex-col gap-2 sm:flex-row">
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => handleWholeAppExport('json')}
+														className="w-full sm:w-auto"
+													>
+														Export all JSON
+													</Button>
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => handleWholeAppExport('csv')}
+														className="w-full sm:w-auto"
+													>
+														Export all CSV
+													</Button>
+												</div>
 											</div>
 											<p className="text-sm text-gray-500 dark:text-gray-400">
 												Delete all transactions from your account. This

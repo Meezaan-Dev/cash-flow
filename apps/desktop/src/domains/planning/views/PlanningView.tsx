@@ -1,12 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
 	FiArrowRight,
 	FiCheckCircle,
+	FiChevronDown,
+	FiChevronUp,
 	FiCreditCard,
 	FiEdit2,
 	FiExternalLink,
 	FiGift,
 	FiLink,
+	FiMove,
 	FiPlus,
 	FiShoppingBag,
 	FiTrash2,
@@ -18,6 +21,8 @@ import type {
 	PlannedExpensePriority,
 	PlannedExpenseStatus,
 } from '@cash-flow/shared/planning/PlanningModel';
+import { sortPlannedExpensesByDisplayOrder } from '@cash-flow/shared/planning/PlanningModel';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
 import { usePlanningContext } from '@/domains/planning/context/PlanningContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
@@ -44,6 +49,7 @@ import {
 import {
 	DataListRow,
 	DataListSurface,
+	DataListHeader,
 	EmptyState,
 	PageHeader,
 	PageShell,
@@ -58,6 +64,7 @@ import { cn } from '@/lib/utils';
 import { liquidGlassPanel, liquidGlassSoft } from '@/styles/marketingStyles';
 
 type WizardMode = 'planned' | 'wishlist' | 'payment';
+type PlanningListTab = 'all' | 'planned' | 'wishlist';
 
 const WISHLIST_CATEGORY = 'Wishlist';
 
@@ -134,6 +141,18 @@ const planStatusLabels: Record<PaymentPlan['status'], string> = {
 	cancelled: 'Cancelled',
 };
 
+const planningTabLabels: Record<PlanningListTab, string> = {
+	all: 'All',
+	planned: 'Planned',
+	wishlist: 'Wishlist',
+};
+
+const isInPlanningTab = (expense: PlannedExpense, tab: PlanningListTab) => {
+	if (tab === 'wishlist') return expense.status === 'wishlist';
+	if (tab === 'planned') return expense.status !== 'wishlist';
+	return true;
+};
+
 const getProgressTone = (percent: number) => {
 	if (percent >= 100) return 'bg-emerald-500';
 	if (percent >= 50) return 'bg-blue-500';
@@ -147,6 +166,7 @@ const PlanningView: React.FC = () => {
 		addPlannedExpense,
 		updatePlannedExpense,
 		deletePlannedExpense,
+		reorderPlannedExpenses,
 		addPaymentPlan,
 		updatePaymentPlan,
 		deletePaymentPlan,
@@ -172,14 +192,49 @@ const PlanningView: React.FC = () => {
 	const [isSaving, setIsSaving] = useState(false);
 	const [linkingPlanId, setLinkingPlanId] = useState<string | null>(null);
 	const [selectedLinkTransactionId, setSelectedLinkTransactionId] = useState('');
+	const [activePlanningTab, setActivePlanningTab] = useState<PlanningListTab>('all');
+	const [draggingPlannedExpenseId, setDraggingPlannedExpenseId] = useState<string>();
 
 	const currentMonth = getCurrentMonthKey();
+	const serverOrderedPlannedExpenses = useMemo(
+		() => sortPlannedExpensesByDisplayOrder(plannedExpenses),
+		[plannedExpenses]
+	);
+	const serverPlannedOrderSignature = JSON.stringify(
+		serverOrderedPlannedExpenses.map((expense) => ({
+			id: expense.id,
+			displayOrder: expense.displayOrder ?? null,
+		}))
+	);
+	const [localPlannedOrderIds, setLocalPlannedOrderIds] = useState<string[]>(() =>
+		serverOrderedPlannedExpenses.map((expense) => expense.id)
+	);
+
+	useEffect(() => {
+		setLocalPlannedOrderIds(
+			(JSON.parse(serverPlannedOrderSignature) as Array<{ id: string }>).map(
+				(expense) => expense.id
+			)
+		);
+	}, [serverPlannedOrderSignature]);
+
+	const orderedPlannedExpenses = useMemo(() => {
+		const byId = new Map(plannedExpenses.map((expense) => [expense.id, expense]));
+		const ordered = localPlannedOrderIds
+			.map((id) => byId.get(id))
+			.filter((expense): expense is PlannedExpense => Boolean(expense));
+		const orderedIds = new Set(ordered.map((expense) => expense.id));
+		return [
+			...ordered,
+			...serverOrderedPlannedExpenses.filter((expense) => !orderedIds.has(expense.id)),
+		];
+	}, [localPlannedOrderIds, plannedExpenses, serverOrderedPlannedExpenses]);
 	const remainingPlanned = useMemo(
 		() => getRemainingPlannedExpenses(currentMonth),
 		[getRemainingPlannedExpenses, currentMonth]
 	);
 	const plannedRemainingTotal = calculatePlannedExpenseTotal(currentMonth);
-	const wishlistItems = plannedExpenses.filter((expense) => expense.status === 'wishlist');
+	const wishlistItems = orderedPlannedExpenses.filter((expense) => expense.status === 'wishlist');
 	const activePaymentProgress = calculatePaymentPlansProgress(transactions).filter(
 		(item) => item.plan.status === 'active'
 	);
@@ -213,20 +268,30 @@ const PlanningView: React.FC = () => {
 		expense?: PlannedExpense
 	) => {
 		if (expense) {
+			const isWishlistBeingPlanned = mode === 'planned' && expense.status === 'wishlist';
 			setPlannedForm({
 				id: expense.id,
 				title: expense.title,
 				amount: String(expense.amount),
-				targetMonth: expense.status === 'wishlist' ? '' : (expense.targetMonth ?? ''),
+				targetMonth:
+					expense.status === 'wishlist'
+						? isWishlistBeingPlanned
+							? currentMonthKey()
+							: ''
+						: (expense.targetMonth ?? currentMonthKey()),
 				expectedDate: dateToInput(expense.expectedDate),
 				category:
-					expense.status === 'wishlist' ? WISHLIST_CATEGORY : expense.category,
+					expense.status === 'wishlist'
+						? isWishlistBeingPlanned
+							? ''
+							: WISHLIST_CATEGORY
+						: expense.category,
 				subcategory: expense.subcategory ?? '',
 				accountId: expense.accountId ?? '__none__',
 				notes: expense.notes ?? '',
 				url: expense.url ?? '',
 				priority: expense.priority ?? 'medium',
-				status: expense.status,
+				status: isWishlistBeingPlanned ? 'planned' : expense.status,
 			});
 		} else {
 			setPlannedForm(emptyPlannedForm(mode === 'wishlist' ? 'wishlist' : 'planned'));
@@ -285,6 +350,21 @@ const PlanningView: React.FC = () => {
 		setIsSaving(true);
 		try {
 			const isWishlist = wizardMode === 'wishlist';
+			const existingExpense = plannedForm.id
+				? plannedExpenses.find((expense) => expense.id === plannedForm.id)
+				: undefined;
+			const changesStatus =
+				existingExpense && existingExpense.status !== plannedForm.status;
+			const nextDisplayOrder =
+				changesStatus && !isWishlist
+					? plannedExpenses
+							.filter((expense) => expense.status === plannedForm.status)
+							.reduce(
+								(highest, expense) =>
+									Math.max(highest, expense.displayOrder ?? -1),
+								-1
+							) + 1
+					: undefined;
 			const payload = isWishlist
 				? {
 						title: plannedForm.title,
@@ -292,6 +372,9 @@ const PlanningView: React.FC = () => {
 						category: WISHLIST_CATEGORY,
 						url: plannedForm.url || undefined,
 						status: 'wishlist' as const,
+						...(nextDisplayOrder !== undefined
+							? { displayOrder: nextDisplayOrder }
+							: {}),
 					}
 				: {
 						title: plannedForm.title,
@@ -308,6 +391,9 @@ const PlanningView: React.FC = () => {
 						url: plannedForm.url || undefined,
 						priority: plannedForm.priority,
 						status: plannedForm.status,
+						...(nextDisplayOrder !== undefined
+							? { displayOrder: nextDisplayOrder }
+							: {}),
 					};
 
 			if (plannedForm.id) {
@@ -426,6 +512,48 @@ const PlanningView: React.FC = () => {
 		}
 	};
 
+	const reorderPlanningGroup = async (
+		group: PlannedExpense[],
+		sourceId: string,
+		targetId: string
+	) => {
+		if (sourceId === targetId) return;
+		const groupIds = group.map((expense) => expense.id);
+		const sourceIndex = groupIds.indexOf(sourceId);
+		const targetIndex = groupIds.indexOf(targetId);
+		if (sourceIndex < 0 || targetIndex < 0) return;
+
+		const reorderedGroupIds = [...groupIds];
+		const [movedId] = reorderedGroupIds.splice(sourceIndex, 1);
+		reorderedGroupIds.splice(targetIndex, 0, movedId);
+		let groupIndex = 0;
+		const nextOrderIds = orderedPlannedExpenses.map((expense) =>
+			groupIds.includes(expense.id) ? reorderedGroupIds[groupIndex++] : expense.id
+		);
+
+		setLocalPlannedOrderIds(nextOrderIds);
+		try {
+			await reorderPlannedExpenses(nextOrderIds);
+		} catch (error) {
+			setLocalPlannedOrderIds(serverOrderedPlannedExpenses.map((expense) => expense.id));
+			toast({
+				title: 'Could not reorder plans',
+				description: getAppErrorMessage(error, { operation: 'Reorder planning items' }),
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const movePlanningItem = (
+		group: PlannedExpense[],
+		expenseId: string,
+		direction: -1 | 1
+	) => {
+		const index = group.findIndex((expense) => expense.id === expenseId);
+		const target = group[index + direction];
+		if (target) void reorderPlanningGroup(group, expenseId, target.id);
+	};
+
 	const canAdvancePlannedStep =
 		wizardMode === 'wishlist'
 			? Boolean(plannedForm.title && plannedForm.amount)
@@ -516,13 +644,21 @@ const PlanningView: React.FC = () => {
 
 				<section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
 					<PlansList
-						plannedExpenses={plannedExpenses}
+						plannedExpenses={orderedPlannedExpenses}
+						activeTab={activePlanningTab}
+						draggingExpenseId={draggingPlannedExpenseId}
 						getCategoryPathLabel={getCategoryPathLabel}
+						onTabChange={setActivePlanningTab}
 						onEdit={(expense) =>
 							openPlannedWizard(expense.status === 'wishlist' ? 'wishlist' : 'planned', expense)
 						}
+						onPlanWishlist={(expense) => openPlannedWizard('planned', expense)}
 						onConvert={handleConvert}
 						onDelete={deletePlannedExpense}
+						onDragStart={setDraggingPlannedExpenseId}
+						onDragEnd={() => setDraggingPlannedExpenseId(undefined)}
+						onMove={movePlanningItem}
+						onReorder={reorderPlanningGroup}
 					/>
 					<PaymentPlansList
 						progress={calculatePaymentPlansProgress(transactions)}
@@ -1008,90 +1144,238 @@ const PaymentWizardStep = ({
 
 interface PlansListProps {
 	plannedExpenses: PlannedExpense[];
+	activeTab: PlanningListTab;
+	draggingExpenseId?: string;
 	getCategoryPathLabel: (category: string, subcategory?: string) => string;
+	onTabChange: (tab: PlanningListTab) => void;
 	onEdit: (expense: PlannedExpense) => void;
+	onPlanWishlist: (expense: PlannedExpense) => void;
 	onConvert: (expense: PlannedExpense) => void;
 	onDelete: (id: string) => void;
+	onDragStart: (expenseId: string) => void;
+	onDragEnd: () => void;
+	onMove: (group: PlannedExpense[], expenseId: string, direction: -1 | 1) => void;
+	onReorder: (group: PlannedExpense[], sourceId: string, targetId: string) => void;
 }
 
 const PlansList: React.FC<PlansListProps> = ({
 	plannedExpenses,
+	activeTab,
+	draggingExpenseId,
 	getCategoryPathLabel,
+	onTabChange,
 	onEdit,
+	onPlanWishlist,
 	onConvert,
 	onDelete,
-}) => (
-	<div className="space-y-4">
-		<div>
-			<h2 className="text-lg font-semibold text-gray-950 dark:text-white">Plans and wishlist</h2>
-			<p className="text-sm text-gray-500 dark:text-gray-400">
-				Planned items affect projections. Wishlist items wait quietly.
-			</p>
-		</div>
-		{plannedExpenses.length === 0 ? (
-			<EmptyState
-				title="No plans yet"
-				description="Use the guided flow to add something you expect to buy or save for later."
-			/>
-		) : (
-			<DataListSurface>
-				{plannedExpenses.slice(0, 8).map((expense) => (
-					<DataListRow
-						key={expense.id}
-						className="md:grid-cols-[minmax(220px,1fr)_minmax(140px,0.55fr)_minmax(220px,0.9fr)]"
-					>
-						<div className="min-w-0">
-							<p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
-								<SensitiveText widthClassName="w-36">{expense.title}</SensitiveText>
-							</p>
-							<p className="truncate text-xs text-gray-500 dark:text-gray-400">
-								{expense.status === 'wishlist'
-									? 'Wishlist'
-									: `${getCategoryPathLabel(expense.category, expense.subcategory)}${
-											expense.targetMonth ? ` · ${expense.targetMonth}` : ''
-										}`}
-							</p>
-							{expense.url && (
-								<a
-									href={expense.url}
-									target="_blank"
-									rel="noreferrer"
-									className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+	onDragStart,
+	onDragEnd,
+	onMove,
+	onReorder,
+}) => {
+	const visibleExpenses = plannedExpenses.filter((expense) =>
+		isInPlanningTab(expense, activeTab)
+	);
+	const totals = {
+		count: visibleExpenses.length,
+		amount: visibleExpenses.reduce((sum, expense) => sum + expense.amount, 0),
+		highPriority: visibleExpenses.filter((expense) => expense.priority === 'high').length,
+	};
+
+	return (
+		<div className="space-y-4">
+			<div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+				<div>
+					<h2 className="text-lg font-semibold text-gray-950 dark:text-white">
+						Plans and wishlist
+					</h2>
+					<p className="text-sm text-gray-500 dark:text-gray-400">
+						Planned items affect projections. Wishlist items wait quietly.
+					</p>
+				</div>
+				<div
+					className="flex rounded-2xl border border-gray-200 bg-white/70 p-1 dark:border-gray-800 dark:bg-gray-950/50"
+					aria-label="Planning view"
+				>
+					{(Object.keys(planningTabLabels) as PlanningListTab[]).map((tab) => (
+						<button
+							key={tab}
+							type="button"
+							onClick={() => onTabChange(tab)}
+							className={cn(
+								'rounded-xl px-3 py-1.5 text-sm font-medium transition-colors',
+								activeTab === tab
+									? 'bg-gray-950 text-white shadow-sm dark:bg-white dark:text-gray-950'
+									: 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'
+							)}
+						>
+							{planningTabLabels[tab]}
+						</button>
+					))}
+				</div>
+			</div>
+
+			<div className="grid gap-3 sm:grid-cols-3">
+				<PlanningTotal label="Items" value={String(totals.count)} />
+				<PlanningTotal label="Total amount" value={formatCurrency(totals.amount)} />
+				<PlanningTotal label="High priority" value={String(totals.highPriority)} />
+			</div>
+
+			{visibleExpenses.length === 0 ? (
+				<EmptyState
+					title="No plans yet"
+					description="Use the guided flow to add something you expect to buy or save for later."
+				/>
+			) : (
+				<DataListSurface>
+					<DataListHeader>
+						<span>Item</span>
+						<span>Total</span>
+						<span>Actions</span>
+					</DataListHeader>
+					{visibleExpenses.map((expense, index) => (
+						<DataListRow
+							key={expense.id}
+							className={cn(
+								'md:grid-cols-[minmax(240px,1fr)_minmax(140px,0.5fr)_minmax(190px,0.65fr)]',
+								draggingExpenseId === expense.id &&
+									'bg-blue-50/70 opacity-60 dark:bg-blue-950/20'
+							)}
+							draggable
+							onDragStart={() => onDragStart(expense.id)}
+							onDragEnd={onDragEnd}
+							onDragOver={(event) => event.preventDefault()}
+							onDrop={() => {
+								if (draggingExpenseId) {
+									onReorder(visibleExpenses, draggingExpenseId, expense.id);
+								}
+								onDragEnd();
+							}}
+						>
+							<div className="flex min-w-0 items-center gap-3">
+								<div className="flex shrink-0 items-center gap-1 text-gray-400">
+									<span
+										className="flex h-9 w-5 cursor-grab items-center justify-center active:cursor-grabbing"
+										title="Drag to reorder"
+										aria-hidden="true"
+									>
+										<FiMove className="h-4 w-4" />
+									</span>
+									<div className="flex flex-col">
+										<button
+											type="button"
+											onClick={() => onMove(visibleExpenses, expense.id, -1)}
+											disabled={index === 0}
+											aria-label={`Move ${expense.title} up`}
+											className="flex h-4 w-5 items-center justify-center rounded text-gray-400 transition hover:text-gray-900 disabled:opacity-30 dark:hover:text-white"
+										>
+											<FiChevronUp className="h-3.5 w-3.5" />
+										</button>
+										<button
+											type="button"
+											onClick={() => onMove(visibleExpenses, expense.id, 1)}
+											disabled={index === visibleExpenses.length - 1}
+											aria-label={`Move ${expense.title} down`}
+											className="flex h-4 w-5 items-center justify-center rounded text-gray-400 transition hover:text-gray-900 disabled:opacity-30 dark:hover:text-white"
+										>
+											<FiChevronDown className="h-3.5 w-3.5" />
+										</button>
+									</div>
+								</div>
+								<div className="min-w-0">
+									<p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
+										<SensitiveText widthClassName="w-36">{expense.title}</SensitiveText>
+									</p>
+									<p className="truncate text-xs text-gray-500 dark:text-gray-400">
+										{expense.status === 'wishlist'
+											? 'Wishlist'
+											: `${getCategoryPathLabel(expense.category, expense.subcategory)}${
+													expense.targetMonth ? ` · ${expense.targetMonth}` : ''
+												}`}
+									</p>
+									{expense.url && (
+										<a
+											href={expense.url}
+											target="_blank"
+											rel="noreferrer"
+											className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+										>
+											Open link <FiExternalLink className="h-3 w-3" />
+										</a>
+									)}
+								</div>
+							</div>
+							<div>
+								<Currency amount={expense.amount} className="text-sm" />
+								<p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+									{statusLabels[expense.status]}
+									{expense.priority ? ` · ${expense.priority}` : ''}
+								</p>
+							</div>
+							<div className="flex items-center justify-end gap-1.5">
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="h-9 w-9 rounded-xl text-gray-500 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white"
+									onClick={() => onEdit(expense)}
+									aria-label={`Edit ${expense.title}`}
 								>
-									Open link <FiExternalLink className="h-3 w-3" />
-								</a>
-							)}
-						</div>
-						<div>
-							<Currency amount={expense.amount} className="text-sm" />
-							<p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-								{statusLabels[expense.status]}
-							</p>
-						</div>
-						<div className="flex flex-wrap items-center gap-2">
-							<Button type="button" variant="outline" onClick={() => onEdit(expense)}>
-								<FiEdit2 className="h-4 w-4" />
-								Edit
-							</Button>
-							{expense.status !== 'purchased' && expense.status !== 'cancelled' && (
-								<Button type="button" variant="outline" onClick={() => onConvert(expense)}>
-									<FiArrowRight className="h-4 w-4" />
-									Convert
+									<FiEdit2 className="h-4 w-4" />
 								</Button>
-							)}
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onDelete(expense.id)}
-								aria-label={`Delete ${expense.title}`}
-							>
-								<FiTrash2 className="h-4 w-4" />
-							</Button>
-						</div>
-					</DataListRow>
-				))}
-			</DataListSurface>
-		)}
+								{expense.status === 'wishlist' ? (
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="h-9 rounded-xl px-3"
+										onClick={() => onPlanWishlist(expense)}
+									>
+										<FiShoppingBag className="h-4 w-4" />
+										Plan it
+									</Button>
+								) : (
+									expense.status !== 'purchased' &&
+									expense.status !== 'cancelled' && (
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="h-9 rounded-xl px-3"
+											onClick={() => onConvert(expense)}
+										>
+											<FiArrowRight className="h-4 w-4" />
+											Convert
+										</Button>
+									)
+								)}
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="h-9 w-9 rounded-xl text-gray-400 hover:text-red-600 dark:hover:text-red-300"
+									onClick={() => onDelete(expense.id)}
+									aria-label={`Delete ${expense.title}`}
+								>
+									<FiTrash2 className="h-4 w-4" />
+								</Button>
+							</div>
+						</DataListRow>
+					))}
+				</DataListSurface>
+			)}
+		</div>
+	);
+};
+
+const PlanningTotal = ({ label, value }: { label: string; value: string }) => (
+	<div className={cn('rounded-2xl px-4 py-3', liquidGlassSoft)}>
+		<p className="text-xs font-medium uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
+			{label}
+		</p>
+		<p className="mt-1 text-sm font-semibold text-gray-950 dark:text-white">
+			<SensitiveValue widthClassName="w-24">{value}</SensitiveValue>
+		</p>
 	</div>
 );
 
