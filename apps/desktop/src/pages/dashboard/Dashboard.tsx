@@ -28,7 +28,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/app/ui/dialog';
-import { SidePanel } from '@/components/app/ui/side-panel';
 import { Button } from '@/components/app/ui/button';
 import { useToast } from '@/components/app/ui/use-toast';
 import { Toaster } from '@/components/app/ui/toaster';
@@ -351,29 +350,31 @@ const DashboardContent: React.FC = () => {
 	return (
 		<div className={cn('flex h-screen-safe flex-col md:flex-row', pageBg)}>
 			<Toaster />
-			<SidePanel
+			<Dialog
 				open={transactionFormOpen}
 				onOpenChange={(open) => {
 					if (!open) handleCloseForm();
 				}}
 			>
 				{transactionFormOpen && (
-					<TransactionForm
-						transaction={selectedTx || undefined}
-						recurringTransaction={editingRecurringDraft?.recurringTransaction}
-						recurringOccurrenceDate={editingRecurringDraft?.occurrenceDate}
-						recurringOccurrenceDateKey={editingRecurringDraft?.occurrenceDateKey}
-						onClose={handleCloseForm}
-						onSuccess={(message) =>
-							toast({
-								title: selectedTx ? 'Transaction updated' : 'Transaction created',
-								description: message,
-								duration: 3500,
-							})
-						}
-					/>
+					<DialogContent className={cn('w-[92vw] p-6 sm:max-w-2xl', modalShell)}>
+						<TransactionForm
+							transaction={selectedTx || undefined}
+							recurringTransaction={editingRecurringDraft?.recurringTransaction}
+							recurringOccurrenceDate={editingRecurringDraft?.occurrenceDate}
+							recurringOccurrenceDateKey={editingRecurringDraft?.occurrenceDateKey}
+							onClose={handleCloseForm}
+							onSuccess={(message) =>
+								toast({
+									title: selectedTx ? 'Transaction updated' : 'Transaction created',
+									description: message,
+									duration: 3500,
+								})
+							}
+						/>
+					</DialogContent>
 				)}
-			</SidePanel>
+			</Dialog>
 			<Sidebar
 				collapsed={!sidebarVisible}
 				toggleSidebar={toggleSidebar}
