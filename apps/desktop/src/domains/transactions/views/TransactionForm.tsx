@@ -1,17 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FiRefreshCw } from 'react-icons/fi';
+import React, { useEffect, useRef, useState } from 'react';
+import { FiCheck, FiRefreshCw } from 'react-icons/fi';
+import { getRecurringOccurrenceDateKey, type RecurringTransaction } from '@cash-flow/shared';
 import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
+import { mergeCategoryOptions } from '@cash-flow/shared/categories/categories';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
-import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
-import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { Transaction } from '@cash-flow/shared/transactions/TransactionModel';
-import { RecurringTransaction } from '@cash-flow/shared';
-import { TransactionType } from '@/types';
+import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
+import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
+import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { Button } from '@/components/app/ui/button';
+import {
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/app/ui/dialog';
 import { Input } from '@/components/app/ui/input';
 import { Label } from '@/components/app/ui/label';
-import { Textarea } from '@/components/app/ui/textarea';
 import {
 	Select,
 	SelectContent,
@@ -19,16 +25,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/app/ui/select';
-import {
-	SidePanelClose,
-	SidePanelContent,
-	SidePanelDescription,
-	SidePanelTitle,
-} from '@/components/app/ui/side-panel';
-import { formatCurrency } from '@/utils/formatCurrency';
-import { mergeCategoryOptions } from '@cash-flow/shared/categories/categories';
+import { Textarea } from '@/components/app/ui/textarea';
 import { cn } from '@/lib/utils';
-import { cardSurface, sectionLabel } from '@/styles/marketingStyles';
+import { formatCurrency } from '@/utils/formatCurrency';
+import { TransactionType } from '@/types';
 
 interface TransactionFormProps {
 	onClose: () => void;
@@ -38,6 +38,16 @@ interface TransactionFormProps {
 	recurringOccurrenceDate?: Date;
 	recurringOccurrenceDateKey?: string;
 }
+
+const stepLabels = ['Type & amount', 'Details', 'Review'] as const;
+const TYPE_STEP = 1;
+const DETAILS_STEP = 2;
+const REVIEW_STEP = 3;
+
+const getDateInputValue = (value: Transaction['date']): string => {
+	const parsed = parseDbDateOrNull(value);
+	return parsed ? parsed.toISOString().split('T')[0] : '';
+};
 
 const TransactionForm: React.FC<TransactionFormProps> = ({
 	onClose,
@@ -52,8 +62,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	const { categories, categoryOptions } = useCategoriesContext();
 	const { mainAccountId } = useMainAccountPreference();
 
+	const [step, setStep] = useState(TYPE_STEP);
 	const [title, setTitle] = useState('');
-	const [amount, setAmount] = useState(0);
+	const [amount, setAmount] = useState('');
 	const [type, setType] = useState<TransactionType>('expense');
 	const [accountId, setAccountId] = useState('');
 	const [transferAccountId, setTransferAccountId] = useState('');
@@ -68,13 +79,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	);
 	const submitInFlightRef = useRef(false);
 
+	const defaultAccountId = React.useMemo(() => {
+		const mainAccount = accounts.find((account) => account.id === mainAccountId);
+		return mainAccount?.id ?? accounts[0]?.id ?? '';
+	}, [accounts, mainAccountId]);
+
+	const selectedAccount = accounts.find((account) => account.id === accountId);
+	const selectedTransferAccount = accounts.find((account) => account.id === transferAccountId);
+	const selectedCategory = categories.find((item) => item.value === category);
+	const selectedSubcategory = selectedCategory?.subcategories?.find((item) => item.value === subcategory);
 	const availableCategories = React.useMemo(
 		() => mergeCategoryOptions(categoryOptions, category ? [category] : []),
 		[categoryOptions, category]
-	);
-	const selectedCategory = React.useMemo(
-		() => categories.find((item) => item.value === category),
-		[categories, category]
 	);
 	const availableSubcategories = React.useMemo(
 		() =>
@@ -84,10 +100,110 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 			),
 		[selectedCategory, subcategory]
 	);
-	const defaultAccountId = React.useMemo(() => {
-		const mainAccount = accounts.find((account) => account.id === mainAccountId);
-		return mainAccount?.id ?? accounts[0]?.id ?? '';
-	}, [accounts, mainAccountId]);
+	const isTransferMode = type === 'transfer';
+	const amountNumber = Number(amount);
+	const formattedAmount = Number.isFinite(amountNumber) && amountNumber > 0
+		? formatCurrency(amountNumber)
+		: 'Not set';
+	const inputClass = 'h-11 rounded-xl border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950';
+
+	useEffect(() => {
+		if (transaction) {
+			setTitle(transaction.title);
+			setAmount(String(transaction.amount));
+			setType(transaction.type);
+			setAccountId(transaction.accountId ?? '');
+			setTransferAccountId(transaction.transferAccountId ?? '');
+			setCategory(transaction.category ?? '');
+			setSubcategory(transaction.subcategory ?? '');
+			setDescription(transaction.description ?? '');
+			setDate(getDateInputValue(transaction.date) || new Date().toISOString().split('T')[0]);
+			setSelectedRecurringId(null);
+			setStep(DETAILS_STEP);
+			setError('');
+			return;
+		}
+
+		if (initialRecurringTransaction) {
+			setTitle(initialRecurringTransaction.title);
+			setAmount(String(initialRecurringTransaction.amount));
+			setType((initialRecurringTransaction.type as TransactionType) ?? 'expense');
+			setAccountId(initialRecurringTransaction.accountId || '');
+			setCategory(initialRecurringTransaction.category ?? '');
+			setSubcategory(initialRecurringTransaction.subcategory ?? '');
+			setDescription(initialRecurringTransaction.description ?? '');
+			setDate((recurringOccurrenceDate ?? new Date()).toISOString().split('T')[0]);
+			setSelectedRecurringId(initialRecurringTransaction.id || null);
+			setStep(TYPE_STEP);
+			setError('');
+			return;
+		}
+
+		setTitle('');
+		setAmount('');
+		setType('expense');
+		setCategory('');
+		setSubcategory('');
+		setDescription('');
+		setAccountId('');
+		setTransferAccountId('');
+		setDate(new Date().toISOString().split('T')[0]);
+		setSelectedRecurringId(null);
+		setStep(TYPE_STEP);
+		setError('');
+	}, [transaction, initialRecurringTransaction, recurringOccurrenceDate]);
+
+	useEffect(() => {
+		if (!accountId && defaultAccountId) {
+			setAccountId(defaultAccountId);
+		}
+	}, [accountId, defaultAccountId]);
+
+	useEffect(() => {
+		if (!selectedRecurringId || transaction) return;
+		const selectedRecurring = recurringTransactions.find((item) => item.id === selectedRecurringId);
+		if (!selectedRecurring) return;
+
+		setTitle(selectedRecurring.title);
+		setAmount(String(selectedRecurring.amount));
+		setType((selectedRecurring.type as TransactionType) ?? 'expense');
+		if (selectedRecurring.accountId) setAccountId(selectedRecurring.accountId);
+		setCategory(selectedRecurring.category ?? '');
+		setSubcategory(selectedRecurring.subcategory ?? '');
+		setDescription(selectedRecurring.description ?? '');
+		setError('');
+	}, [selectedRecurringId, recurringTransactions, transaction]);
+
+	useEffect(() => {
+		if (!subcategory) return;
+		const stillAvailable = availableSubcategories.some((item) => item.value === subcategory);
+		if (!stillAvailable) setSubcategory('');
+	}, [availableSubcategories, subcategory]);
+
+	const resetNewTransactionForm = () => {
+		setTitle('');
+		setAmount('');
+		setType('expense');
+		setCategory('');
+		setSubcategory('');
+		setDescription('');
+		setTransferAccountId('');
+		setDate(new Date().toISOString().split('T')[0]);
+		setSelectedRecurringId(null);
+		setStep(TYPE_STEP);
+		setError('');
+		if (defaultAccountId) setAccountId(defaultAccountId);
+	};
+
+	const clearRecurringSelection = () => {
+		setSelectedRecurringId(null);
+		setTitle('');
+		setAmount('');
+		setCategory('');
+		setSubcategory('');
+		setDescription('');
+		setError('');
+	};
 
 	const handleCategoryChange = (value: string) => {
 		setCategory(value);
@@ -98,176 +214,128 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	const handleTypeChange = (nextType: TransactionType) => {
 		setType(nextType);
 		setError('');
-		if (
-			nextType !== 'transfer' &&
-			transaction &&
-			!category &&
-			transaction.category &&
-			transaction.category !== 'transfer'
-		) {
-			setCategory(transaction.category);
-			setSubcategory(transaction.subcategory ?? '');
+		if (nextType === 'transfer') {
+			setCategory('');
+			setSubcategory('');
+			setSelectedRecurringId(null);
 		}
 	};
 
-	useEffect(() => {
-		if (transaction) {
-			setTitle(transaction.title);
-			setAmount(transaction.amount);
-			setType(transaction.type);
-			setAccountId(transaction.accountId ?? '');
-			setTransferAccountId(transaction.transferAccountId ?? '');
-			setCategory(transaction.category ?? '');
-			setSubcategory(transaction.subcategory ?? '');
-			setDescription(transaction.description ?? '');
-			setError('');
-			setSelectedRecurringId(null);
-
-			let transactionDate: Date | null = null;
-			if (transaction.date) {
-				if (typeof transaction.date === 'object' && 'toDate' in transaction.date) {
-					transactionDate = transaction.date.toDate();
-				} else if (transaction.date instanceof Date) {
-					transactionDate = transaction.date;
-				}
-			}
-
-			setDate(transactionDate ? transactionDate.toISOString().split('T')[0] : '');
-		} else if (initialRecurringTransaction) {
-			setTitle(initialRecurringTransaction.title);
-			setAmount(initialRecurringTransaction.amount);
-			setType((initialRecurringTransaction.type as TransactionType) ?? 'expense');
-			setAccountId(initialRecurringTransaction.accountId || '');
-			setCategory(initialRecurringTransaction.category ?? '');
-			setSubcategory(initialRecurringTransaction.subcategory ?? '');
-			setDescription(initialRecurringTransaction.description ?? '');
-			setDate((recurringOccurrenceDate ?? new Date()).toISOString().split('T')[0]);
-			setError('');
-			setSelectedRecurringId(initialRecurringTransaction.id || null);
-		} else {
-			setTitle('');
-			setAmount(0);
-			setType('expense');
-			setCategory('');
-			setSubcategory('');
-			setDescription('');
-			setAccountId('');
-			setTransferAccountId('');
-			setDate(new Date().toISOString().split('T')[0]);
-			setError('');
-			setSelectedRecurringId(null);
-		}
-	}, [transaction, initialRecurringTransaction, recurringOccurrenceDate]);
-
-	// Fill an empty account field from the user's preferred account without
-	// resetting the rest of the form when that preference changes.
-	useEffect(() => {
-		if (!accountId && defaultAccountId) {
-			setAccountId(defaultAccountId);
-		}
-	}, [accountId, defaultAccountId]);
-
-	useEffect(() => {
-		if (selectedRecurringId && !transaction) {
-			const selectedExpense = recurringTransactions.find((e) => e.id === selectedRecurringId);
-			if (selectedExpense) {
-				setTitle(selectedExpense.title);
-				setAmount(selectedExpense.amount);
-				setType((selectedExpense.type as TransactionType) ?? 'expense');
-				if (selectedExpense.accountId) setAccountId(selectedExpense.accountId);
-				setCategory(selectedExpense.category ?? '');
-				setSubcategory(selectedExpense.subcategory ?? '');
-				setDescription(selectedExpense.description ?? '');
-				setError('');
-			}
-		} else if (selectedRecurringId === null && !transaction && !initialRecurringTransaction) {
-			setTitle('');
-			setAmount(0);
-			setCategory('');
-			setSubcategory('');
-			setDescription('');
-			setError('');
-		}
-	}, [selectedRecurringId, recurringTransactions, transaction, initialRecurringTransaction]);
-
-	useEffect(() => {
-		if (!subcategory) return;
-		const stillAvailable = availableSubcategories.some((item) => item.value === subcategory);
-		if (!stillAvailable) {
-			setSubcategory('');
-		}
-	}, [availableSubcategories, subcategory]);
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (submitInFlightRef.current) return;
-
+	const validateStep = (targetStep: number): boolean => {
 		setError('');
-		if (type === 'transfer' && !transferAccountId) return;
-		const categoryForSubmit =
-			type === 'transfer'
-				? 'transfer'
-				: category.trim() || transaction?.category || initialRecurringTransaction?.category || '';
-		const subcategoryForSubmit =
-			type === 'transfer'
-				? undefined
-				: subcategory.trim() || (!category ? transaction?.subcategory : undefined);
 
-		if (type !== 'transfer' && !categoryForSubmit) {
-			setError('Please select a category.');
-			return;
+		if (targetStep === TYPE_STEP) {
+			if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
+				setError('Please enter an amount.');
+				return false;
+			}
 		}
+
+		if (targetStep === DETAILS_STEP) {
+			if (!title.trim()) {
+				setError('Please enter a title.');
+				return false;
+			}
+			if (!accountId) {
+				setError('Please select an account.');
+				return false;
+			}
+			if (isTransferMode) {
+				if (!transferAccountId) {
+					setError('Please select a destination account.');
+					return false;
+				}
+				if (transferAccountId === accountId) {
+					setError('Source and destination accounts must be different.');
+					return false;
+				}
+			} else if (!category.trim() && !transaction?.category && !initialRecurringTransaction?.category) {
+				setError('Please select a category.');
+				return false;
+			}
+		}
+
+		return true;
+	};
+
+	const goNext = () => {
+		if (!validateStep(step)) return;
+		setStep((currentStep) => Math.min(currentStep + 1, REVIEW_STEP));
+	};
+
+	const goBack = () => {
+		setError('');
+		setStep((currentStep) => Math.max(currentStep - 1, TYPE_STEP));
+	};
+
+	const handleSubmit = async () => {
+		if (submitInFlightRef.current) return;
+		if (!validateStep(TYPE_STEP) || !validateStep(DETAILS_STEP)) return;
 
 		submitInFlightRef.current = true;
 		setIsSubmitting(true);
 
 		try {
-			if (transaction && transaction.id) {
-				const data: Partial<Transaction> = {
+			const transactionDate = date ? new Date(date) : new Date();
+			const categoryForSubmit = isTransferMode
+				? 'transfer'
+				: category.trim() || transaction?.category || initialRecurringTransaction?.category || '';
+			const subcategoryForSubmit = isTransferMode
+				? undefined
+				: subcategory.trim() || (!category ? transaction?.subcategory : undefined);
+			const recurringIdForSubmit = selectedRecurringId ?? initialRecurringTransaction?.id;
+			const recurringDateForSubmit = recurringIdForSubmit
+				? recurringOccurrenceDateKey ?? getRecurringOccurrenceDateKey(transactionDate)
+				: undefined;
+
+			if (transaction?.id) {
+				await updateTransaction(transaction.id, {
 					title,
-					amount: Number(amount),
+					amount: amountNumber,
 					type,
 					accountId,
 					category: categoryForSubmit,
 					subcategory: subcategoryForSubmit,
 					description,
-					date: date ? new Date(date) : new Date(),
-				};
-				if (type === 'transfer' && transferAccountId) {
-					data.transferAccountId = transferAccountId;
-				}
-				await updateTransaction(transaction.id, data);
-			} else if (type === 'transfer') {
+					date: transactionDate,
+				});
+			} else if (isTransferMode) {
 				await addTransfer({
 					fromAccountId: accountId,
 					toAccountId: transferAccountId,
-					amount: Number(amount),
+					amount: amountNumber,
 					title,
 					description,
-					date: date ? new Date(date) : new Date(),
+					date: transactionDate,
 				});
 			} else {
 				await addTransaction({
 					title,
-					amount: Number(amount),
+					amount: amountNumber,
 					type,
 					accountId,
 					category: categoryForSubmit,
 					subcategory: subcategoryForSubmit,
 					description,
-					date: date ? new Date(date) : new Date(),
-					recurringTransactionId: initialRecurringTransaction?.id,
-					recurringOccurrenceDate: recurringOccurrenceDateKey,
+					date: transactionDate,
+					recurringTransactionId: recurringIdForSubmit,
+					recurringOccurrenceDate: recurringDateForSubmit,
 				});
 			}
+
 			onSuccess?.(
 				transaction
 					? 'Transaction updated successfully.'
-					: type === 'transfer'
+					: isTransferMode
 						? 'Transfer added successfully.'
 						: `${type === 'expense' ? 'Expense' : 'Income'} added successfully.`
 			);
-			onClose();
+
+			if (transaction || initialRecurringTransaction) {
+				onClose();
+			} else {
+				resetNewTransactionForm();
+			}
 		} catch (error) {
 			console.error('Failed to submit transaction:', error);
 			setError(getAppErrorMessage(error, { operation: 'Save transaction' }));
@@ -277,238 +345,232 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 		}
 	};
 
-	const availableTransferAccounts = accounts.filter((a) => a.id !== accountId);
-	const transactionTypes: TransactionType[] = transaction
-		? ['income', 'expense']
-		: ['income', 'expense', 'transfer'];
-	const inputClass = 'h-10 rounded-xl border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950';
-
 	if (transaction?.type === 'transfer') {
 		return (
-			<SidePanelContent>
-				<div className="flex min-h-0 flex-1 flex-col">
-					<header className="border-b border-gray-200 bg-white px-6 py-6 pr-16 dark:border-gray-800 dark:bg-gray-950">
-						<p className={sectionLabel}>Transfer</p>
-						<SidePanelTitle className="mt-2 text-2xl font-semibold tracking-tight">
-							Transfer details
-						</SidePanelTitle>
-						<SidePanelDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-							Transfers cannot be edited because both linked records and account balances must
-							stay in sync.
-						</SidePanelDescription>
-					</header>
-					<div className="flex flex-1 flex-col justify-between p-6">
-						<p className="text-sm text-gray-600 dark:text-gray-300">
-							Delete this transfer and create it again if you need to make changes.
-						</p>
-						<SidePanelClose asChild>
-							<Button type="button" variant="outline" className="mt-8 h-11 w-full rounded-xl">
-								Close
-							</Button>
-						</SidePanelClose>
-					</div>
-				</div>
-			</SidePanelContent>
+			<div className="space-y-6">
+				<DialogHeader>
+					<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+						Transfer
+					</p>
+					<DialogTitle className="text-2xl font-semibold tracking-tight">
+						Transfer details
+					</DialogTitle>
+					<DialogDescription>
+						Transfers cannot be edited because both linked records and account balances must
+						stay in sync.
+					</DialogDescription>
+				</DialogHeader>
+				<p className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+					Delete this transfer and create it again if you need to make changes.
+				</p>
+				<DialogFooter>
+					<Button type="button" variant="outline" onClick={onClose}>
+						Close
+					</Button>
+				</DialogFooter>
+			</div>
 		);
 	}
 
 	return (
-		<SidePanelContent>
-			<form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col" aria-busy={isSubmitting}>
-				<header className="border-b border-gray-200 bg-white px-6 py-6 pr-16 dark:border-gray-800 dark:bg-gray-950">
-					<p className={sectionLabel}>
-						{transaction ? 'Edit' : 'New'}
-					</p>
-					<SidePanelTitle className="mt-2 text-2xl font-semibold tracking-tight">
-						{transaction ? 'Edit transaction' : 'Add transaction'}
-					</SidePanelTitle>
-					<SidePanelDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-						{transaction
-							? 'Update amount, category, or date.'
-							: 'Quick capture for income, expense, or transfer.'}
-					</SidePanelDescription>
-				</header>
+		<div className="flex max-h-[82vh] min-h-0 flex-col overflow-hidden">
+			<DialogHeader className="shrink-0 border-b border-gray-200 px-1 pb-4 dark:border-gray-800">
+				<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+					{transaction ? 'Edit' : 'New'}
+				</p>
+				<DialogTitle className="text-2xl font-semibold tracking-tight">
+					{transaction ? 'Edit transaction' : 'Add transaction'}
+				</DialogTitle>
+				<DialogDescription>
+					{isTransferMode
+						? 'Move money between accounts in a short guided flow.'
+						: 'Capture the amount first, then fill in the details and review.'}
+				</DialogDescription>
+			</DialogHeader>
 
-				<div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-white p-4 dark:bg-gray-950 sm:p-6">
-					{error && (
-						<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
-							{error}
-						</div>
-					)}
-
-					{!transaction && recurringTransactions.length > 0 && (
-						<section className={cn(cardSurface, 'p-4')}>
-							<div className="mb-3 flex items-center gap-2">
-								<FiRefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-								<Label htmlFor="quick-fill" className="text-sm font-medium">
-									Quick fill
-								</Label>
-							</div>
-							<Select
-								value={selectedRecurringId || '__none__'}
-								onValueChange={(value) =>
-									setSelectedRecurringId(value === '__none__' ? null : value)
-								}
+			<div className="shrink-0 px-1 py-4">
+				<div className="grid grid-cols-3 gap-2">
+					{stepLabels.map((label, index) => {
+						const stepNumber = index + 1;
+						const active = stepNumber === step;
+						const complete = step > stepNumber;
+						return (
+							<div
+								key={label}
+								className={cn(
+									'flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold',
+									active
+										? 'border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
+										: complete
+											? 'border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200'
+											: 'border-gray-200 text-gray-500 dark:border-gray-800 dark:text-gray-400'
+								)}
 							>
-								<SelectTrigger id="quick-fill" className={inputClass}>
-									<SelectValue placeholder="From a recurring template" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="__none__">Start fresh</SelectItem>
-									{recurringTransactions.map((expense) => (
-										<SelectItem key={expense.id} value={expense.id!}>
-											<span className="font-medium">{expense.title}</span>
-											<span className="text-muted-foreground">
-												{' '}
-												· {formatCurrency(expense.amount)}
-											</span>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</section>
-					)}
+								<span className="flex h-5 w-5 items-center justify-center rounded-full border text-[11px]">
+									{complete ? <FiCheck className="h-3 w-3" /> : stepNumber}
+								</span>
+								<span className="truncate">{label}</span>
+							</div>
+						);
+					})}
+				</div>
+			</div>
 
-					<section className={cn(cardSurface, 'space-y-3 p-4')}>
-						<p className={sectionLabel}>Type</p>
-						<div
-							className={cn(
-								'grid gap-2',
-								transaction ? 'grid-cols-2' : 'grid-cols-3'
-							)}
-						>
-							{transactionTypes.map((t) => (
-								<Button
-									key={t}
-									type="button"
-									variant={type === t ? 'marketing' : 'outline'}
-									onClick={() => handleTypeChange(t)}
-									disabled={isSubmitting}
-									className="h-10 rounded-xl capitalize"
+			<div className="min-h-0 flex-1 overflow-y-auto px-1 py-2">
+				{error && (
+					<div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+						{error}
+					</div>
+				)}
+
+				{step === TYPE_STEP && (
+					<div className="space-y-5">
+						{!transaction && recurringTransactions.length > 0 && !isTransferMode && (
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<FiRefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+									<Label htmlFor="quick-fill" className="text-sm font-medium">
+										Quick fill
+									</Label>
+								</div>
+								<Select
+									value={selectedRecurringId || '__none__'}
+									onValueChange={(value) =>
+										value === '__none__' ? clearRecurringSelection() : setSelectedRecurringId(value)
+									}
 								>
-									{t}
-								</Button>
-							))}
-						</div>
-					</section>
+									<SelectTrigger id="quick-fill" className={inputClass}>
+										<SelectValue placeholder="From a recurring template" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="__none__">Start fresh</SelectItem>
+										{recurringTransactions.map((item) => (
+											<SelectItem key={item.id} value={item.id!}>
+												<span className="font-medium">{item.title}</span>
+												<span className="text-muted-foreground">
+													{' '}
+													· {formatCurrency(item.amount)}
+												</span>
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						)}
 
-					<section className={cn(cardSurface, 'space-y-4 p-4')}>
-						<p className={sectionLabel}>Details</p>
+						<div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
+							<div className="mb-4 flex items-center justify-between gap-3">
+								<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+									Transaction type
+								</p>
+								{!transaction && (
+									<Button
+										type="button"
+										variant="ghost"
+										onClick={() => handleTypeChange(isTransferMode ? 'expense' : 'transfer')}
+										disabled={isSubmitting}
+										className="h-8 rounded-xl px-2 text-xs"
+									>
+										{isTransferMode ? 'Add income/expense' : 'Transfer between accounts'}
+									</Button>
+								)}
+							</div>
+							{isTransferMode ? (
+								<div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+									Transfer between accounts
+								</div>
+							) : (
+								<div className="grid grid-cols-2 gap-2">
+									{(['expense', 'income'] as const).map((item) => (
+										<Button
+											key={item}
+											type="button"
+											variant={type === item ? 'marketing' : 'outline'}
+											onClick={() => handleTypeChange(item)}
+											disabled={isSubmitting}
+											className="h-11 rounded-xl capitalize"
+										>
+											{item}
+										</Button>
+									))}
+								</div>
+							)}
+						</div>
+
+						<div className="space-y-1.5">
+							<Label htmlFor="transaction-amount">Amount *</Label>
+							<Input
+								id="transaction-amount"
+								type="number"
+								value={amount}
+								onChange={(event) => setAmount(event.target.value)}
+								min="0.01"
+								step="0.01"
+								disabled={isSubmitting}
+								className={inputClass}
+								required
+							/>
+						</div>
+					</div>
+				)}
+
+				{step === DETAILS_STEP && (
+					<div className="space-y-5">
+						<div className="space-y-1.5">
+							<Label htmlFor="transaction-title">Title *</Label>
+							<Input
+								id="transaction-title"
+								value={title}
+								onChange={(event) => setTitle(event.target.value)}
+								placeholder={isTransferMode ? 'Transfer label' : 'What was this?'}
+								disabled={isSubmitting}
+								className={inputClass}
+								required
+							/>
+						</div>
+
 						<div className="grid gap-4 sm:grid-cols-2">
-							<div className="space-y-1.5 sm:col-span-2">
-								<Label htmlFor="transaction-title">Title *</Label>
-								<Input
-									id="transaction-title"
-									value={title}
-									onChange={(e) => setTitle(e.target.value)}
-									placeholder="What was this?"
-									disabled={isSubmitting}
-									className={inputClass}
-									required
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="transaction-amount">Amount *</Label>
-								<Input
-									id="transaction-amount"
-									type="number"
-									value={amount}
-									onChange={(e) => setAmount(Number(e.target.value))}
-									min="0.01"
-									step="0.01"
-									disabled={isSubmitting}
-									className={inputClass}
-									required
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="transaction-date">Date</Label>
-								<Input
-									id="transaction-date"
-									type="date"
-									value={date}
-									onChange={(e) => setDate(e.target.value)}
-									disabled={isSubmitting}
-									className={inputClass}
-								/>
-							</div>
-						</div>
-					</section>
-
-					<section className={cn(cardSurface, 'space-y-4 p-4')}>
-						<p className={sectionLabel}>Account</p>
-						{accounts.length > 0 && (
 							<div className="space-y-1.5">
 								<Label htmlFor="transaction-account">
-									{type === 'transfer' ? 'From account' : 'Account'} *
+									{isTransferMode ? 'From account' : 'Account'} *
 								</Label>
 								<Select value={accountId} onValueChange={setAccountId} disabled={isSubmitting}>
 									<SelectTrigger id="transaction-account" className={inputClass}>
 										<SelectValue placeholder="Select account" />
 									</SelectTrigger>
 									<SelectContent>
-										{accounts.map((a) => (
-											<SelectItem key={a.id} value={a.id!}>
-												<span className="flex items-center gap-2">
-													<span
-														className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
-														style={{ backgroundColor: a.color ?? '#6366f1' }}
-													/>
-													{a.name} ({formatCurrency(a.balance)})
-												</span>
+										{accounts.map((account) => (
+											<SelectItem key={account.id} value={account.id!}>
+												{account.name} ({formatCurrency(account.balance)})
 											</SelectItem>
 										))}
 									</SelectContent>
 								</Select>
 							</div>
-						)}
-						{type === 'transfer' && (
-							<div className="space-y-1.5">
-								<Label htmlFor="transaction-transfer-account">To account *</Label>
-								<Select
-									value={transferAccountId}
-									onValueChange={setTransferAccountId}
-									disabled={isSubmitting}
-								>
-									<SelectTrigger id="transaction-transfer-account" className={inputClass}>
-										<SelectValue placeholder="Select destination" />
-									</SelectTrigger>
-									<SelectContent>
-										{availableTransferAccounts.map((a) => (
-											<SelectItem key={a.id} value={a.id!}>
-												<span className="flex items-center gap-2">
-													<span
-														className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
-														style={{ backgroundColor: a.color ?? '#6366f1' }}
-													/>
-													{a.name} ({formatCurrency(a.balance)})
-												</span>
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-						)}
-						{type === 'transfer' && (
-							<div className="space-y-1.5">
-								<Label htmlFor="transaction-description">Notes</Label>
-								<Textarea
-									id="transaction-description"
-									value={description}
-									onChange={(e) => setDescription(e.target.value)}
-									placeholder="Optional"
-									rows={2}
-									disabled={isSubmitting}
-									className="min-h-[72px] rounded-xl border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
-								/>
-							</div>
-						)}
-					</section>
 
-					{type !== 'transfer' && (
-						<section className={cn(cardSurface, 'space-y-4 p-4')}>
-							<p className={sectionLabel}>Category</p>
-							<div className="grid gap-4 sm:grid-cols-2">
+							{isTransferMode ? (
+								<div className="space-y-1.5">
+									<Label htmlFor="transaction-transfer-account">To account *</Label>
+									<Select
+										value={transferAccountId}
+										onValueChange={setTransferAccountId}
+										disabled={isSubmitting}
+									>
+										<SelectTrigger id="transaction-transfer-account" className={inputClass}>
+											<SelectValue placeholder="Select destination" />
+										</SelectTrigger>
+										<SelectContent>
+											{accounts
+												.filter((account) => account.id !== accountId)
+												.map((account) => (
+													<SelectItem key={account.id} value={account.id!}>
+														{account.name} ({formatCurrency(account.balance)})
+													</SelectItem>
+												))}
+										</SelectContent>
+									</Select>
+								</div>
+							) : (
 								<div className="space-y-1.5">
 									<Label htmlFor="transaction-category">Category *</Label>
 									<Select
@@ -520,15 +582,45 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 											<SelectValue placeholder="Select category" />
 										</SelectTrigger>
 										<SelectContent>
-											{availableCategories.map((cat) => (
-												<SelectItem key={cat.value} value={cat.value}>
-													{cat.label}
+											{availableCategories.map((item) => (
+												<SelectItem key={item.value} value={item.value}>
+													{item.label}
 												</SelectItem>
 											))}
 										</SelectContent>
 									</Select>
 								</div>
-								{availableSubcategories.length > 0 && (
+							)}
+						</div>
+
+						<div className="space-y-1.5">
+							<Label htmlFor="transaction-date">Date</Label>
+							<Input
+								id="transaction-date"
+								type="date"
+								value={date}
+								onChange={(event) => setDate(event.target.value)}
+								disabled={isSubmitting}
+								className={inputClass}
+							/>
+						</div>
+
+						<details
+							open={transaction ? true : undefined}
+							className="group overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800"
+						>
+							<summary className="cursor-pointer px-4 py-3 text-left">
+								<span>
+									<span className="block text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+										Optional details
+									</span>
+									<span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+										{isTransferMode ? 'Notes for the transfer.' : 'Subcategory and notes.'}
+									</span>
+								</span>
+							</summary>
+							<div className="space-y-4 border-t border-gray-200 p-4 dark:border-gray-800">
+								{!isTransferMode && availableSubcategories.length > 0 && (
 									<div className="space-y-1.5">
 										<Label htmlFor="transaction-subcategory">Subcategory</Label>
 										<Select
@@ -543,61 +635,114 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 											</SelectTrigger>
 											<SelectContent>
 												<SelectItem value="__none__">No subcategory</SelectItem>
-												{availableSubcategories.map((cat) => (
-													<SelectItem key={cat.value} value={cat.value}>
-														{cat.label}
+												{availableSubcategories.map((item) => (
+													<SelectItem key={item.value} value={item.value}>
+														{item.label}
 													</SelectItem>
 												))}
 											</SelectContent>
 										</Select>
 									</div>
 								)}
+								<div className="space-y-1.5">
+									<Label htmlFor="transaction-description">Notes</Label>
+									<Textarea
+										id="transaction-description"
+										value={description}
+										onChange={(event) => setDescription(event.target.value)}
+										placeholder="Optional"
+										rows={3}
+										disabled={isSubmitting}
+										className="min-h-[84px] rounded-xl border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+									/>
+								</div>
 							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="transaction-description">Notes</Label>
-								<Textarea
-									id="transaction-description"
-									value={description}
-									onChange={(e) => setDescription(e.target.value)}
-									placeholder="Optional"
-									rows={2}
-									disabled={isSubmitting}
-									className="min-h-[72px] rounded-xl border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+						</details>
+					</div>
+				)}
+
+				{step === REVIEW_STEP && (
+					<div className="space-y-4">
+						<div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
+							<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+								Review
+							</p>
+							<h3 className="mt-2 text-xl font-semibold">
+								{isTransferMode
+									? `${selectedAccount?.name ?? 'Account'} to ${selectedTransferAccount?.name ?? 'destination'}`
+									: title}
+							</h3>
+							<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+								{isTransferMode
+									? `Transfer ${formattedAmount}`
+									: `${type === 'income' ? 'Income' : 'Expense'} · ${formattedAmount}`}
+							</p>
+						</div>
+
+						<div className="grid gap-3 text-sm sm:grid-cols-2">
+							<ReviewItem label="Title" value={title || 'Not set'} />
+							<ReviewItem label="Date" value={date || 'Today'} />
+							<ReviewItem label={isTransferMode ? 'From account' : 'Account'} value={selectedAccount?.name ?? 'Not set'} />
+							{isTransferMode ? (
+								<ReviewItem label="To account" value={selectedTransferAccount?.name ?? 'Not set'} />
+							) : (
+								<ReviewItem
+									label="Category"
+									value={[
+										selectedCategory?.label ?? category,
+										selectedSubcategory?.label,
+									]
+										.filter(Boolean)
+										.join(' / ') || 'Not set'}
 								/>
-							</div>
-						</section>
+							)}
+							<ReviewItem label="Notes" value={description || 'None'} />
+							{selectedRecurringId && <ReviewItem label="Recurring" value="Linked template" />}
+						</div>
+					</div>
+				)}
+			</div>
+
+			<DialogFooter className="shrink-0 gap-2 border-t border-gray-200 px-1 pt-4 dark:border-gray-800 sm:justify-between sm:space-x-0">
+				<div className="flex gap-2">
+					<Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+						Cancel
+					</Button>
+					{step !== TYPE_STEP && (
+						<Button type="button" variant="outline" onClick={goBack} disabled={isSubmitting}>
+							Back
+						</Button>
 					)}
 				</div>
-
-				<footer className="sticky bottom-0 flex gap-3 border-t border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-950 sm:px-6">
-					<SidePanelClose asChild>
-						<Button
-							type="button"
-							variant="outline"
-							className="h-11 flex-1 rounded-xl"
-							disabled={isSubmitting}
-						>
-							Cancel
-						</Button>
-					</SidePanelClose>
-					<Button
-						type="submit"
-						variant="marketing"
-						className="h-11 flex-[1.4] rounded-xl"
-						disabled={isSubmitting || (type === 'transfer' && !transferAccountId)}
-					>
+				{step === REVIEW_STEP ? (
+					<Button type="button" variant="marketing" onClick={handleSubmit} disabled={isSubmitting}>
 						{isSubmitting
 							? transaction
 								? 'Saving...'
 								: 'Adding...'
 							: transaction
 								? 'Save changes'
-								: 'Add transaction'}
+								: isTransferMode
+									? 'Add transfer'
+									: 'Add transaction'}
 					</Button>
-				</footer>
-			</form>
-		</SidePanelContent>
+				) : (
+					<Button type="button" variant="marketing" onClick={goNext} disabled={isSubmitting}>
+						Continue
+					</Button>
+				)}
+			</DialogFooter>
+		</div>
 	);
 };
+
+const ReviewItem = ({ label, value }: { label: string; value: string }) => (
+	<div className="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+		<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+			{label}
+		</p>
+		<p className="mt-1 font-medium text-gray-900 dark:text-gray-50">{value}</p>
+	</div>
+);
 
 export default TransactionForm;

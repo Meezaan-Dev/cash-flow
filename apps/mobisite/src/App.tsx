@@ -145,6 +145,7 @@ const AddTransactionView = () => {
 	const [amount, setAmount] = useState('');
 	const [category, setCategory] = useState('');
 	const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+	const [description, setDescription] = useState('');
 	const [selectedRecurringId, setSelectedRecurringId] = useState('');
 	const [error, setError] = useState('');
 	const [saving, setSaving] = useState(false);
@@ -187,6 +188,7 @@ const AddTransactionView = () => {
 		setAmount(String(recurringTransaction.amount));
 		setCategory(recurringTransaction.category);
 		setSubcategory(recurringTransaction.subcategory ?? '');
+		setDescription(recurringTransaction.description ?? '');
 		if (recurringTransaction.accountId && accounts.some((account) => account.id === recurringTransaction.accountId)) {
 			setAccountId(recurringTransaction.accountId);
 		}
@@ -218,6 +220,7 @@ const AddTransactionView = () => {
 				amount: Number(amount),
 				category,
 				subcategory: subcategory || undefined,
+				description: description || undefined,
 				date: transactionDate,
 				recurringTransactionId: selectedRecurring?.id,
 				recurringOccurrenceDate: selectedRecurring
@@ -228,6 +231,7 @@ const AddTransactionView = () => {
 			setTitle('');
 			setAmount('');
 			setSubcategory('');
+			setDescription('');
 			setSelectedRecurringId('');
 			setDate(new Date().toISOString().split('T')[0]);
 		} catch (err) {
@@ -278,11 +282,12 @@ const AddTransactionView = () => {
 				)}
 				{recurringTransactions.length > 0 && (
 					<label className="block space-y-1.5 text-sm font-medium">
-						<span>Recurring</span>
+						<span>Quick fill</span>
 						<select
 							value={selectedRecurringId}
 							onChange={(event) => handleRecurringChange(event.target.value)}
 							className="h-12 w-full rounded-md border bg-background px-3"
+							aria-label="Quick fill"
 						>
 							<option value="">No recurring template</option>
 							{recurringTransactions.map((transaction) => (
@@ -313,18 +318,6 @@ const AddTransactionView = () => {
 					))}
 				</div>
 				<label className="block space-y-1.5 text-sm font-medium">
-					<span>Title</span>
-					<input
-						value={title}
-						onChange={(event) => {
-							setTitle(event.target.value);
-							setSuccess('');
-						}}
-						className="h-12 w-full rounded-md border bg-background px-3"
-						required
-					/>
-				</label>
-				<label className="block space-y-1.5 text-sm font-medium">
 					<span>Amount</span>
 					<input
 						type="number"
@@ -337,18 +330,16 @@ const AddTransactionView = () => {
 					/>
 				</label>
 				<label className="block space-y-1.5 text-sm font-medium">
-					<span>Account</span>
-					<select
-						value={accountId}
-						onChange={(event) => setAccountId(event.target.value)}
+					<span>Title</span>
+					<input
+						value={title}
+						onChange={(event) => {
+							setTitle(event.target.value);
+							setSuccess('');
+						}}
 						className="h-12 w-full rounded-md border bg-background px-3"
-					>
-						{accounts.map((account) => (
-							<option key={account.id} value={account.id}>
-								{account.name} - {formatCurrency(account.balance)}
-							</option>
-						))}
-					</select>
+						required
+					/>
 				</label>
 				<label className="block space-y-1.5 text-sm font-medium">
 					<span>Category</span>
@@ -367,32 +358,64 @@ const AddTransactionView = () => {
 						))}
 					</select>
 				</label>
-				{availableSubcategories.length > 0 && (
-					<label className="block space-y-1.5 text-sm font-medium">
-						<span>Subcategory</span>
-						<select
-							value={subcategory}
-							onChange={(event) => setSubcategory(event.target.value)}
-							className="h-12 w-full rounded-md border bg-background px-3"
-						>
-							<option value="">No subcategory</option>
-							{availableSubcategories.map((item) => (
-								<option key={item.value} value={item.value}>
-									{item.label}
-								</option>
-							))}
-						</select>
-					</label>
-				)}
-				<label className="block space-y-1.5 text-sm font-medium">
-					<span>Date</span>
-					<input
-						type="date"
-						value={date}
-						onChange={(event) => setDate(event.target.value)}
-						className="h-12 w-full rounded-md border bg-background px-3"
-					/>
-				</label>
+				<details className="overflow-hidden rounded-xl border bg-card">
+					<summary className="cursor-pointer px-3 py-3 text-left text-sm font-semibold">
+						<span className="block">More details</span>
+						<span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+							Account, date, subcategory, and notes
+						</span>
+					</summary>
+					<div className="space-y-4 border-t p-3">
+						<label className="block space-y-1.5 text-sm font-medium">
+							<span>Account</span>
+							<select
+								value={accountId}
+								onChange={(event) => setAccountId(event.target.value)}
+								className="h-12 w-full rounded-md border bg-background px-3"
+							>
+								{accounts.map((account) => (
+									<option key={account.id} value={account.id}>
+										{account.name} - {formatCurrency(account.balance)}
+									</option>
+								))}
+							</select>
+						</label>
+						<label className="block space-y-1.5 text-sm font-medium">
+							<span>Date</span>
+							<input
+								type="date"
+								value={date}
+								onChange={(event) => setDate(event.target.value)}
+								className="h-12 w-full rounded-md border bg-background px-3"
+							/>
+						</label>
+						{availableSubcategories.length > 0 && (
+							<label className="block space-y-1.5 text-sm font-medium">
+								<span>Subcategory</span>
+								<select
+									value={subcategory}
+									onChange={(event) => setSubcategory(event.target.value)}
+									className="h-12 w-full rounded-md border bg-background px-3"
+								>
+									<option value="">No subcategory</option>
+									{availableSubcategories.map((item) => (
+										<option key={item.value} value={item.value}>
+											{item.label}
+										</option>
+									))}
+								</select>
+							</label>
+						)}
+						<label className="block space-y-1.5 text-sm font-medium">
+							<span>Notes</span>
+							<textarea
+								value={description}
+								onChange={(event) => setDescription(event.target.value)}
+								className="min-h-[84px] w-full rounded-md border bg-background px-3 py-2"
+							/>
+						</label>
+					</div>
+				</details>
 				<button
 					type="submit"
 					disabled={saving}

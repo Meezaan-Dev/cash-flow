@@ -36,7 +36,13 @@ jest.mock('@cash-flow/shared', () => ({
 		loading: false,
 	}),
 	useCategoryOptions: () => ({
-		categories: [{ value: 'food', label: 'Food', subcategories: [] }],
+		categories: [
+			{
+				value: 'food',
+				label: 'Food',
+				subcategories: [{ value: 'groceries', label: 'Groceries' }],
+			},
+		],
 		categoryOptions: [{ value: 'food', label: 'Food' }],
 		getCategoryPathLabel: (category: string) => category,
 	}),
@@ -155,7 +161,7 @@ describe('Mobisite App', () => {
 
 		render(<App />);
 		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
-		await user.selectOptions(screen.getByLabelText('Recurring'), 'rent');
+		await user.selectOptions(screen.getByLabelText('Quick fill'), 'rent');
 
 		expect(screen.getByLabelText('Title')).toHaveValue('Rent');
 		expect(screen.getByLabelText('Amount')).toHaveValue(9000);
@@ -166,7 +172,7 @@ describe('Mobisite App', () => {
 
 		render(<App />);
 		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
-		await user.selectOptions(screen.getByLabelText('Recurring'), 'rent');
+		await user.selectOptions(screen.getByLabelText('Quick fill'), 'rent');
 		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
 
 		await waitFor(() => expect(addTransaction).toHaveBeenCalledWith(
@@ -197,13 +203,63 @@ describe('Mobisite App', () => {
 
 		render(<App />);
 		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
-		await user.selectOptions(screen.getByLabelText('Recurring'), 'rent');
+		await user.selectOptions(screen.getByLabelText('Quick fill'), 'rent');
 		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
 
 		await waitFor(() => expect(addTransaction).toHaveBeenCalledWith(
 			expect.objectContaining({
 				accountId: 'acc-1',
 				recurringTransactionId: 'rent',
+			})
+		));
+	});
+
+	it('uses hidden default account and date for quick add', async () => {
+		const user = userEvent.setup();
+
+		render(<App />);
+		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
+		await user.type(screen.getByLabelText('Amount'), '85');
+		await user.type(screen.getByLabelText('Title'), 'Coffee');
+		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
+
+		await waitFor(() => expect(addTransaction).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'expense',
+				accountId: 'acc-1',
+				title: 'Coffee',
+				amount: 85,
+				category: 'food',
+				date: expect.any(Date),
+			})
+		));
+		expect(screen.getByLabelText('Title')).toHaveValue('');
+		expect(screen.getByLabelText('Amount')).toHaveValue(null);
+		expect(screen.getByText('More details').closest('details')).not.toHaveAttribute('open');
+	});
+
+	it('submits expanded details when they are provided', async () => {
+		const user = userEvent.setup();
+
+		render(<App />);
+		await user.click(await screen.findByRole('button', { name: /add transaction/i }));
+		await user.type(screen.getByLabelText('Amount'), '240');
+		await user.type(screen.getByLabelText('Title'), 'Groceries');
+		await user.click(screen.getByText('More details'));
+		await user.selectOptions(screen.getByLabelText('Subcategory'), 'groceries');
+		await user.clear(screen.getByLabelText('Date'));
+		await user.type(screen.getByLabelText('Date'), '2026-08-12');
+		await user.type(screen.getByLabelText('Notes'), 'Weekly shop');
+		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
+
+		await waitFor(() => expect(addTransaction).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Groceries',
+				amount: 240,
+				category: 'food',
+				subcategory: 'groceries',
+				description: 'Weekly shop',
+				date: new Date('2026-08-12'),
 			})
 		));
 	});

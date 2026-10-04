@@ -175,6 +175,7 @@ describe('Dashboard', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Create transaction' }));
 
+		expect(screen.getByRole('dialog')).toBeInTheDocument();
 		expect(screen.getByText('Transaction form')).toBeInTheDocument();
 
 		fireEvent.click(screen.getByRole('button', { name: 'Finish add' }));
@@ -189,15 +190,17 @@ describe('Dashboard', () => {
 		);
 	});
 
-	it('navigates from the transaction form to budgets without getting stuck', () => {
+	it('closes the transaction modal before navigating to budgets', () => {
 		renderDashboard();
 
 		fireEvent.click(screen.getByRole('button', { name: 'Create transaction' }));
 		expect(screen.getByText('Transaction form')).toBeInTheDocument();
 
+		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		expect(screen.queryByText('Transaction form')).not.toBeInTheDocument();
+
 		fireEvent.click(screen.getByRole('button', { name: 'Open budgets' }));
 		expect(screen.getByText('Budgets list')).toBeInTheDocument();
-		expect(screen.queryByText('Transaction form')).not.toBeInTheDocument();
 	});
 
 	it('navigates to random notes from the dashboard shell', () => {
