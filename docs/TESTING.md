@@ -32,6 +32,7 @@ Run `find apps packages -path '*/__tests__/*' -type f | sort` for the exact curr
 
 ```bash
 npm test
+npm run test:rules
 npm test -- --runInBand
 npm run test:watch
 npm run test:coverage
@@ -93,5 +94,6 @@ These are the remaining high-value gaps based on current test names:
 
 - JSDOM environment with TypeScript through `ts-jest`
 - Firebase/auth and browser API mocks in test setup utilities
+- Firestore rules tests run through `npm run test:rules`, which starts the Firestore emulator before executing `packages/shared/src/__tests__/firestore.rules.test.ts`
 - Local storage and router behavior mocked where needed
 - Function source is TypeScript-built separately under `functions/`

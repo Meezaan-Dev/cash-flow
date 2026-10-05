@@ -1,10 +1,15 @@
 import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
 import { GoogleGenAI } from '@google/genai';
-import { randomUUID } from 'crypto';
+import { db, type QueryDocumentSnapshot } from './firebase';
+import { getRequestId, sendError, setCorsHeaders, verifyToken } from './http';
 
-admin.initializeApp();
-const db = admin.firestore();
+export {
+	addTransaction,
+	addTransfer,
+	updateTransaction,
+	deleteTransaction,
+	deleteAllTransactions,
+} from './ledger';
 
 interface Transaction {
 	id: string;
@@ -38,15 +43,6 @@ interface ApiResponse {
 	message?: string;
 }
 
-interface ErrorPayload {
-	success: false;
-	error: string;
-	code: string;
-	details: string;
-	retryable: boolean;
-	requestId: string;
-}
-
 interface AskAIRequestBody {
 	question?: string;
 	userId?: string;
@@ -57,36 +53,9 @@ const MAX_QUESTION_LENGTH = 2_000;
 const MAX_HISTORY_MESSAGES = 12;
 const MAX_HISTORY_CONTENT_LENGTH = 2_000;
 
-async function verifyToken(authHeader: string): Promise<admin.auth.DecodedIdToken> {
-	if (!authHeader || !authHeader.startsWith('Bearer ')) {
-		throw new Error('Missing or invalid Authorization header');
-	}
-	try {
-		return await admin.auth().verifyIdToken(authHeader.slice('Bearer '.length));
-	} catch {
-		throw new Error('Invalid or expired token');
-	}
-}
-
-function setCorsHeaders(res: functions.Response<unknown>): void {
-	res.set('Access-Control-Allow-Origin', '*');
-	res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-	res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-	res.set('Access-Control-Max-Age', '3600');
-}
-
-function sendError(
-	res: functions.Response<unknown>,
-	status: number,
-	payload: Omit<ErrorPayload, 'success'>
-): void {
-	res.status(status).json({ success: false, ...payload });
-}
-
 function parseDate(value: unknown): Date | null {
 	if (!value) return null;
 	if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-	if (value instanceof admin.firestore.Timestamp) return value.toDate();
 	if (typeof value === 'object' && value !== null && 'toDate' in value) {
 		const candidate = (value as { toDate: () => Date }).toDate();
 		return Number.isNaN(candidate.getTime()) ? null : candidate;
@@ -109,7 +78,7 @@ function createResponse(statusCode: number, body: ApiResponse) {
 	};
 }
 
-function toTransaction(doc: admin.firestore.QueryDocumentSnapshot): Transaction {
+function toTransaction(doc: QueryDocumentSnapshot): Transaction {
 	const data = doc.data();
 	return {
 		id: doc.id,
@@ -128,7 +97,7 @@ function toTransaction(doc: admin.firestore.QueryDocumentSnapshot): Transaction 
 	};
 }
 
-function toAccount(doc: admin.firestore.QueryDocumentSnapshot): Account {
+function toAccount(doc: QueryDocumentSnapshot): Account {
 	const data = doc.data();
 	return {
 		id: doc.id,
@@ -197,7 +166,7 @@ export const healthCheck = functions.https.onRequest((_req, res) => {
 export const askAI = functions
 	.runWith({ secrets: ['GEMINI_API_KEY'] })
 	.https.onRequest(async (req, res) => {
-		const requestId = req.get('function-execution-id') || randomUUID();
+		const requestId = getRequestId(req);
 		if (req.method === 'OPTIONS') {
 			setCorsHeaders(res);
 			res.status(204).send('');

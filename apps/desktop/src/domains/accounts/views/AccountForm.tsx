@@ -56,20 +56,19 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 		setError('');
 		try {
 			const normalizedType = normalizeAccountType(type);
-			const data = {
+			const accountDetails = {
 				name: name.trim(),
 				bank: bank.trim() || undefined,
 				type: normalizedType,
-				balance: Number(balance),
 				creditLimit:
 					normalizedType === 'credit' ? Math.max(Number(creditLimit), 0) : 0,
 				color,
 				currency: 'ZAR',
 			};
 			if (account?.id) {
-				await updateAccount(account.id, data);
+				await updateAccount(account.id, accountDetails);
 			} else {
-				await addAccount(data);
+				await addAccount({ ...accountDetails, balance: Number(balance) });
 			}
 			onClose();
 		} catch (err: unknown) {
@@ -155,7 +154,13 @@ const AccountForm: React.FC<AccountFormProps> = ({ onClose, account }) => {
 								value={balance}
 								onChange={(e) => setBalance(Number(e.target.value))}
 								placeholder="0.00"
+								disabled={Boolean(account)}
 							/>
+							{account && (
+								<p className="text-xs text-muted-foreground">
+									Use reconcile or transactions to change balances.
+								</p>
+							)}
 						</div>
 						{type === 'credit' && (
 							<div className="space-y-1.5">

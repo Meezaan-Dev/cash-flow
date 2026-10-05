@@ -1,11 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useRandomNote, RANDOM_NOTE_MAX_COUNT } from '../useRandomNote';
-import { auth } from '@/services/firebase';
 import { addDoc, deleteDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
 
-jest.mock('firebase/auth', () => ({
-	onAuthStateChanged: jest.fn(),
+const mockUser = { uid: 'user-1' };
+
+jest.mock('@cash-flow/shared/auth/AuthContext', () => ({
+	useAuthUser: () => ({ user: mockUser, authReady: true }),
 }));
 
 jest.mock('firebase/firestore', () => ({
@@ -29,11 +29,6 @@ const mockSnapshot = (docs: Array<{ id: string; data: Record<string, unknown> }>
 describe('useRandomNote', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		(auth as { currentUser: unknown }).currentUser = { uid: 'user-1' };
-		(onAuthStateChanged as jest.Mock).mockImplementation((_auth, callback) => {
-			callback({ uid: 'user-1' });
-			return jest.fn();
-		});
 		(onSnapshot as jest.Mock).mockImplementation((_ref, next) => {
 			next(
 				mockSnapshot([

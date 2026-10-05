@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db, auth } from '../services/firebase';
+import { db } from '../services/firebase';
 import {
 	collection,
 	addDoc,
@@ -10,11 +10,11 @@ import {
 	onSnapshot,
 	Timestamp,
 	deleteField,
-	increment,
 	type UpdateData,
 } from 'firebase/firestore';
 import { Account } from '../types';
 import { normalizeAccount } from '../accounts/AccountModel';
+import { useAuthUser } from '../auth/AuthContext';
 import {
 	TEXT_LIMITS,
 	assertFiniteMoney,
@@ -66,16 +66,10 @@ const normalizeAccountFields = (
 export const useAccounts = () => {
 	const [accounts, setAccounts] = useState<Account[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState(() => auth.currentUser);
+	const { user, authReady } = useAuthUser();
 
 	useEffect(() => {
-		const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
-			setUser(firebaseUser);
-		});
-		return () => unsubscribe();
-	}, []);
-
-	useEffect(() => {
+		if (!authReady) return;
 		if (!user) {
 			setAccounts([]);
 			setLoading(false);
@@ -98,7 +92,7 @@ export const useAccounts = () => {
 		});
 
 		return () => unsubscribe();
-	}, [user]);
+	}, [user, authReady]);
 
 	const addAccount = async (account: Omit<Account, 'id' | 'createdAt' | 'userId'>) => {
 		if (!user) throw new Error('User not authenticated');
@@ -129,12 +123,8 @@ export const useAccounts = () => {
 		await deleteDoc(ref);
 	};
 
-	const updateBalance = async (accountId: string, delta: number) => {
-		if (!user) throw new Error('User not authenticated');
-		const normalizedId = normalizeRequiredText(accountId, 'Account ID', TEXT_LIMITS.documentId);
-		const normalizedDelta = assertFiniteMoney(delta, 'Balance change');
-		const ref = doc(db, 'users', user.uid, 'accounts', normalizedId);
-		await updateDoc(ref, { balance: increment(normalizedDelta) });
+	const updateBalance = async () => {
+		throw new Error('Account balances can only be changed through transactions or reconciliation.');
 	};
 
 	return {

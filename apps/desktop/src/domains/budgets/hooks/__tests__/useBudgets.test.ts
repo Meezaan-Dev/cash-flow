@@ -1,6 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useBudgets } from '../useBudgets';
-import { auth } from '@/services/firebase';
 import {
 	createBudget,
 	deleteBudget,
@@ -11,6 +10,11 @@ import {
 } from '@/domains/budgets/services/budgetService';
 
 const mockOnSnapshot = jest.fn();
+const mockUseAuthUser = jest.fn();
+
+jest.mock('@cash-flow/shared/auth/AuthContext', () => ({
+	useAuthUser: () => mockUseAuthUser(),
+}));
 
 jest.mock('firebase/firestore', () => ({
 	collection: jest.fn((...path: string[]) => ({ path })),
@@ -32,16 +36,7 @@ const mockUser = { uid: 'user-1' };
 describe('useBudgets', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		Object.defineProperty(auth, 'currentUser', {
-			value: mockUser,
-			writable: true,
-		});
-		(auth.onAuthStateChanged as jest.Mock).mockImplementation(
-			(callback: (user: unknown) => void) => {
-				callback(mockUser);
-				return jest.fn();
-			}
-		);
+		mockUseAuthUser.mockReturnValue({ user: mockUser, authReady: true });
 		mockOnSnapshot.mockImplementation(
 			(_queryRef: unknown, next: (snapshot: unknown) => void) => {
 				next({

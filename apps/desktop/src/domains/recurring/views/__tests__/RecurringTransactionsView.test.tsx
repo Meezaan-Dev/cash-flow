@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type React from 'react';
+import { createSelectMock } from '@/utils/test-utils/selectMock';
 import RecurringTransactionsView from '../RecurringTransactionsView';
 import RecurringTransactionsCalendar from '../RecurringTransactionsCalendar';
 import RecurringTransactionForm from '../RecurringTransactionForm';
@@ -68,7 +69,7 @@ jest.mock('@cash-flow/shared/accounts/mainAccountPreference', () => ({
 	useMainAccountPreference: () => ({ mainAccountId: 'savings' }),
 }));
 
-jest.mock('@/components/app/ui/select', () => require('@/utils/test-utils/selectMock').createSelectMock(jest.requireActual('react')));
+jest.mock('@/components/app/ui/select', () => createSelectMock(jest.requireActual('react')));
 
 jest.mock('@/components/marketing/SectionHeader', () => ({
 	__esModule: true,
