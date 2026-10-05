@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
+import { LedgerGhostMascot } from '@cash-flow/ui';
 import { FiPlus, FiSearch, FiSettings, FiTrash2 } from 'react-icons/fi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
@@ -613,7 +614,12 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 								: 'Add your first transaction to start reviewing history.'
 							: 'Try adjusting your filters or search.'
 					}
-					icon={<FiSearch className="h-6 w-6" />}
+					visual={
+						transactions.length === 0 ? (
+							<LedgerGhostMascot size="lg" decorative />
+						) : undefined
+					}
+					icon={transactions.length === 0 ? undefined : <FiSearch className="h-6 w-6" />}
 				/>
 			) : (
 				<DataListSurface onScroll={handleScroll}>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
+import { LedgerGhostMascot } from '@cash-flow/ui';
 import { Eye, EyeOff } from 'lucide-react';
 import { auth } from '@/services/firebase';
 import {
@@ -113,6 +114,7 @@ const AuthModals: React.FC<AuthModalsProps> = ({ open, onClose, mode, onModeChan
 		<Dialog open={open} onOpenChange={handleClose}>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
+					<LedgerGhostMascot size="md" decorative className="mx-auto mb-2" />
 					<DialogTitle className="text-2xl font-semibold">
 						{mode === 'login' ? 'Welcome Back' : 'Create Account'}
 					</DialogTitle>

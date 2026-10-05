@@ -178,6 +178,7 @@ export const DataListRow: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
 	title: string;
 	description: React.ReactNode;
+	visual?: React.ReactNode;
 	icon?: React.ReactNode;
 	action?: React.ReactNode;
 }
@@ -185,6 +186,7 @@ interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
 export const EmptyState: React.FC<EmptyStateProps> = ({
 	title,
 	description,
+	visual,
 	icon,
 	action,
 	className,
@@ -197,6 +199,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 		)}
 		{...props}
 	>
+		{visual && <div className="mb-4">{visual}</div>}
 		{icon && (
 			<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
 				{icon}
