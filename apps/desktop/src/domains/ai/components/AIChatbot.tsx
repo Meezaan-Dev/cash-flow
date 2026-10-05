@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { LedgerGhostMascot } from '@cash-flow/ui';
 import { FiSend, FiTrash2 } from 'react-icons/fi';
 import { useAuth } from '@/domains/auth/hooks/useAuth';
 import { useAIChatController } from '@/domains/ai/controllers/AIChatController';
@@ -138,6 +139,7 @@ const AIChatbot: React.FC = () => {
 				<div ref={messagesRef} className="flex-1 space-y-4 overflow-y-auto p-5">
 					{messages.length === 0 ? (
 						<div className="mx-auto max-w-2xl space-y-3 py-10 text-center">
+							<LedgerGhostMascot size="lg" decorative className="mx-auto" />
 							<p className={sectionLabel}>Try asking</p>
 							<div className="flex flex-wrap justify-center gap-2">
 								{SUGGESTED_PROMPTS.map((prompt) => (

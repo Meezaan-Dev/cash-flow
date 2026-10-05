@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
+import { LedgerGhostMascot } from '@cash-flow/ui';
 
 interface HeroProps {
 	onAuthClick: (mode: 'login' | 'register') => void;
@@ -79,7 +80,10 @@ const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
 
 					<div className="flex min-h-[320px] bg-white">
 						<aside className="hidden w-36 shrink-0 border-r border-gray-200 bg-white p-3 sm:block">
-							<p className="text-xs font-semibold text-gray-900">CashFlow</p>
+							<div className="flex items-center gap-2">
+								<LedgerGhostMascot size="sm" decorative className="h-7 w-7 shadow-sm" />
+								<p className="text-xs font-semibold text-gray-900">CashFlow</p>
+							</div>
 							<p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-gray-400">
 								Available
 							</p>
@@ -175,9 +179,12 @@ const Hero: React.FC<HeroProps> = ({ onAuthClick }) => {
 
 							<div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[38%] border-l border-gray-200 bg-white/95 shadow-[-12px_0_40px_rgba(15,23,42,0.08)] sm:block">
 								<div className="border-b border-gray-100 px-4 py-4">
-									<p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-										New
-									</p>
+									<div className="flex items-center gap-2">
+										<LedgerGhostMascot size="sm" decorative className="h-8 w-8 shadow-sm" />
+										<p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+											New
+										</p>
+									</div>
 									<p className="mt-1 text-sm font-semibold text-gray-900">Add transaction</p>
 								</div>
 								<div className="space-y-3 p-4">

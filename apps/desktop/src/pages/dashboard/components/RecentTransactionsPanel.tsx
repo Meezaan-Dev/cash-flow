@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { FiDollarSign } from 'react-icons/fi';
+import { LedgerGhostMascot } from '@cash-flow/ui';
 import Currency from '@/components/marketing/Currency';
 import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
 import { Account, Transaction } from '@/types';
@@ -72,9 +72,7 @@ const RecentTransactionsPanel: React.FC<RecentTransactionsPanelProps> = ({
 
 			{recentTransactions.length === 0 ? (
 				<div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-					<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950">
-						<FiDollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-					</div>
+					<LedgerGhostMascot size="md" decorative className="mb-3" />
 					<p className="font-medium text-gray-900 dark:text-gray-50">No transactions yet</p>
 					<p className="mt-1 max-w-xs text-sm text-gray-500 dark:text-gray-400">
 						Add your first transaction and this feed will start filling in.

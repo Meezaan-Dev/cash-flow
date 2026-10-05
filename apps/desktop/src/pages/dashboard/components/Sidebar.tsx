@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { LedgerGhostMascot } from '@cash-flow/ui';
 import {
 	FiBarChart2,
 	FiChevronLeft,
@@ -145,18 +146,21 @@ const Sidebar: React.FC<SidebarProps> = ({
 					)}
 				>
 					<div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 dark:border-gray-800">
-						<div className="min-w-0 flex-1">
-							<h3 className="text-lg font-semibold leading-tight tracking-tight text-gray-900 dark:text-gray-50">
-								CashFlow
-							</h3>
-							{accounts.length > 0 && (
-								<div className="mt-1 truncate">
-									<p className={cn(sectionLabel, 'normal-case tracking-normal')}>
-										Available
-									</p>
-									<Currency amount={availableBalance} className="text-sm" />
-								</div>
-							)}
+						<div className="flex min-w-0 flex-1 items-start gap-3">
+							<LedgerGhostMascot size="sm" decorative />
+							<div className="min-w-0">
+								<h3 className="text-lg font-semibold leading-tight tracking-tight text-gray-900 dark:text-gray-50">
+									CashFlow
+								</h3>
+								{accounts.length > 0 && (
+									<div className="mt-1 truncate">
+										<p className={cn(sectionLabel, 'normal-case tracking-normal')}>
+											Available
+										</p>
+										<Currency amount={availableBalance} className="text-sm" />
+									</div>
+								)}
+							</div>
 						</div>
 						{!collapsed && (
 							<>

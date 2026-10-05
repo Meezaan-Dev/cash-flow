@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
+import { LedgerGhostMascot } from '@cash-flow/ui';
 import {
 	ArrowDownCircle,
 	ArrowUpCircle,
@@ -77,6 +78,7 @@ const AuthPanel = () => {
 		<main className="min-h-screen-safe bg-background py-6 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:px-4">
 			<div className="mx-auto flex min-h-[calc(var(--vh-screen)-3rem)] w-full max-w-sm flex-col justify-center">
 				<div className="mb-8">
+					<LedgerGhostMascot size="lg" decorative className="mb-4" />
 					<p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
 						CashFlow mobile
 					</p>
@@ -245,6 +247,7 @@ const AddTransactionView = () => {
 		return (
 			<section className="py-4 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] md:p-4">
 				<div className="rounded-lg border border-dashed p-5">
+					<LedgerGhostMascot size="md" decorative className="mb-4" />
 					<h2 className="text-lg font-semibold">No accounts yet</h2>
 					<p className="mt-2 text-sm text-muted-foreground">
 						Create your first account in desktop admin, then mobile capture is ready.
@@ -457,7 +460,8 @@ const TransactionListView = () => {
 			<div className="mx-auto max-w-sm space-y-5">
 				{transactions.length === 0 && (
 					<div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
-						Add your first transaction and it will show up here.
+						<LedgerGhostMascot size="md" decorative className="mb-4" />
+						<p>Add your first transaction and it will show up here.</p>
 					</div>
 				)}
 				{Object.entries(grouped).map(([date, items]) => (

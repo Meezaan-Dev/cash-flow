@@ -1,1 +1,1 @@
-export {};
+export { LedgerGhostMascot } from './LedgerGhostMascot';

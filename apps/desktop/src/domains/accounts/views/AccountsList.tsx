@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LedgerGhostMascot } from '@cash-flow/ui';
 import { FiEdit2, FiTrash2, FiPlus, FiArrowUpRight, FiArrowDownRight } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { Account } from '@/types';
@@ -150,9 +151,10 @@ const AccountsList: React.FC = () => {
 					<EmptyState
 						title="No accounts yet"
 						description="Add your first account to start tracking balances."
-						icon={<FiPlus className="h-6 w-6" />}
+						visual={<LedgerGhostMascot size="lg" decorative />}
 						action={
 							<Button variant="marketing" onClick={() => setShowForm(true)}>
+								<FiPlus className="mr-2 h-4 w-4" />
 								Add Account
 							</Button>
 						}
