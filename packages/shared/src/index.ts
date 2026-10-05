@@ -2,6 +2,8 @@ export * from './types';
 export * from './utils/date';
 export * from './utils/formatCurrency';
 export * from './services/firebase';
+export * from './services/api';
+export * from './auth/AuthContext';
 export * from './transactions/TransactionModel';
 export * from './hooks/useTransactions';
 export * from './hooks/useRecurringTransactions';

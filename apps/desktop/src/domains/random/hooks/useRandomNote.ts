@@ -9,8 +9,8 @@ import {
 	setDoc,
 	updateDoc,
 } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '@/services/firebase';
+import { db } from '@/services/firebase';
+import { useAuthUser } from '@cash-flow/shared/auth/AuthContext';
 
 const RANDOM_NOTE_ID = 'main';
 export const RANDOM_NOTE_LIMIT = 10_000;
@@ -31,16 +31,10 @@ const sortRandomNotes = (notes: RandomNote[]) =>
 export const useRandomNote = () => {
 	const [notes, setNotes] = useState<RandomNote[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState(() => auth.currentUser);
+	const { user, authReady } = useAuthUser();
 
 	useEffect(() => {
-		const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-			setUser(firebaseUser);
-		});
-		return () => unsubscribe();
-	}, []);
-
-	useEffect(() => {
+		if (!authReady) return;
 		if (!user) {
 			setNotes([]);
 			setLoading(false);
@@ -69,7 +63,7 @@ export const useRandomNote = () => {
 		);
 
 		return () => unsubscribe();
-	}, [user]);
+	}, [user, authReady]);
 
 	const saveNote = useCallback(
 		async (noteId: string, nextContent: string) => {

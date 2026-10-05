@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type React from 'react';
+import { createSelectMock } from '@/utils/test-utils/selectMock';
 import TransactionForm from '../TransactionForm';
 
 const mockAddTransaction = jest.fn();
@@ -82,7 +83,7 @@ jest.mock('@/components/app/ui/dialog', () => ({
 	),
 }));
 
-jest.mock('@/components/app/ui/select', () => require('@/utils/test-utils/selectMock').createSelectMock(jest.requireActual('react')));
+jest.mock('@/components/app/ui/select', () => createSelectMock(jest.requireActual('react')));
 
 const selectOption = async (user: ReturnType<typeof userEvent.setup>, name: string, option: string) => {
 	await user.click(screen.getByRole('combobox', { name }));

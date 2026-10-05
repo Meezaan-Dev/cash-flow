@@ -11,7 +11,8 @@ import {
 	updateDoc,
 	type UpdateData,
 } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { db } from '../services/firebase';
+import { useAuthUser } from '../auth/AuthContext';
 import {
 	normalizeRecurringTransactions,
 	type RecurringTransaction,
@@ -107,16 +108,10 @@ const sanitizeRecurringPayload = (
 export const useRecurringTransactions = () => {
 	const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState(() => auth.currentUser);
+	const { user, authReady } = useAuthUser();
 
 	useEffect(() => {
-		const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
-			setUser(firebaseUser);
-		});
-		return () => unsubscribe();
-	}, []);
-
-	useEffect(() => {
+		if (!authReady) return;
 		if (!user) {
 			setRecurringTransactions([]);
 			setLoading(false);
@@ -144,7 +139,7 @@ export const useRecurringTransactions = () => {
 		);
 
 		return () => unsubscribe();
-	}, [user]);
+	}, [user, authReady]);
 
 	const addRecurringTransaction = async (
 		transaction: Omit<RecurringTransaction, 'id' | 'createdAt' | 'userId'>
