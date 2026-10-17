@@ -31,6 +31,10 @@ jest.mock('@cash-flow/shared', () => ({
 	getRecurringOccurrenceDateKey: () => '2026-07-27',
 	getTransactionDateOrEpoch: () => new Date(2026, 4, 22),
 	mergeCategoryOptions: (items: unknown[]) => items,
+	useAuthUser: () => ({
+		user: { uid: 'user-1', email: 'test@example.com' },
+		authReady: true,
+	}),
 	useAccounts: () => ({
 		accounts: mockAccounts,
 		loading: false,

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter as Router, Navigate, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from '@cash-flow/shared/auth/AuthContext';
 import { ThemeProvider } from '@/app/theme/context/ThemeContext';
 import { TransactionsProvider } from '@/domains/transactions/context/TransactionsContext';
 import { AccountsProvider } from '@/domains/accounts/context/AccountsContext';
@@ -35,32 +36,34 @@ const protectedDashboard = (children: ReactNode) => (
 function App() {
 	return (
 		<ThemeProvider>
-			<Router>
-				<Routes>
-					<Route
-						path="/"
-						element={
-							<ProtectedRoute>
-								<Navigate to="/dashboard" replace />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path="/dashboard/accounts/:accountId"
-						element={protectedDashboard(<AccountDetailPage />)}
-					/>
-					<Route path="/dashboard/*" element={protectedDashboard(<Dashboard />)} />
-					<Route
-						path="/mobisite"
-						element={
-							<ProtectedRoute>
-								<MobisiteFrame />
-							</ProtectedRoute>
-						}
-					/>
-					<Route path="*" element={<Navigate to="/dashboard" replace />} />
-				</Routes>
-			</Router>
+			<AuthProvider>
+				<Router>
+					<Routes>
+						<Route
+							path="/"
+							element={
+								<ProtectedRoute>
+									<Navigate to="/dashboard" replace />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path="/dashboard/accounts/:accountId"
+							element={protectedDashboard(<AccountDetailPage />)}
+						/>
+						<Route path="/dashboard/*" element={protectedDashboard(<Dashboard />)} />
+						<Route
+							path="/mobisite"
+							element={
+								<ProtectedRoute>
+									<MobisiteFrame />
+								</ProtectedRoute>
+							}
+						/>
+						<Route path="*" element={<Navigate to="/dashboard" replace />} />
+					</Routes>
+				</Router>
+			</AuthProvider>
 		</ThemeProvider>
 	);
 }

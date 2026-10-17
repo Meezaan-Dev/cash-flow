@@ -12,10 +12,9 @@ import {
 } from 'lucide-react';
 import {
 	createUserWithEmailAndPassword,
-	onAuthStateChanged,
 	signInWithEmailAndPassword,
 	signOut,
-	User,
+	type User,
 } from 'firebase/auth';
 import {
 	auth,
@@ -27,6 +26,7 @@ import {
 	type Transaction,
 	useAccounts,
 	useCategoryOptions,
+	useAuthUser,
 	useMainAccountPreference,
 	useRecurringTransactions,
 	useTransactions,
@@ -627,18 +627,9 @@ const MobileApp = ({ user }: { user: User }) => {
 };
 
 export function MobisiteApp() {
-	const [user, setUser] = useState<User | null>(null);
-	const [loading, setLoading] = useState(true);
+	const { user, authReady } = useAuthUser();
 
-	useEffect(() => {
-		const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-			setUser(currentUser);
-			setLoading(false);
-		});
-		return unsubscribe;
-	}, []);
-
-	if (loading) {
+	if (!authReady) {
 		return (
 			<div className="flex min-h-screen-safe items-center justify-center bg-background text-sm text-muted-foreground">
 				Loading mobile capture...

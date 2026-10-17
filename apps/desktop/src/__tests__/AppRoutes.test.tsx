@@ -54,6 +54,11 @@ jest.mock('@/app/theme/context/ThemeContext', () => ({
 	ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+jest.mock('@cash-flow/shared/auth/AuthContext', () => ({
+	AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+	useAuthUser: () => ({ user: mockAuthUser, authReady: true }),
+}));
+
 jest.mock('@/shared/filters/context/FilterPreferencesContext', () => ({
 	FilterPreferencesProvider: mockFilterPreferencesProvider,
 }));

@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/services/firebase';
+import { useAuthUser } from '@cash-flow/shared/auth/AuthContext';
 import Home from '@/pages/marketing/Home';
 
 const MOBILE_DASHBOARD_QUERY = '(max-width: 767px)';
@@ -39,21 +38,12 @@ const useIsMobileDashboardViewport = () => {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 	const location = useLocation();
-	const [user, setUser] = useState<User | null>(null);
-	const [loading, setLoading] = useState(true);
+	const { user, authReady } = useAuthUser();
 	const isMobileViewport = useIsMobileDashboardViewport();
 	const isDashboardRoute =
 		location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/');
 
-	useEffect(() => {
-		const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-			setUser(currentUser);
-			setLoading(false);
-		});
-		return unsubscribe;
-	}, []);
-
-	if (loading) {
+	if (!authReady) {
 		return (
 			<div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center">
 				<div className="text-center space-y-6">

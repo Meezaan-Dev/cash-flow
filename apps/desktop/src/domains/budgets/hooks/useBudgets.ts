@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import { auth, db } from '@/services/firebase';
+import { db } from '@/services/firebase';
+import { useAuthUser } from '@cash-flow/shared/auth/AuthContext';
 import { Budget } from '@/types';
 import { normalizeBudget } from '@/domains/budgets/models/BudgetModel';
 import {
@@ -19,14 +20,10 @@ export type BudgetFormData = Omit<CreateBudgetInput, 'userId'>;
 export const useBudgets = () => {
 	const [budgets, setBudgets] = useState<Budget[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState(() => auth.currentUser);
-
-	useEffect(
-		() => auth.onAuthStateChanged((firebaseUser) => setUser(firebaseUser)),
-		[]
-	);
+	const { user, authReady } = useAuthUser();
 
 	useEffect(() => {
+		if (!authReady) return;
 		if (!user) {
 			setBudgets([]);
 			setLoading(false);
@@ -49,7 +46,7 @@ export const useBudgets = () => {
 				setLoading(false);
 			}
 		);
-	}, [user]);
+	}, [user, authReady]);
 
 	const addBudget = async (budget: BudgetFormData) => {
 		if (!user) throw new Error('User not authenticated');

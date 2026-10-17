@@ -12,7 +12,8 @@ import {
 	where,
 	writeBatch,
 } from 'firebase/firestore';
-import { auth, db } from '@/services/firebase';
+import { db } from '@/services/firebase';
+import { useAuthUser } from '@cash-flow/shared/auth/AuthContext';
 import { CategoryDefinition } from '@/types';
 import { TRANSFER_CATEGORY_VALUE } from '@cash-flow/shared/categories/categories.constants';
 import {
@@ -41,18 +42,8 @@ const chunkArray = <T,>(items: T[], size: number): T[][] => {
 export const useCategories = () => {
 	const [categories, setCategories] = useState<CategoryDefinition[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState<typeof auth.currentUser | null>(null);
-	const [authReady, setAuthReady] = useState(false);
+	const { user, authReady } = useAuthUser();
 	const seededUsersRef = useRef<Set<string>>(new Set());
-
-	useEffect(() => {
-		const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
-			setUser(firebaseUser);
-			setAuthReady(true);
-		});
-
-		return () => unsubscribe();
-	}, []);
 
 	useEffect(() => {
 		if (!authReady) return;

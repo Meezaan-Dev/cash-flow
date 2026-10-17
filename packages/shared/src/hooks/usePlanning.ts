@@ -12,7 +12,8 @@ import {
 	writeBatch,
 	type UpdateData,
 } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { db } from '../services/firebase';
+import { useAuthUser } from '../auth/AuthContext';
 import {
 	normalizePaymentPlans,
 	normalizePlannedExpenses,
@@ -249,11 +250,10 @@ export const usePlanning = () => {
 	const [plannedExpenses, setPlannedExpenses] = useState<PlannedExpense[]>([]);
 	const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState(() => auth.currentUser);
-
-	useEffect(() => auth.onAuthStateChanged((firebaseUser) => setUser(firebaseUser)), []);
+	const { user, authReady } = useAuthUser();
 
 	useEffect(() => {
+		if (!authReady) return;
 		if (!user) {
 			setPlannedExpenses([]);
 			setPaymentPlans([]);
@@ -314,7 +314,7 @@ export const usePlanning = () => {
 			unsubscribePlanned();
 			unsubscribePaymentPlans();
 		};
-	}, [user]);
+	}, [user, authReady]);
 
 	const addPlannedExpense = async (expense: AddPlannedExpenseData) => {
 		if (!user) throw new Error('User not authenticated');

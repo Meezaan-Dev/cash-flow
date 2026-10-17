@@ -1,8 +1,14 @@
 import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import { db, type QueryDocumentSnapshot } from './firebase';
+import { setCorsHeaders, verifyToken } from './http';
 
-admin.initializeApp();
-const db = admin.firestore();
+export {
+	addTransaction,
+	addTransfer,
+	updateTransaction,
+	deleteTransaction,
+	deleteAllTransactions,
+} from './ledger';
 
 interface Transaction {
 	id: string;
@@ -27,28 +33,9 @@ interface ApiResponse {
 	message?: string;
 }
 
-async function verifyToken(authHeader: string): Promise<admin.auth.DecodedIdToken> {
-	if (!authHeader || !authHeader.startsWith('Bearer ')) {
-		throw new Error('Missing or invalid Authorization header');
-	}
-	try {
-		return await admin.auth().verifyIdToken(authHeader.slice('Bearer '.length));
-	} catch {
-		throw new Error('Invalid or expired token');
-	}
-}
-
-function setCorsHeaders(res: functions.Response<unknown>): void {
-	res.set('Access-Control-Allow-Origin', '*');
-	res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-	res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-	res.set('Access-Control-Max-Age', '3600');
-}
-
 function parseDate(value: unknown): Date | null {
 	if (!value) return null;
 	if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-	if (value instanceof admin.firestore.Timestamp) return value.toDate();
 	if (typeof value === 'object' && value !== null && 'toDate' in value) {
 		const candidate = (value as { toDate: () => Date }).toDate();
 		return Number.isNaN(candidate.getTime()) ? null : candidate;
@@ -61,11 +48,17 @@ function parseDate(value: unknown): Date | null {
 function createResponse(statusCode: number, body: ApiResponse) {
 	return {
 		statusCode,
+		headers: {
+			'Content-Type': 'application/json',
+			'Access-Control-Allow-Origin': '*',
+			'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+			'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+		},
 		body: JSON.stringify(body),
 	};
 }
 
-function toTransaction(doc: admin.firestore.QueryDocumentSnapshot): Transaction {
+function toTransaction(doc: QueryDocumentSnapshot): Transaction {
 	const data = doc.data();
 	return {
 		id: doc.id,

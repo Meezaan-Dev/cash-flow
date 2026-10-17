@@ -1,34 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.healthCheck = exports.getUserTransactions = void 0;
+exports.healthCheck = exports.getUserTransactions = exports.deleteAllTransactions = exports.deleteTransaction = exports.updateTransaction = exports.addTransfer = exports.addTransaction = void 0;
 const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-admin.initializeApp();
-const db = admin.firestore();
-async function verifyToken(authHeader) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('Missing or invalid Authorization header');
-    }
-    try {
-        return await admin.auth().verifyIdToken(authHeader.slice('Bearer '.length));
-    }
-    catch (_a) {
-        throw new Error('Invalid or expired token');
-    }
-}
-function setCorsHeaders(res) {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.set('Access-Control-Max-Age', '3600');
-}
+const firebase_1 = require("./firebase");
+const http_1 = require("./http");
+var ledger_1 = require("./ledger");
+Object.defineProperty(exports, "addTransaction", { enumerable: true, get: function () { return ledger_1.addTransaction; } });
+Object.defineProperty(exports, "addTransfer", { enumerable: true, get: function () { return ledger_1.addTransfer; } });
+Object.defineProperty(exports, "updateTransaction", { enumerable: true, get: function () { return ledger_1.updateTransaction; } });
+Object.defineProperty(exports, "deleteTransaction", { enumerable: true, get: function () { return ledger_1.deleteTransaction; } });
+Object.defineProperty(exports, "deleteAllTransactions", { enumerable: true, get: function () { return ledger_1.deleteAllTransactions; } });
 function parseDate(value) {
     if (!value)
         return null;
     if (value instanceof Date)
         return Number.isNaN(value.getTime()) ? null : value;
-    if (value instanceof admin.firestore.Timestamp)
-        return value.toDate();
     if (typeof value === 'object' && value !== null && 'toDate' in value) {
         const candidate = value.toDate();
         return Number.isNaN(candidate.getTime()) ? null : candidate;
@@ -41,6 +27,12 @@ function parseDate(value) {
 function createResponse(statusCode, body) {
     return {
         statusCode,
+        headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
         body: JSON.stringify(body),
     };
 }
@@ -65,11 +57,11 @@ function toTransaction(doc) {
 }
 exports.getUserTransactions = functions.https.onRequest(async (req, res) => {
     if (req.method === 'OPTIONS') {
-        setCorsHeaders(res);
+        (0, http_1.setCorsHeaders)(res);
         res.status(204).send('');
         return;
     }
-    setCorsHeaders(res);
+    (0, http_1.setCorsHeaders)(res);
     if (req.method !== 'GET') {
         const response = createResponse(405, {
             success: false,
@@ -83,8 +75,8 @@ exports.getUserTransactions = functions.https.onRequest(async (req, res) => {
             res.status(401).json({ success: false, error: 'Authorization header is required' });
             return;
         }
-        const { uid } = await verifyToken(req.headers.authorization);
-        const snapshot = await db
+        const { uid } = await (0, http_1.verifyToken)(req.headers.authorization);
+        const snapshot = await firebase_1.db
             .collection('users')
             .doc(uid)
             .collection('transactions')
@@ -108,7 +100,7 @@ exports.getUserTransactions = functions.https.onRequest(async (req, res) => {
     }
 });
 exports.healthCheck = functions.https.onRequest((_req, res) => {
-    setCorsHeaders(res);
+    (0, http_1.setCorsHeaders)(res);
     res.json({ success: true, message: 'API is running', timestamp: new Date().toISOString() });
 });
 //# sourceMappingURL=index.js.map

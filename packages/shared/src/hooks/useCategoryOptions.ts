@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Timestamp, addDoc, collection, onSnapshot, query } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { db } from '../services/firebase';
 import { CategoryDefinition } from '../types';
+import { useAuthUser } from '../auth/AuthContext';
 import {
 	buildCategoryLabelMap,
 	getCategoryPathLabel,
@@ -12,17 +13,11 @@ import {
 export const useCategoryOptions = () => {
 	const [categories, setCategories] = useState<CategoryDefinition[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState(() => auth.currentUser);
+	const { user, authReady } = useAuthUser();
 	const seededUsersRef = useRef<Set<string>>(new Set());
 
 	useEffect(() => {
-		const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
-			setUser(firebaseUser);
-		});
-		return () => unsubscribe();
-	}, []);
-
-	useEffect(() => {
+		if (!authReady) return;
 		if (!user) {
 			setCategories([]);
 			setLoading(false);
@@ -67,7 +62,7 @@ export const useCategoryOptions = () => {
 		);
 
 		return () => unsubscribe();
-	}, [user]);
+	}, [user, authReady]);
 
 	const categoryOptions = useMemo(
 		() => categories.map(({ label, value }) => ({ label, value })),
