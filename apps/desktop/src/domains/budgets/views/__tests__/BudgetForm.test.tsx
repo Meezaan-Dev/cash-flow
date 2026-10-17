@@ -53,4 +53,19 @@ describe('BudgetForm', () => {
 
 		expect(screen.getByText('Personal')).toBeInTheDocument();
 	});
+
+	it('renders page layout without the side panel wrapper', () => {
+		render(
+			<BudgetForm
+				onClose={mockOnClose}
+				defaultMonth="2026-10"
+				layout="page"
+			/>
+		);
+
+		expect(screen.getByRole('heading', { name: 'Create a budget' })).toBeInTheDocument();
+		expect(
+			screen.getByText(/New budgets stay in draft until published/i)
+		).toBeInTheDocument();
+	});
 });

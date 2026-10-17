@@ -39,6 +39,7 @@ interface BudgetFormProps {
 	defaultMonth: string;
 	defaultCategoryId?: string;
 	defaultSubCategoryId?: string;
+	layout?: 'panel' | 'page';
 }
 
 const NO_SUBCATEGORY = '__no_subcategory__';
@@ -52,7 +53,9 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 	defaultMonth,
 	defaultCategoryId = '',
 	defaultSubCategoryId,
+	layout = 'panel',
 }) => {
+	const isPageLayout = layout === 'page';
 	const { budgets, addBudget, updateBudget } = useBudgetsContext();
 	const { toast } = useToast();
 	const {
@@ -202,23 +205,49 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 		'rounded-2xl border border-border bg-card p-5 text-card-foreground';
 	const inputClass = 'h-11 rounded-xl border-border bg-background';
 
-	return (
-		<SidePanelContent>
-			<form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-				<header className="border-b border-border bg-muted/30 px-6 py-6 pr-16">
-					<p className="text-xs font-semibold uppercase tracking-wider text-primary">
-						{budget ? 'Update budget' : 'New draft'}
-					</p>
-					<SidePanelTitle className="mt-2 text-2xl font-semibold tracking-tight">
-						{budget ? 'Edit budget' : 'Create a budget'}
-					</SidePanelTitle>
-					<SidePanelDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-						Set the spending goal, amount, and period. New budgets stay in draft
-						until published.
-					</SidePanelDescription>
-				</header>
+	const formBody = (
+		<form
+			onSubmit={handleSubmit}
+			className={cn('flex flex-col', !isPageLayout && 'min-h-0 flex-1')}
+		>
+			<header
+				className={cn(
+					'border-b border-border bg-muted/30 px-6 py-6',
+					!isPageLayout && 'pr-16'
+				)}
+			>
+				<p className="text-xs font-semibold uppercase tracking-wider text-primary">
+					{budget ? 'Update budget' : 'New draft'}
+				</p>
+				{isPageLayout ? (
+					<>
+						<h2 className="mt-2 text-2xl font-semibold tracking-tight">
+							{budget ? 'Edit budget' : 'Create a budget'}
+						</h2>
+						<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							Set the spending goal, amount, and period. New budgets stay in draft
+							until published.
+						</p>
+					</>
+				) : (
+					<>
+						<SidePanelTitle className="mt-2 text-2xl font-semibold tracking-tight">
+							{budget ? 'Edit budget' : 'Create a budget'}
+						</SidePanelTitle>
+						<SidePanelDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							Set the spending goal, amount, and period. New budgets stay in draft
+							until published.
+						</SidePanelDescription>
+					</>
+				)}
+			</header>
 
-				<div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-muted/20 p-4 sm:p-6">
+			<div
+				className={cn(
+					'space-y-4 p-4 sm:p-6',
+					isPageLayout ? 'bg-muted/10' : 'min-h-0 flex-1 overflow-y-auto bg-muted/20'
+				)}
+			>
 					{formError && (
 						<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
 							{formError}
@@ -414,19 +443,39 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 					</section>
 				</div>
 
-				<footer className="sticky bottom-0 flex gap-3 border-t border-border bg-background px-4 py-4 sm:px-6">
+			<footer className="flex gap-3 border-t border-border bg-background px-4 py-4 sm:px-6">
+				{isPageLayout ? (
+					<Button
+						type="button"
+						variant="outline"
+						className="h-11 flex-1 rounded-xl"
+						onClick={onClose}
+					>
+						Cancel
+					</Button>
+				) : (
 					<SidePanelClose asChild>
 						<Button type="button" variant="outline" className="h-11 flex-1 rounded-xl">
 							Cancel
 						</Button>
 					</SidePanelClose>
-					<Button type="submit" className="h-11 flex-[1.4] rounded-xl" disabled={saving}>
-						{saving ? 'Saving...' : budget ? 'Update budget' : 'Save draft'}
-					</Button>
-				</footer>
-			</form>
-		</SidePanelContent>
+				)}
+				<Button type="submit" className="h-11 flex-[1.4] rounded-xl" disabled={saving}>
+					{saving ? 'Saving...' : budget ? 'Update budget' : 'Save draft'}
+				</Button>
+			</footer>
+		</form>
 	);
+
+	if (isPageLayout) {
+		return (
+			<div className="rounded-2xl border border-border bg-card text-card-foreground">
+				{formBody}
+			</div>
+		);
+	}
+
+	return <SidePanelContent>{formBody}</SidePanelContent>;
 };
 
 export default BudgetForm;

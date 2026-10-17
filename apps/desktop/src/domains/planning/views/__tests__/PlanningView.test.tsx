@@ -85,20 +85,14 @@ jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 			id: 'budget-1',
 			categoryId: 'personal',
 			amount: 2000,
+			period: 'monthly',
 			month: currentMonth,
+			startDate: `${currentMonth}-01`,
+			endDate: `${currentMonth}-31`,
 			lifecycleStatus: 'draft',
 		}],
 		publishBudget: mockPublishBudget,
 	}),
-}));
-
-const mockBudgetForm = jest.fn(({ budget }: { budget?: { id?: string } }) => (
-	<div>Budget form {budget?.id ?? 'new'}</div>
-));
-
-jest.mock('@/domains/budgets/views/BudgetForm', () => ({
-	__esModule: true,
-	default: (props: { budget?: { id?: string } }) => mockBudgetForm(props),
 }));
 
 jest.mock('@/domains/accounts/context/AccountsContext', () => ({
@@ -149,10 +143,9 @@ describe('PlanningView', () => {
 
 		expect(screen.getByText('Running shoes')).toBeInTheDocument();
 		expect(screen.queryByText('Desk lamp')).not.toBeInTheDocument();
-		expect(screen.getByText('Budgeted')).toBeInTheDocument();
-		expect(screen.getByText('Spent')).toBeInTheDocument();
-		expect(screen.getByText('Planned')).toBeInTheDocument();
-		expect(screen.getByText('Remaining')).toBeInTheDocument();
+		expect(screen.getByText('Planned this month')).toBeInTheDocument();
+		expect(screen.getByText('Spent this month')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /Budgets \(1\)/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Personal' })).toBeInTheDocument();
 
 		await user.click(screen.getByRole('button', { name: /Wishlist \(1\)/i }));
@@ -160,24 +153,6 @@ describe('PlanningView', () => {
 		expect(screen.queryByText('Running shoes')).not.toBeInTheDocument();
 		expect(screen.getByText('Desk lamp')).toBeInTheDocument();
 		expect(screen.getByText('Total amount')).toBeInTheDocument();
-	});
-
-	it('keeps draft budgets secondary until they are activated', async () => {
-		const user = userEvent.setup();
-		render(<PlanningView />);
-		await user.click(screen.getByRole('button', { name: /activate budget/i }));
-		expect(mockPublishBudget).toHaveBeenCalledWith('budget-1');
-	});
-
-	it('passes the clicked draft budget into BudgetForm', async () => {
-		const user = userEvent.setup();
-		render(<PlanningView />);
-		mockBudgetForm.mockClear();
-		await user.click(screen.getByRole('button', { name: /edit draft/i }));
-		expect(mockBudgetForm).toHaveBeenCalledWith(
-			expect.objectContaining({ budget: expect.objectContaining({ id: 'budget-1' }) })
-		);
-		expect(screen.getByText('Budget form budget-1')).toBeInTheDocument();
 	});
 
 	it('starts new planning from intent choices', async () => {
