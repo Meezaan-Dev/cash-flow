@@ -1,779 +1,183 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import {
-	Area,
-	AreaChart,
-	CartesianGrid,
-	Legend,
-	Line,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-	YAxis,
-} from 'recharts';
-import { FiChevronLeft, FiChevronRight, FiSettings, FiX } from 'react-icons/fi';
-import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
+import React, { useMemo, useState } from 'react';
+import { FiDownload } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
-import { MonthlyCategorySummary, Transaction } from '@/types';
-import {
-	getCurrentMonthDateRange,
-	getMonthlyAccountSummaries,
-	getMonthlyCategorySummaries,
-	getMonthDateRange,
-	getMonthlyTrend,
-	getNetWorth,
-	getPreviousMonthDateRange,
-} from '@/domains/reports/controllers/ReportsController';
-import {
-	clampDigestDay,
-	DEFAULT_CUSTOM_DASHBOARD_DIGEST_PERIOD,
-	DashboardDigestCustomPeriod,
-	getDashboardDigestDateRange,
-} from '@/pages/dashboard/utils/digestPeriod';
-import { filterTransactionsByDateRangeObject } from '@/shared/filters/utils/dateRangeFilter';
-import { compareTransactionsByDateDesc } from '@cash-flow/shared/utils/date';
-import Currency from '@/components/marketing/Currency';
+import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { SensitiveText, SensitiveValue } from '@/app/privacy/SensitiveValue';
-import { usePrivacyMode } from '@/app/privacy/PrivacyModeContext';
-import { PageHeader, PageShell } from '@/components/app/page-layout';
-import {
-	cardSurface,
-	cardSurfaceInner,
-	cardSurfaceMuted,
-	progressTrack,
-	sectionLabel,
-} from '@/styles/marketingStyles';
-import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/formatCurrency';
-import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import { Label } from '@/components/app/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/app/ui/select';
+import { EmptyState, PageHeader, PageShell } from '@/components/app/page-layout';
+import { downloadExportFiles } from '@/shared/export/downloadExportFiles';
+import { formatCurrency } from '@/utils/formatCurrency';
+import { cn } from '@/lib/utils';
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/app/ui/select';
+	buildReportBreakdown,
+	filterReportTransactions,
+	getReportGroupKey,
+	getReportMatrixCellAmount,
+	getReportMonthKeys,
+	getReportTransactionDate,
+	reportRowsToCsv,
+	reportTransactionsToCsv,
+	type ReportFilters,
+	type ReportGrouping,
+	type ReportTransactionType,
+} from '../reportData';
 
 interface ReportsViewProps {
 	onOpenSettings?: () => void;
 }
 
-type PeriodMode = 'month' | 'customCycle';
+const localDateKey = (date: Date) => {
+	const offset = date.getTimezoneOffset() * 60_000;
+	return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
 
-const getInitialSelectedMonth = () => {
+const getDefaultFilters = (): ReportFilters => {
 	const today = new Date();
-	return new Date(today.getFullYear(), today.getMonth(), 1);
+	const start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+	return { startDate: localDateKey(start), endDate: localDateKey(today), accountId: 'all', type: 'all', groupBy: 'month' };
 };
 
-const getMonthLabel = (month: Date) =>
-	month.toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
-
-const getTransactionDate = (transaction: Transaction): Date | null => {
-	const value = transaction.date ?? transaction.createdAt;
-	if (!value) return null;
-	return value instanceof Date ? value : value.toDate();
+const monthLabel = (key: string) => {
+	const [year, month] = key.split('-').map(Number);
+	return new Date(year, month - 1, 1).toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' });
 };
 
-const ReportsView: React.FC<ReportsViewProps> = ({ onOpenSettings }) => {
+const ReportsView: React.FC<ReportsViewProps> = () => {
 	const { transactions } = useTransactionsContext();
 	const { accounts } = useAccountsContext();
-	const { getCategoryLabel, getCategoryPathLabel } = useCategoriesContext();
-	const { prefs } = useFilterPreferences();
-	const { isPrivacyMode } = usePrivacyMode();
-	const reportPrefs = prefs.reports;
+	const { getCategoryLabel, getSubcategoryLabel } = useCategoriesContext();
+	const [filters, setFilters] = useState<ReportFilters>(getDefaultFilters);
+	const [selectedMonth, setSelectedMonth] = useState('all');
+	const [selectedCategory, setSelectedCategory] = useState('all');
 
-	const [periodMode, setPeriodMode] = useState<PeriodMode>('month');
-	const [selectedMonth, setSelectedMonth] = useState<Date>(getInitialSelectedMonth);
-	const [customCycle, setCustomCycle] = useState<DashboardDigestCustomPeriod>(
-		() => DEFAULT_CUSTOM_DASHBOARD_DIGEST_PERIOD
+	const baseTransactions = useMemo(
+		() => filterReportTransactions(transactions, filters),
+		[filters, transactions]
 	);
-	const [selectedAccountId, setSelectedAccountId] = useState('all');
-	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-	const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+	const activeTransactions = useMemo(
+		() => baseTransactions.filter((transaction) =>
+			(selectedMonth === 'all' || getReportGroupKey(transaction, 'month') === selectedMonth) &&
+			(selectedCategory === 'all' || transaction.category === selectedCategory)
+		),
+		[baseTransactions, selectedCategory, selectedMonth]
+	);
+	const labelForGroup = (key: string) => {
+		if (filters.groupBy === 'month') return monthLabel(key);
+		if (filters.groupBy === 'category') return getCategoryLabel(key);
+		const [category, subcategory] = key.split('::');
+		const subcategoryLabel = subcategory === 'other' ? 'Other' : getSubcategoryLabel(category, subcategory);
+		return selectedCategory === 'all'
+			? `${getCategoryLabel(category)} / ${subcategoryLabel}`
+			: subcategoryLabel;
+	};
+	const breakdown = useMemo(
+		() => buildReportBreakdown(activeTransactions, filters.groupBy, labelForGroup),
+		// category label functions are stable context helpers
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[activeTransactions, filters.groupBy, selectedCategory]
+	);
+	const monthRows = useMemo(() => buildReportBreakdown(baseTransactions, 'month', monthLabel), [baseTransactions]);
+	const categories = useMemo(
+		() => buildReportBreakdown(baseTransactions, 'category', getCategoryLabel),
+		[baseTransactions, getCategoryLabel]
+	);
+	const months = useMemo(
+		() => getReportMonthKeys(filters.startDate, filters.endDate),
+		[filters.endDate, filters.startDate]
+	);
+	const totals = baseTransactions.reduce(
+		(result, transaction) => {
+			if (transaction.type === 'income') result.income += transaction.amount;
+			if (transaction.type === 'expense') result.expenses += transaction.amount;
+			return result;
+		},
+		{ income: 0, expenses: 0 }
+	);
+	const highestMonth = [...monthRows].sort((a, b) => b.expenses - a.expenses)[0];
+	const highestCategory = categories[0];
 
-	const activeDateRange = useMemo(() => {
-		if (periodMode === 'customCycle') {
-			const referenceDate = new Date(
-				selectedMonth.getFullYear(),
-				selectedMonth.getMonth(),
-				1
-			);
-			return getDashboardDigestDateRange(customCycle, referenceDate);
+	const updateFilter = <K extends keyof ReportFilters>(key: K, value: ReportFilters[K]) => {
+		setFilters((current) => ({ ...current, [key]: value }));
+		setSelectedMonth('all');
+		setSelectedCategory('all');
+	};
+
+	const exportReport = (format: 'json' | 'csv') => {
+		const stamp = localDateKey(new Date());
+		if (format === 'json') {
+			downloadExportFiles([{
+				filename: `cash-flow-report-${stamp}.json`,
+				mimeType: 'application/json',
+				content: JSON.stringify({
+					filters: { ...filters, selectedMonth, selectedCategory },
+					breakdown,
+					transactions: activeTransactions.map((transaction) => ({
+						...transaction,
+						date: getReportTransactionDate(transaction)?.toISOString() ?? null,
+						createdAt: undefined,
+					})),
+				}, null, 2),
+			}]);
+			return;
 		}
-		const today = new Date();
-		if (
-			selectedMonth.getFullYear() === today.getFullYear() &&
-			selectedMonth.getMonth() === today.getMonth()
-		) {
-			return getCurrentMonthDateRange(today);
-		}
-		return getMonthDateRange(selectedMonth.getFullYear(), selectedMonth.getMonth());
-	}, [customCycle, periodMode, selectedMonth]);
-
-	const previousDateRange = useMemo(
-		() => getPreviousMonthDateRange(activeDateRange),
-		[activeDateRange]
-	);
-	const accountScopedTransactions = useMemo(
-		() =>
-			selectedAccountId === 'all'
-				? transactions
-				: transactions.filter((transaction) => transaction.accountId === selectedAccountId),
-		[selectedAccountId, transactions]
-	);
-	const filteredTransactions = useMemo(
-		() => filterTransactionsByDateRangeObject(accountScopedTransactions, activeDateRange),
-		[accountScopedTransactions, activeDateRange]
-	);
-
-	const monthlyTrend = useMemo(
-		() =>
-			getMonthlyTrend(transactions, 6).map((entry) => ({
-				...entry,
-				net: entry.income - entry.expense,
-			})),
-		[transactions]
-	);
-	const categorySummaries = useMemo(
-		() =>
-			getMonthlyCategorySummaries(
-				accountScopedTransactions,
-				activeDateRange,
-				previousDateRange
-			),
-		[accountScopedTransactions, activeDateRange, previousDateRange]
-	);
-	const accountSummaries = useMemo(
-		() =>
-			getMonthlyAccountSummaries(
-				transactions,
-				accounts,
-				activeDateRange,
-				selectedAccountId === 'all' ? undefined : selectedAccountId
-			),
-		[accounts, activeDateRange, selectedAccountId, transactions]
-	);
-	const netWorth = useMemo(() => getNetWorth(accounts), [accounts]);
-
-	const totalIncome = useMemo(
-		() =>
-			filteredTransactions
-				.filter((transaction) => transaction.type === 'income')
-				.reduce((sum, transaction) => sum + transaction.amount, 0),
-		[filteredTransactions]
-	);
-	const totalExpense = useMemo(
-		() =>
-			filteredTransactions
-				.filter((transaction) => transaction.type === 'expense')
-				.reduce((sum, transaction) => sum + transaction.amount, 0),
-		[filteredTransactions]
-	);
-
-	const focusedTransactions = useMemo(() => {
-		if (!selectedCategory) return [];
-
-		return filteredTransactions
-			.filter((transaction) => {
-				if (transaction.type !== 'expense') return false;
-				if (transaction.category !== selectedCategory) return false;
-				if (selectedSubcategory === null) return true;
-				return (transaction.subcategory ?? '') === selectedSubcategory;
-			})
-			.sort(compareTransactionsByDateDesc)
-			.slice(0, 6);
-	}, [filteredTransactions, selectedCategory, selectedSubcategory]);
-
-	const biggestCategory = categorySummaries[0];
-	const biggestSubcategory = categorySummaries
-		.flatMap((category) => category.subcategories)
-		.sort((left, right) => right.amount - left.amount)[0];
-	const netPosition = totalIncome - totalExpense;
-
-	const getSubcategoryDisplayLabel = useCallback(
-		(category: string, subcategory?: string) =>
-			subcategory
-				? getCategoryPathLabel(category, subcategory)
-				: `${getCategoryLabel(category)} / No subcategory`,
-		[getCategoryLabel, getCategoryPathLabel]
-	);
-	const formatTick = (value: number) => {
-		if (Math.abs(value) >= 1000) return `R${(value / 1000).toFixed(0)}k`;
-		return `R${value}`;
+		downloadExportFiles([
+			{ filename: `cash-flow-report-breakdown-${stamp}.csv`, mimeType: 'text/csv;charset=utf-8', content: reportRowsToCsv(breakdown) },
+			{ filename: `cash-flow-report-transactions-${stamp}.csv`, mimeType: 'text/csv;charset=utf-8', content: reportTransactionsToCsv(activeTransactions) },
+		]);
 	};
-	const formatDate = (transaction: Transaction) => {
-		const date = getTransactionDate(transaction);
-		if (!date) return 'No date';
-		return date.toLocaleDateString('en-ZA', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric',
-		});
+
+	const drillIntoMonth = (month: string) => {
+		setSelectedMonth((current) => current === month ? 'all' : month);
+		setFilters((current) => ({ ...current, groupBy: 'subcategory' }));
 	};
-	const accountNameMap = useMemo(
-		() =>
-			Object.fromEntries(
-				accounts
-					.filter((account) => account.id)
-					.map((account) => [account.id, account.name])
-			),
-		[accounts]
-	);
-	const hasVisibleReportSections =
-		reportPrefs.summaryCards ||
-		reportPrefs.incomeExpenseTrend ||
-		reportPrefs.categoryBreakdown ||
-		reportPrefs.subcategoryBreakdown ||
-		reportPrefs.accountActivity ||
-		reportPrefs.netWorth;
-	const moveMonth = (offset: number) => {
-		setSelectedMonth(
-			(current) => new Date(current.getFullYear(), current.getMonth() + offset, 1)
-		);
-		setSelectedCategory(null);
-		setSelectedSubcategory(null);
+
+	const drillIntoCategory = (category: string) => {
+		setSelectedCategory((current) => current === category ? 'all' : category);
+		setFilters((current) => ({ ...current, groupBy: 'subcategory' }));
 	};
-	const resetToCurrentMonth = () => {
-		setSelectedMonth(getInitialSelectedMonth());
-		setPeriodMode('month');
-		setSelectedCategory(null);
-		setSelectedSubcategory(null);
-	};
-	const handleCustomCycleDayChange = (field: 'startDay' | 'endDay', value: string) => {
-		setCustomCycle((current) => ({
-			...current,
-			[field]: clampDigestDay(Number(value)),
-		}));
-		setPeriodMode('customCycle');
-		setSelectedCategory(null);
-		setSelectedSubcategory(null);
-	};
-	const openCustomCycle = () => {
-		setPeriodMode('customCycle');
-		setSelectedCategory(null);
-		setSelectedSubcategory(null);
-	};
-	const selectCategory = (category: MonthlyCategorySummary) => {
-		setSelectedCategory((current) => (current === category.category ? null : category.category));
-		setSelectedSubcategory(null);
-	};
-	const selectedSubcategoryLabel =
-		selectedCategory && selectedSubcategory !== null
-			? getSubcategoryDisplayLabel(selectedCategory, selectedSubcategory || undefined)
-			: null;
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col">
-			<PageShell>
-				<PageHeader
-					title="Monthly Reports"
-					subtitle="A month-first view with visible amounts, category decisions, and account review."
-					className="mb-6"
-				/>
+		<PageShell>
+			<PageHeader
+				title="Reports"
+				subtitle="Compare the last 12 months, drill into spending, or build a custom view."
+				actions={<div className="flex gap-2"><Button variant="outline" onClick={() => exportReport('csv')}><FiDownload className="h-4 w-4" />CSV</Button><Button variant="marketing" onClick={() => exportReport('json')}><FiDownload className="h-4 w-4" />JSON</Button></div>}
+			/>
 
-				{reportPrefs.dateRange && (
-					<div className={cn('mb-6 space-y-3 p-4', cardSurface)}>
-						<div className="flex flex-wrap items-center gap-2">
-							<Button type="button" variant="outline" size="icon" onClick={() => moveMonth(-1)}>
-								<FiChevronLeft className="h-4 w-4" />
-							</Button>
-							<div className="min-w-[210px] rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold dark:border-gray-800 dark:bg-gray-900">
-								{periodMode === 'month' ? getMonthLabel(selectedMonth) : 'Custom cycle'}
-							</div>
-							<Button type="button" variant="outline" size="icon" onClick={() => moveMonth(1)}>
-								<FiChevronRight className="h-4 w-4" />
-							</Button>
-							<Button type="button" variant="outline" onClick={resetToCurrentMonth}>
-								Current month
-							</Button>
-							<Button
-								type="button"
-								variant={periodMode === 'customCycle' ? 'marketing' : 'outline'}
-								onClick={openCustomCycle}
-							>
-								Custom cycle
-							</Button>
-							<Select
-								value={selectedAccountId}
-								onValueChange={(value) => {
-									setSelectedAccountId(value);
-									setSelectedCategory(null);
-									setSelectedSubcategory(null);
-								}}
-							>
-								<SelectTrigger className="h-10 w-[190px] rounded-xl">
-									<SelectValue placeholder="Account" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All accounts</SelectItem>
-									{accounts.map((account) => (
-										<SelectItem key={account.id} value={account.id!}>
-											<SensitiveText widthClassName="w-24">
-												{account.name}
-											</SensitiveText>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						{periodMode === 'customCycle' && (
-							<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
-								<div className="flex-1 sm:flex-initial">
-									<Label htmlFor="reports-start-day" className="mb-2 block text-xs md:text-sm font-medium">
-										Start day
-									</Label>
-									<Input
-										id="reports-start-day"
-										type="number"
-										min={1}
-										max={31}
-										value={customCycle.startDay}
-										onChange={(event) =>
-											handleCustomCycleDayChange('startDay', event.target.value)
-										}
-										className="h-10 w-full sm:w-28"
-									/>
-								</div>
-								<div className="flex-1 sm:flex-initial">
-									<Label htmlFor="reports-end-day" className="mb-2 block text-xs md:text-sm font-medium">
-										End day
-									</Label>
-									<Input
-										id="reports-end-day"
-										type="number"
-										min={1}
-										max={31}
-										value={customCycle.endDay}
-										onChange={(event) =>
-											handleCustomCycleDayChange('endDay', event.target.value)
-										}
-										className="h-10 w-full sm:w-28"
-									/>
-								</div>
-							</div>
-						)}
-						<div className="text-xs text-muted-foreground">
-							Showing {activeDateRange.startDate} to {activeDateRange.endDate}
-						</div>
-					</div>
+			<section className="mb-6 grid gap-4 rounded-3xl border bg-card p-5 sm:grid-cols-2 lg:grid-cols-5">
+				<div><Label>Start date</Label><Input type="date" value={filters.startDate} onChange={(event) => updateFilter('startDate', event.target.value)} /></div>
+				<div><Label>End date</Label><Input type="date" value={filters.endDate} onChange={(event) => updateFilter('endDate', event.target.value)} /></div>
+				<div><Label>Account</Label><Select value={filters.accountId} onValueChange={(value) => updateFilter('accountId', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All accounts</SelectItem>{accounts.map((account) => account.id && <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>)}</SelectContent></Select></div>
+				<div><Label>Type</Label><Select value={filters.type} onValueChange={(value) => updateFilter('type', value as ReportTransactionType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All types</SelectItem><SelectItem value="income">Income</SelectItem><SelectItem value="expense">Expense</SelectItem><SelectItem value="transfer">Transfer</SelectItem></SelectContent></Select></div>
+				<div><Label>Group by</Label><Select value={filters.groupBy} onValueChange={(value) => updateFilter('groupBy', value as ReportGrouping)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="month">Month</SelectItem><SelectItem value="category">Category</SelectItem><SelectItem value="subcategory">Subcategory</SelectItem></SelectContent></Select></div>
+			</section>
+
+			<section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+				{[
+					['Income', formatCurrency(totals.income)],
+					['Expenses', formatCurrency(totals.expenses)],
+					['Net position', formatCurrency(totals.income - totals.expenses)],
+					['Highest-spend month', highestMonth ? `${highestMonth.label} · ${formatCurrency(highestMonth.expenses)}` : '—'],
+					['Highest-spend category', highestCategory ? `${highestCategory.label} · ${formatCurrency(highestCategory.expenses)}` : '—'],
+				].map(([label, value]) => <div key={label} className="rounded-2xl border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-semibold"><SensitiveValue widthClassName="w-24">{value}</SensitiveValue></p></div>)}
+			</section>
+
+			<section className="mb-6 overflow-hidden rounded-3xl border bg-card">
+				<div className="border-b p-5"><h2 className="font-semibold">Category totals across months</h2><p className="text-sm text-muted-foreground">Select a category or month to drill down.</p></div>
+				{categories.length === 0 ? <EmptyState title="No report data" description="Transactions matching these filters will appear here." /> : (
+					<div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr className="border-b"><th className="p-3 text-left">Category</th>{months.map((month) => <th key={month} className="p-3 text-right"><button onClick={() => drillIntoMonth(month)} className={cn('whitespace-nowrap', selectedMonth === month && 'text-blue-600')}>{monthLabel(month)}</button></th>)}</tr></thead><tbody>{categories.map((category) => <tr key={category.key} className="border-b last:border-0"><th className="p-3 text-left"><button onClick={() => drillIntoCategory(category.key)} className={cn(selectedCategory === category.key && 'text-blue-600')}>{category.label}</button></th>{months.map((month) => { const value = baseTransactions.filter((transaction) => transaction.category === category.key && getReportGroupKey(transaction, 'month') === month).reduce((sum, transaction) => sum + getReportMatrixCellAmount(transaction, filters.type), 0); return <td key={month} className="p-3 text-right"><SensitiveValue widthClassName="w-16">{formatCurrency(value)}</SensitiveValue></td>; })}</tr>)}</tbody></table></div>
 				)}
+			</section>
 
-				{!hasVisibleReportSections && (
-					<div className="flex items-center gap-2 rounded-2xl border border-dashed border-gray-200 p-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-						<FiSettings className="h-4 w-4 shrink-0" />
-						<span>Reports are hidden.</span>
-						<button
-							className="ml-1 underline underline-offset-2 hover:text-gray-900 dark:hover:text-gray-50"
-							onClick={() => onOpenSettings?.()}
-						>
-							Manage in Settings
-						</button>
-					</div>
-				)}
-
-				{reportPrefs.summaryCards && (
-					<div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-						<div className={cn('p-4', cardSurfaceMuted)}>
-							<p className={sectionLabel}>Monthly expenses</p>
-							<Currency amount={totalExpense} tone="expense" className="mt-1 text-xl" />
-							<p className="text-sm text-gray-500 dark:text-gray-400">
-								{
-									filteredTransactions.filter(
-										(transaction) => transaction.type === 'expense'
-									).length
-								}{' '}
-								transactions
-							</p>
-						</div>
-						<div className={cn('p-4', cardSurfaceMuted)}>
-							<p className={sectionLabel}>Biggest category</p>
-							<p className="mt-1 truncate text-xl font-semibold text-gray-900 dark:text-gray-50">
-								{biggestCategory ? (
-									<SensitiveText widthClassName="w-28">
-										{getCategoryLabel(biggestCategory.category)}
-									</SensitiveText>
-								) : (
-									'None yet'
-								)}
-							</p>
-							<p className="text-sm text-gray-500 dark:text-gray-400">
-								{biggestCategory ? (
-									<Currency amount={biggestCategory.amount} className="text-sm" />
-								) : (
-									'No expenses'
-								)}
-							</p>
-						</div>
-						<div className={cn('p-4', cardSurfaceMuted)}>
-							<p className={sectionLabel}>Biggest subcategory</p>
-							<p className="mt-1 truncate text-xl font-semibold text-gray-900 dark:text-gray-50">
-								{biggestSubcategory ? (
-									<SensitiveText widthClassName="w-32">
-										{getSubcategoryDisplayLabel(
-											biggestSubcategory.category,
-											biggestSubcategory.subcategory
-										)}
-									</SensitiveText>
-								) : (
-									'None yet'
-								)}
-							</p>
-							<p className="text-sm text-gray-500 dark:text-gray-400">
-								{biggestSubcategory ? (
-									<Currency amount={biggestSubcategory.amount} className="text-sm" />
-								) : (
-									'No subcategories'
-								)}
-							</p>
-						</div>
-						<div className={cn('p-4', cardSurfaceMuted)}>
-							<p className={sectionLabel}>Net position</p>
-							<Currency
-								amount={netPosition}
-								tone={netPosition >= 0 ? 'balance-positive' : 'balance-negative'}
-								className="mt-1 text-xl"
-							/>
-							<p className="text-sm text-gray-500 dark:text-gray-400">
-								Income <Currency amount={totalIncome} tone="income" className="text-sm" />
-							</p>
-						</div>
-					</div>
-				)}
-
-				<div className="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
-					{reportPrefs.categoryBreakdown && (
-						<div className={cn('p-5', cardSurface)}>
-							<div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-								<div>
-									<h2 className="text-base font-semibold">Monthly category breakdown</h2>
-									<p className="text-sm text-gray-500 dark:text-gray-400">
-										Amounts are visible first. Select a category to inspect the month.
-									</p>
-								</div>
-								{selectedCategory && (
-									<Button type="button" variant="outline" size="sm" onClick={() => {
-										setSelectedCategory(null);
-										setSelectedSubcategory(null);
-									}}>
-										<FiX className="mr-2 h-4 w-4" />
-										Clear focus
-									</Button>
-								)}
-							</div>
-							{categorySummaries.length > 0 ? (
-								<div className="space-y-3">
-									{categorySummaries.map((category) => {
-										const isSelected = selectedCategory === category.category;
-										const deltaTone =
-											category.deltaAmount > 0
-												? 'text-red-600 dark:text-red-400'
-												: category.deltaAmount < 0
-													? 'text-green-600 dark:text-green-400'
-													: 'text-muted-foreground';
-
-										return (
-											<div
-												key={category.category}
-												className={cn(
-													'rounded-xl border p-3 transition-colors',
-													isSelected
-														? 'border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/50'
-														: cardSurfaceInner
-												)}
-											>
-												<button
-													type="button"
-													onClick={() => selectCategory(category)}
-													className="w-full text-left"
-												>
-													<div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center">
-														<div className="min-w-0">
-															<div className="flex items-center gap-2">
-																<span
-																	className="h-2.5 w-2.5 shrink-0 rounded-full"
-																	style={{ backgroundColor: category.color }}
-																/>
-																<span className="truncate font-semibold">
-																	<SensitiveText widthClassName="w-28">
-																		{getCategoryLabel(category.category)}
-																	</SensitiveText>
-																</span>
-															</div>
-															<div className={cn('mt-2 h-2 rounded-full', progressTrack)}>
-																<div
-																	className="h-2 rounded-full"
-																	style={{
-																		width: `${Math.min(category.percentage, 100)}%`,
-																		backgroundColor: category.color,
-																	}}
-																/>
-															</div>
-														</div>
-														<div className="text-sm text-gray-500 dark:text-gray-400">
-															{category.percentage.toFixed(0)}%
-														</div>
-														<div className="text-sm text-gray-500 dark:text-gray-400">
-															{category.transactionCount} tx
-														</div>
-														<div className="text-right">
-															<Currency amount={category.amount} className="text-base" />
-															<div className={`text-xs ${deltaTone}`}>
-																{category.deltaAmount === 0
-																	? 'No change'
-																	: (
-																		<SensitiveValue widthClassName="w-24">
-																			{category.deltaAmount > 0 ? '+' : ''}{formatCurrency(category.deltaAmount)} vs prev
-																		</SensitiveValue>
-																	)}
-															</div>
-														</div>
-													</div>
-												</button>
-
-												{isSelected && reportPrefs.subcategoryBreakdown && (
-													<div className="mt-3 space-y-2 border-t pt-3">
-														{category.subcategories.map((subcategory) => {
-															const subcategoryKey = subcategory.subcategory ?? '';
-															const isSubSelected = selectedSubcategory === subcategoryKey;
-															return (
-																<button
-																	key={`${category.category}-${subcategoryKey || 'none'}`}
-																	type="button"
-																	onClick={() =>
-																		setSelectedSubcategory((current) =>
-																			current === subcategoryKey ? null : subcategoryKey
-																		)
-																	}
-																	className={cn(
-																		'grid w-full gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center',
-																		isSubSelected
-																			? 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
-																			: 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-																	)}
-																>
-																	<span className="truncate">
-																		<SensitiveText widthClassName="w-32">
-																			{getSubcategoryDisplayLabel(
-																				subcategory.category,
-																				subcategory.subcategory
-																			)}
-																		</SensitiveText>
-																	</span>
-																	<span className="text-gray-500 dark:text-gray-400">
-																		{subcategory.percentage.toFixed(0)}%
-																	</span>
-																	<span className="text-gray-500 dark:text-gray-400">
-																		{subcategory.transactionCount} tx
-																	</span>
-																	<Currency amount={subcategory.amount} className="text-sm" />
-																</button>
-															);
-														})}
-													</div>
-												)}
-											</div>
-										);
-									})}
-								</div>
-							) : (
-								<div className="flex h-40 items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-									No expense data for this period
-								</div>
-							)}
-						</div>
-					)}
-
-					<div className="space-y-6">
-						{reportPrefs.subcategoryBreakdown && (
-							<div className={cn('p-5', cardSurface)}>
-								<h2 className="text-base font-semibold">
-									{selectedSubcategoryLabel ? (
-										<SensitiveText widthClassName="w-32">
-											{selectedSubcategoryLabel}
-										</SensitiveText>
-									) : selectedCategory ? (
-										<SensitiveText widthClassName="w-28">
-											{getCategoryLabel(selectedCategory)}
-										</SensitiveText>
-									) : (
-										'Focused transactions'
-									)}
-								</h2>
-								<p className="mt-1 text-sm text-muted-foreground">
-									{selectedCategory
-										? 'Latest matching expenses for the selected month.'
-										: 'Select a category to inspect matching transactions.'}
-								</p>
-								<div className="mt-4">
-									{focusedTransactions.length > 0 ? (
-										<div className="space-y-2">
-											{focusedTransactions.map((transaction) => (
-												<div
-													key={transaction.id}
-													className={cn('rounded-xl px-3 py-2 text-sm', cardSurfaceInner)}
-												>
-													<div className="flex items-center justify-between gap-3">
-														<div className="min-w-0">
-															<div className="truncate font-medium">
-																<SensitiveText widthClassName="w-32">
-																	{transaction.title}
-																</SensitiveText>
-															</div>
-															<div className="text-xs text-gray-500 dark:text-gray-400">
-																{formatDate(transaction)} ·{' '}
-																<SensitiveText widthClassName="w-24">
-																	{accountNameMap[transaction.accountId] ?? 'Unknown account'}
-																</SensitiveText>
-															</div>
-														</div>
-														<Currency
-															amount={transaction.amount}
-															tone="expense"
-															className="shrink-0 text-sm"
-														/>
-													</div>
-												</div>
-											))}
-										</div>
-									) : (
-										<div className="flex h-28 items-center justify-center text-center text-sm text-gray-500 dark:text-gray-400">
-											No focused transactions yet.
-										</div>
-									)}
-								</div>
-							</div>
-						)}
-
-						{reportPrefs.accountActivity && (
-							<div className={cn('p-5', cardSurface)}>
-								<h2 className="mb-4 text-base font-semibold">Monthly account review</h2>
-								{accountSummaries.length > 0 ? (
-									<div className="space-y-3">
-										{accountSummaries.map((account) => (
-											<div key={account.accountId} className={cn('rounded-xl p-3', cardSurfaceInner)}>
-												<div className="mb-3 flex items-center gap-2">
-													<span
-														className="h-2.5 w-2.5 rounded-full"
-														style={{ backgroundColor: account.color }}
-													/>
-													<span className="font-semibold">
-														<SensitiveText widthClassName="w-28">
-															{account.accountName}
-														</SensitiveText>
-													</span>
-													<span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
-														{account.transactionCount} tx
-													</span>
-												</div>
-												<div className="grid grid-cols-3 gap-2 text-sm">
-													<div>
-														<p className={sectionLabel}>Income</p>
-														<Currency amount={account.income} tone="income" className="text-sm" />
-													</div>
-													<div>
-														<p className={sectionLabel}>Expense</p>
-														<Currency amount={account.expense} tone="expense" className="text-sm" />
-													</div>
-													<div>
-														<p className={sectionLabel}>Net</p>
-														<Currency
-															amount={account.net}
-															tone={account.net >= 0 ? 'balance-positive' : 'balance-negative'}
-															className="text-sm"
-														/>
-													</div>
-												</div>
-											</div>
-										))}
-									</div>
-								) : (
-									<div className="flex h-28 items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-										No account activity for this period
-									</div>
-								)}
-							</div>
-						)}
-					</div>
-				</div>
-
-				<div className="grid gap-6 xl:grid-cols-2">
-					{reportPrefs.incomeExpenseTrend && (
-						<div className={cn('p-5', cardSurface)}>
-							<div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-								<h2 className="text-base font-semibold">6-Month Money Movement</h2>
-								<p className="text-sm text-muted-foreground">
-									Income, expenses, and net movement
-								</p>
-							</div>
-							{isPrivacyMode ? (
-								<div
-									className="flex h-60 flex-col justify-end gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950"
-									aria-label="Money movement chart hidden"
-								>
-									<span className="privacy-skeleton h-20 w-full rounded-lg" />
-									<span className="privacy-skeleton h-12 w-10/12 rounded-lg" />
-									<span className="privacy-skeleton h-16 w-11/12 rounded-lg" />
-								</div>
-							) : monthlyTrend.length > 0 ? (
-								<ResponsiveContainer width="100%" height={240}>
-									<AreaChart data={monthlyTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-										<defs>
-											<linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-												<stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-												<stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-											</linearGradient>
-											<linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
-												<stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
-												<stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-											</linearGradient>
-										</defs>
-										<CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-										<XAxis dataKey="month" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
-										<YAxis tickFormatter={formatTick} tick={{ fontSize: 12 }} className="fill-muted-foreground" />
-										<Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
-										<Legend />
-										<Area type="monotone" dataKey="income" name="Income" stroke="#3b82f6" fill="url(#incomeGrad)" strokeWidth={2} />
-										<Area type="monotone" dataKey="expense" name="Expenses" stroke="#6366f1" fill="url(#expenseGrad)" strokeWidth={2} />
-										<Line type="monotone" dataKey="net" name="Net" stroke="#2563eb" strokeWidth={2} dot={false} />
-									</AreaChart>
-								</ResponsiveContainer>
-							) : (
-								<div className="flex h-40 items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-									No transaction data available
-								</div>
-							)}
-						</div>
-					)}
-
-					{reportPrefs.netWorth && accounts.length > 0 && (
-						<div className={cn('p-5', cardSurface)}>
-							<h2 className="mb-4 text-base font-semibold">Net Worth Breakdown</h2>
-							<div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-								<div>
-									<p className={cn(sectionLabel, 'mb-1')}>Assets</p>
-									<Currency amount={netWorth.assets} tone="balance-positive" className="text-xl" />
-								</div>
-								<div>
-									<p className={cn(sectionLabel, 'mb-1')}>Liabilities</p>
-									<Currency amount={netWorth.liabilities} tone="balance-negative" className="text-xl" />
-								</div>
-								<div>
-									<p className={cn(sectionLabel, 'mb-1')}>Net Worth</p>
-									<Currency
-										amount={netWorth.netWorth}
-										tone={netWorth.netWorth >= 0 ? 'balance-positive' : 'balance-negative'}
-										className="text-xl"
-									/>
-								</div>
-							</div>
-						</div>
-					)}
-				</div>
-			</PageShell>
-		</div>
+			<section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+				<div className="rounded-3xl border bg-card p-5"><h2 className="font-semibold">Active breakdown</h2><p className="mb-4 text-sm text-muted-foreground">{activeTransactions.length} matching transactions</p><div className="space-y-2">{breakdown.map((row) => <div key={row.key} className="flex items-center justify-between rounded-xl bg-muted/40 p-3"><span>{row.label}</span><SensitiveValue widthClassName="w-20">{formatCurrency(row.expenses || row.income || row.transfers)}</SensitiveValue></div>)}</div></div>
+				<div className="rounded-3xl border bg-card p-5"><h2 className="font-semibold">Matching transactions</h2><div className="mt-3 divide-y">{activeTransactions.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No transactions match this view.</p> : activeTransactions.map((transaction, index) => <div key={transaction.id ?? `${transaction.title}-${index}`} className="flex items-center justify-between gap-4 py-3"><div className="min-w-0"><p className="truncate text-sm font-medium"><SensitiveText widthClassName="w-32">{transaction.title}</SensitiveText></p><p className="text-xs text-muted-foreground">{getReportTransactionDate(transaction)?.toLocaleDateString('en-ZA')} · {getCategoryLabel(transaction.category)}{transaction.subcategory ? ` / ${getSubcategoryLabel(transaction.category, transaction.subcategory)}` : ''}</p></div><SensitiveValue widthClassName="w-20">{formatCurrency(transaction.amount)}</SensitiveValue></div>)}</div></div>
+			</section>
+		</PageShell>
 	);
 };
 

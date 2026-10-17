@@ -99,11 +99,6 @@ jest.mock('@/pages/marketing/Home', () => ({
 	default: () => <div>Marketing home</div>,
 }));
 
-jest.mock('@/domains/ai/components/AIChatbot', () => ({
-	__esModule: true,
-	default: () => <div>AI assistant</div>,
-}));
-
 jest.mock('@/pages/dashboard/Dashboard', () => ({
 	__esModule: true,
 	default: () => <div>Desktop dashboard</div>,
@@ -163,7 +158,7 @@ describe('App routing', () => {
 		expect(await screen.findByText('Desktop dashboard')).toBeInTheDocument();
 	});
 
-	it('renders the desktop shell at /dashboard/assistant', async () => {
+	it('routes the retired assistant URL through the desktop shell', async () => {
 		mockInitialPath = '/dashboard/assistant';
 		render(<App />);
 		expect(await screen.findByText('Desktop dashboard')).toBeInTheDocument();

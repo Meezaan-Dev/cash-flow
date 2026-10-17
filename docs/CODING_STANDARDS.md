@@ -49,7 +49,7 @@ Acceptance checks:
 
 - Add regression tests around known risk areas:
   - single-confirm delete flow
-  - AI month date fallback
+	- report month date fallback
   - Settings import UI behavior
   - landing page responsive copy fit after marketing text changes
 

@@ -7,13 +7,11 @@ import {
 	FiEdit3,
 	FiGrid,
 	FiList,
-	FiMessageCircle,
 	FiPlus,
 	FiRefreshCw,
 	FiSettings,
 	FiSmartphone,
 	FiShoppingBag,
-	FiTarget,
 	FiX,
 } from 'react-icons/fi';
 import { useAuth } from '@/domains/auth/hooks/useAuth';
@@ -55,13 +53,11 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
 	{ id: 'dashboard', label: 'Dashboard', icon: FiGrid },
 	{ id: 'history', label: 'Transactions', icon: FiList },
-	{ id: 'planning', label: 'Planning', icon: FiShoppingBag },
+	{ id: 'plan', label: 'Plan', icon: FiShoppingBag },
 	{ id: 'accounts', label: 'Accounts', icon: FiCreditCard },
-	{ id: 'budgets', label: 'Budgets', icon: FiTarget },
 	{ id: 'recurring', label: 'Recurring', icon: FiRefreshCw },
 	{ id: 'reports', label: 'Reports', icon: FiBarChart2 },
 	{ id: 'random', label: 'Random', icon: FiEdit3 },
-	{ id: 'assistant', label: 'Assistant', icon: FiMessageCircle },
 	{ id: 'mobisite', label: 'View Mobisite', icon: FiSmartphone },
 ];
 

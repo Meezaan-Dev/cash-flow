@@ -15,6 +15,7 @@ const mockConvertPlannedExpense = jest.fn();
 const mockLinkPaymentTransaction = jest.fn();
 const mockUnlinkPaymentTransaction = jest.fn();
 const mockAddTransaction = jest.fn();
+const mockPublishBudget = jest.fn();
 
 const today = new Date();
 const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -78,6 +79,28 @@ jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 	}),
 }));
 
+jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
+	useBudgetsContext: () => ({
+		budgets: [{
+			id: 'budget-1',
+			categoryId: 'personal',
+			amount: 2000,
+			month: currentMonth,
+			lifecycleStatus: 'draft',
+		}],
+		publishBudget: mockPublishBudget,
+	}),
+}));
+
+const mockBudgetForm = jest.fn(({ budget }: { budget?: { id?: string } }) => (
+	<div>Budget form {budget?.id ?? 'new'}</div>
+));
+
+jest.mock('@/domains/budgets/views/BudgetForm', () => ({
+	__esModule: true,
+	default: (props: { budget?: { id?: string } }) => mockBudgetForm(props),
+}));
+
 jest.mock('@/domains/accounts/context/AccountsContext', () => ({
 	useAccountsContext: () => ({
 		accounts: [{ id: 'acc-1', name: 'Main Account', type: 'debit', balance: 1000 }],
@@ -120,37 +143,41 @@ describe('PlanningView', () => {
 		mockReorderPlannedExpenses.mockResolvedValue(undefined);
 	});
 
-	it('filters plans and wishlist with active-tab totals', async () => {
+	it('shows category tabs, totals, and subcategory groups before the wishlist', async () => {
 		const user = userEvent.setup();
 		render(<PlanningView />);
 
 		expect(screen.getByText('Running shoes')).toBeInTheDocument();
-		expect(screen.getByText('Desk lamp')).toBeInTheDocument();
-		expect(screen.getByText('Total amount')).toBeInTheDocument();
-		expect(screen.getByText('High priority')).toBeInTheDocument();
-
-		await user.click(screen.getByRole('button', { name: /^planned$/i }));
-
-		expect(screen.getByText('Running shoes')).toBeInTheDocument();
 		expect(screen.queryByText('Desk lamp')).not.toBeInTheDocument();
-		expect(screen.getByText('Items')).toBeInTheDocument();
+		expect(screen.getByText('Budgeted')).toBeInTheDocument();
+		expect(screen.getByText('Spent')).toBeInTheDocument();
+		expect(screen.getByText('Planned')).toBeInTheDocument();
+		expect(screen.getByText('Remaining')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Personal' })).toBeInTheDocument();
 
-		await user.click(screen.getAllByRole('button', { name: /^wishlist$/i })[1]);
+		await user.click(screen.getByRole('button', { name: /Wishlist \(1\)/i }));
 
 		expect(screen.queryByText('Running shoes')).not.toBeInTheDocument();
 		expect(screen.getByText('Desk lamp')).toBeInTheDocument();
 		expect(screen.getByText('Total amount')).toBeInTheDocument();
 	});
 
-	it('persists row order from the move controls', async () => {
+	it('keeps draft budgets secondary until they are activated', async () => {
 		const user = userEvent.setup();
 		render(<PlanningView />);
+		await user.click(screen.getByRole('button', { name: /activate budget/i }));
+		expect(mockPublishBudget).toHaveBeenCalledWith('budget-1');
+	});
 
-		await user.click(screen.getByRole('button', { name: /move desk lamp up/i }));
-
-		await waitFor(() =>
-			expect(mockReorderPlannedExpenses).toHaveBeenCalledWith(['wishlist-1', 'planned-1'])
+	it('passes the clicked draft budget into BudgetForm', async () => {
+		const user = userEvent.setup();
+		render(<PlanningView />);
+		mockBudgetForm.mockClear();
+		await user.click(screen.getByRole('button', { name: /edit draft/i }));
+		expect(mockBudgetForm).toHaveBeenCalledWith(
+			expect.objectContaining({ budget: expect.objectContaining({ id: 'budget-1' }) })
 		);
+		expect(screen.getByText('Budget form budget-1')).toBeInTheDocument();
 	});
 
 	it('starts new planning from intent choices', async () => {
@@ -197,7 +224,8 @@ describe('PlanningView', () => {
 		const user = userEvent.setup();
 		render(<PlanningView />);
 
-		await user.click(screen.getAllByRole('button', { name: /^wishlist$/i })[0]);
+		await user.click(screen.getByRole('button', { name: /add plan/i }));
+		await user.click(screen.getByRole('button', { name: /a wishlist item/i }));
 
 		expect(screen.getByText('Title, optional link, and estimated price.')).toBeInTheDocument();
 
@@ -222,6 +250,7 @@ describe('PlanningView', () => {
 		const user = userEvent.setup();
 		render(<PlanningView />);
 
+		await user.click(screen.getByRole('button', { name: /Wishlist \(1\)/i }));
 		await user.click(screen.getByRole('button', { name: /plan it/i }));
 		expect(screen.getByDisplayValue('Desk lamp')).toBeInTheDocument();
 		expect(screen.getByDisplayValue('450')).toBeInTheDocument();

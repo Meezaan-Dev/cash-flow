@@ -27,14 +27,13 @@ Useful docs:
 
 The app currently includes:
 
-- Accounts with debit, credit, savings, cash, credit-limit, balance, transfer, and reconcile flows.
+- Accounts with debit, credit, savings, cash, credit-limit, transfer, and confirmed balance-update flows.
 - Transactions with income, expense, transfer, category, subcategory, filters, bulk category edits, and CSV/JSON import/export.
-- Budgets with draft/published states, monthly/custom periods, optional account and subcategory scope, repeat actions, and ordering.
-- Planning for planned expenses, wishlist URL bookmarks, and payment-plan progress linked to real expense transactions.
-- Recurring transaction templates, due/upcoming dashboard prompts, and mobile/desktop Quick Fill.
-- Reports for spending, subcategory breakdowns, account activity, trends, and net worth.
+- A category-first Plan hub combining budgets, planned expenses, wishlist bookmarks, and payment-plan progress.
+- Template-only recurring Quick Fill items and optional monthly reminders with due/upcoming prompts.
+- Twelve-month and custom reports with category drill-down plus view-specific CSV/JSON exports.
 - Settings for theme, privacy mode, main account preference, categories, filters, data tools, and sign out.
-- Random private notes and an authenticated Gemini-backed assistant.
+- Random private notes.
 
 ## Tech Stack
 
@@ -75,8 +74,6 @@ Optional browser API base URL:
 VITE_API_BASE_URL=
 ```
 
-The AI assistant uses the server-side `GEMINI_API_KEY` secret in Firebase Functions. Do not expose it with a `VITE_` prefix.
-
 ### Install And Run
 
 ```bash
@@ -112,7 +109,7 @@ apps/
 packages/
   shared/            Firebase services, shared models, hooks, types, date/currency/category utilities
   ui/                Placeholder package for primitives that are genuinely reused across apps
-functions/           Firebase Cloud Functions for API and AI assistant endpoints
+functions/           Firebase Cloud Functions for authenticated API endpoints
 agents/skills/       Project-specific agent workflow guidance
 dist/                Single production build output
 ```

@@ -1,7 +1,6 @@
 import * as functions from 'firebase-functions';
-import { GoogleGenAI } from '@google/genai';
 import { db, type QueryDocumentSnapshot } from './firebase';
-import { getRequestId, sendError, setCorsHeaders, verifyToken } from './http';
+import { setCorsHeaders, verifyToken } from './http';
 
 export {
 	addTransaction,
@@ -27,31 +26,12 @@ interface Transaction {
 	updatedAt?: string;
 }
 
-interface Account {
-	id: string;
-	name: string;
-	type: string;
-	balance: number;
-	creditLimit?: number;
-	currency: string;
-}
-
 interface ApiResponse {
 	success: boolean;
 	data?: Transaction[];
 	error?: string;
 	message?: string;
 }
-
-interface AskAIRequestBody {
-	question?: string;
-	userId?: string;
-	history?: Array<{ role?: string; content?: string }>;
-}
-
-const MAX_QUESTION_LENGTH = 2_000;
-const MAX_HISTORY_MESSAGES = 12;
-const MAX_HISTORY_CONTENT_LENGTH = 2_000;
 
 function parseDate(value: unknown): Date | null {
 	if (!value) return null;
@@ -97,38 +77,6 @@ function toTransaction(doc: QueryDocumentSnapshot): Transaction {
 	};
 }
 
-function toAccount(doc: QueryDocumentSnapshot): Account {
-	const data = doc.data();
-	return {
-		id: doc.id,
-		name: String(data.name || 'Unnamed account'),
-		type: String(data.type || 'account'),
-		balance: Number(data.balance || 0),
-		creditLimit: data.creditLimit == null ? undefined : Number(data.creditLimit),
-		currency: String(data.currency || 'ZAR'),
-	};
-}
-
-export function buildGeminiPrompt(
-	question: string,
-	history: Array<{ role: 'user' | 'assistant'; content: string }>,
-	accounts: Account[],
-	transactions: Transaction[]
-): string {
-	return [
-		'You are CashFlow, a concise personal-finance data assistant.',
-		'Answer only from the supplied account and transaction data. Never invent records or balances.',
-		'Use transaction date, falling back to createdAt. Treat amounts as absolute values when totaling income or expenses.',
-		'Transfers are not income or expenses unless the user explicitly asks about transfers.',
-		'When data is insufficient, say so. Do not provide investment, tax, legal, or credit advice.',
-		`Today is ${new Date().toISOString().slice(0, 10)}.`,
-		`Accounts JSON: ${JSON.stringify(accounts)}`,
-		`Transactions JSON: ${JSON.stringify(transactions)}`,
-		`Recent conversation JSON: ${JSON.stringify(history)}`,
-		`Current question: ${question}`,
-	].join('\n\n');
-}
-
 export const getUserTransactions = functions.https.onRequest(async (req, res) => {
 	if (req.method === 'OPTIONS') {
 		setCorsHeaders(res);
@@ -137,7 +85,10 @@ export const getUserTransactions = functions.https.onRequest(async (req, res) =>
 	}
 	setCorsHeaders(res);
 	if (req.method !== 'GET') {
-		const response = createResponse(405, { success: false, error: 'Method not allowed. Only GET requests are supported.' });
+		const response = createResponse(405, {
+			success: false,
+			error: 'Method not allowed. Only GET requests are supported.',
+		});
 		res.status(response.statusCode).send(response.body);
 		return;
 	}
@@ -148,13 +99,27 @@ export const getUserTransactions = functions.https.onRequest(async (req, res) =>
 			return;
 		}
 		const { uid } = await verifyToken(req.headers.authorization);
-		const snapshot = await db.collection('users').doc(uid).collection('transactions').orderBy('date', 'desc').get();
+		const snapshot = await db
+			.collection('users')
+			.doc(uid)
+			.collection('transactions')
+			.orderBy('date', 'desc')
+			.get();
 		const transactions = snapshot.docs.map(toTransaction);
-		res.status(200).json({ success: true, data: transactions, message: `Successfully retrieved ${transactions.length} transactions` });
+		res.status(200).json({
+			success: true,
+			data: transactions,
+			message: `Successfully retrieved ${transactions.length} transactions`,
+		});
 	} catch (error) {
 		console.error('Error in getUserTransactions:', error);
-		const unauthorized = error instanceof Error && (error.message.includes('Authorization') || error.message.includes('token'));
-		res.status(unauthorized ? 401 : 500).json({ success: false, error: unauthorized ? 'Invalid or expired token' : 'Internal server error' });
+		const unauthorized =
+			error instanceof Error &&
+			(error.message.includes('Authorization') || error.message.includes('token'));
+		res.status(unauthorized ? 401 : 500).json({
+			success: false,
+			error: unauthorized ? 'Invalid or expired token' : 'Internal server error',
+		});
 	}
 });
 
@@ -162,188 +127,3 @@ export const healthCheck = functions.https.onRequest((_req, res) => {
 	setCorsHeaders(res);
 	res.json({ success: true, message: 'API is running', timestamp: new Date().toISOString() });
 });
-
-export const askAI = functions
-	.runWith({ secrets: ['GEMINI_API_KEY'] })
-	.https.onRequest(async (req, res) => {
-		const requestId = getRequestId(req);
-		if (req.method === 'OPTIONS') {
-			setCorsHeaders(res);
-			res.status(204).send('');
-			return;
-		}
-		setCorsHeaders(res);
-		if (req.method !== 'POST') {
-			sendError(res, 405, {
-				error: 'The AI endpoint only accepts POST requests.',
-				code: 'METHOD_NOT_ALLOWED',
-				details: `Received ${req.method}. Send a JSON POST request to /askAI.`,
-				retryable: false,
-				requestId,
-			});
-			return;
-		}
-
-		try {
-			if (!req.headers.authorization) {
-				sendError(res, 401, {
-					error: 'You must be signed in to use the AI assistant.',
-					code: 'AUTH_HEADER_MISSING',
-					details: 'The request did not include a Firebase ID token. Sign in again and retry.',
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-			const decodedToken = await verifyToken(req.headers.authorization);
-			const body = (req.body || {}) as AskAIRequestBody;
-			const question = String(body.question || '').trim();
-			const requestedUserId = String(body.userId || '').trim();
-			if (!question) {
-				sendError(res, 400, {
-					error: 'Enter a question before sending.',
-					code: 'QUESTION_REQUIRED',
-					details: 'The question field was empty after whitespace was removed.',
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-			if (question.length > MAX_QUESTION_LENGTH) {
-				sendError(res, 400, {
-					error: `Your question is too long (${question.length} characters).`,
-					code: 'QUESTION_TOO_LONG',
-					details: `Shorten it to ${MAX_QUESTION_LENGTH} characters or fewer and send again.`,
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-			if (!requestedUserId) {
-				sendError(res, 400, {
-					error: 'The signed-in user could not be identified.',
-					code: 'USER_ID_REQUIRED',
-					details: 'Refresh the app and sign in again before retrying.',
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-			if (decodedToken.uid !== requestedUserId) {
-				sendError(res, 403, {
-					error: 'The request user does not match the signed-in account.',
-					code: 'USER_MISMATCH',
-					details: 'Sign out, sign back in, and retry. No financial data was sent to Gemini.',
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-
-			const rawHistory = Array.isArray(body.history) ? body.history : [];
-			if (rawHistory.length > MAX_HISTORY_MESSAGES) {
-				sendError(res, 400, {
-					error: 'The conversation history is too large.',
-					code: 'HISTORY_TOO_LARGE',
-					details: `Only the ${MAX_HISTORY_MESSAGES} most recent messages can be sent. Clear the chat and retry.`,
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-			const history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-			for (const message of rawHistory) {
-				if ((message.role !== 'user' && message.role !== 'assistant') || typeof message.content !== 'string' || !message.content.trim() || message.content.length > MAX_HISTORY_CONTENT_LENGTH) {
-					sendError(res, 400, {
-						error: 'The conversation history contains an invalid message.',
-						code: 'HISTORY_INVALID',
-						details: `Each message needs a user/assistant role and 1-${MAX_HISTORY_CONTENT_LENGTH} characters. Clear the chat and retry.`,
-						retryable: false,
-						requestId,
-					});
-					return;
-				}
-				history.push({ role: message.role, content: message.content.trim() });
-			}
-
-			const userRef = db.collection('users').doc(decodedToken.uid);
-			const [transactionsSnapshot, accountsSnapshot] = await Promise.all([
-				userRef.collection('transactions').limit(2000).get(),
-				userRef.collection('accounts').get(),
-			]);
-			const transactions = transactionsSnapshot.docs.map(toTransaction);
-			const accounts = accountsSnapshot.docs.map(toAccount);
-			const apiKey = process.env.GEMINI_API_KEY;
-			if (!apiKey) throw new Error('Gemini API key is not configured');
-			const ai = new GoogleGenAI({ apiKey });
-			const response = await ai.models.generateContent({
-				model: 'gemini-2.5-flash',
-				contents: buildGeminiPrompt(question, history, accounts, transactions),
-				config: { temperature: 0.2, maxOutputTokens: 1200 },
-			});
-			const answer = response.text?.trim();
-			if (!answer) throw new Error('Gemini returned an empty response');
-			res.status(200).json({ success: true, answer });
-		} catch (error) {
-			console.error('Error in askAI:', { requestId, error });
-			const status = typeof error === 'object' && error !== null && 'status' in error ? Number(error.status) : 0;
-			const message = error instanceof Error ? error.message : '';
-			if (message.includes('Invalid or expired token')) {
-				sendError(res, 401, {
-					error: 'Your session token is invalid or expired.',
-					code: 'AUTH_TOKEN_INVALID',
-					details: 'Sign out and sign back in to obtain a fresh Firebase session, then retry.',
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-			if (message.includes('API key is not configured')) {
-				sendError(res, 503, {
-					error: 'The AI assistant is not configured on the server.',
-					code: 'GEMINI_CONFIG_MISSING',
-					details: 'Set GEMINI_API_KEY in functions/.secret.local for emulation or Firebase Secret Manager for production, then restart or redeploy the function.',
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-			if (status === 429) {
-				sendError(res, 429, {
-					error: 'Gemini rejected the request because its rate or quota limit was reached.',
-					code: 'GEMINI_RATE_LIMITED',
-					details: 'Wait 30-60 seconds before retrying. If it continues, review the Gemini API project quota and billing status.',
-					retryable: true,
-					requestId,
-				});
-				return;
-			}
-			if (status === 401 || status === 403) {
-				sendError(res, 503, {
-					error: 'Gemini rejected the server API key.',
-					code: 'GEMINI_AUTH_FAILED',
-					details: 'Verify that GEMINI_API_KEY is valid, enabled for the Gemini API, and attached to the deployed function.',
-					retryable: false,
-					requestId,
-				});
-				return;
-			}
-			if (/fetch failed|network|timed? out|econn/i.test(message) || status >= 500) {
-				sendError(res, 503, {
-					error: 'The server could not complete its request to Gemini.',
-					code: 'GEMINI_UNAVAILABLE',
-					details: 'The provider or network is temporarily unavailable. Retry in a moment; your chat history remains in this browser session.',
-					retryable: true,
-					requestId,
-				});
-				return;
-			}
-			sendError(res, 502, {
-				error: 'Gemini did not return a usable answer.',
-				code: 'GEMINI_RESPONSE_INVALID',
-				details: 'Retry with a shorter, more specific question. If it repeats, use the request reference when checking Function logs.',
-				retryable: true,
-				requestId,
-			});
-		}
-	});

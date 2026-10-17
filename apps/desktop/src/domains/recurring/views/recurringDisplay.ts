@@ -9,7 +9,7 @@ export const getRecurringFrequencyLabel = (frequency?: string): string => {
 		case 'yearly':
 			return 'Yearly';
 		default:
-			return 'Monthly';
+			return 'Template only';
 	}
 };
 

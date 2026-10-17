@@ -308,7 +308,6 @@ describe('DashboardOverview', () => {
 		expect(screen.queryByText('Budget health')).not.toBeInTheDocument();
 		expect(screen.queryByText('Phone')).not.toBeInTheDocument();
 		expect(screen.queryByText('Accounts')).not.toBeInTheDocument();
-		expect(screen.queryByRole('region', { name: /ai assistant/i })).not.toBeInTheDocument();
 	});
 
 	it('shows the last 5 transactions on the dashboard home', () => {

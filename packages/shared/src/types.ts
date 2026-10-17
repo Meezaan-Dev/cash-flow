@@ -14,13 +14,11 @@ export type ViewType =
 	| 'table'
 	| 'list'
 	| 'accounts'
-	| 'budgets'
-	| 'planning'
+	| 'plan'
 	| 'transfer'
 	| 'reconcile'
 	| 'recurring'
-	| 'random'
-	| 'assistant';
+	| 'random';
 
 // Category
 export interface Category {
@@ -256,25 +254,4 @@ export interface SerializableTransaction {
 	description?: string;
 	date?: string;
 	accountId?: string;
-}
-
-// AI Chatbot
-export type ChatMessageRole = 'user' | 'assistant';
-
-export interface AIChatMessage {
-	id: string;
-	role: ChatMessageRole;
-	content: string;
-	isError?: boolean;
-	createdAt: number;
-}
-
-export interface AskAIRequest {
-	question: string;
-	userId: string;
-	history?: Array<Pick<AIChatMessage, 'role' | 'content'>>;
-}
-
-export interface AskAIResponse {
-	answer: string;
 }

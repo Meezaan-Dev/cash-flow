@@ -7,6 +7,22 @@ import {
 const today = new Date(2026, 4, 22);
 
 describe('getDueRecurringDrafts', () => {
+	it('does not prompt for a template-only item even if stale schedule data remains', () => {
+		const drafts = getDueRecurringDrafts(
+			[{
+				id: 'rent',
+				title: 'Rent',
+				amount: 9000,
+				type: 'expense',
+				category: 'home',
+				mode: 'template',
+				expectedDate: 22,
+			}],
+			[],
+			today
+		);
+		expect(drafts).toHaveLength(0);
+	});
 	it('matches scheduled templates on the current day of month', () => {
 		const drafts = getDueRecurringDrafts(
 			[

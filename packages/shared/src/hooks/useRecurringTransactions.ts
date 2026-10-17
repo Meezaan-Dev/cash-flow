@@ -40,11 +40,22 @@ const sanitizeRecurringPayload = (
 		}
 		sanitized.type = payload.type;
 	}
+	if (payload.mode !== undefined) {
+		if (payload.mode !== 'template' && payload.mode !== 'scheduled') {
+			throw new Error('Recurring mode is invalid.');
+		}
+		sanitized.mode = payload.mode;
+	}
 	if (payload.frequency !== undefined) {
 		if (!['daily', 'weekly', 'monthly', 'yearly'].includes(payload.frequency)) {
 			throw new Error('Recurring frequency is invalid.');
 		}
 		sanitized.frequency = payload.frequency;
+	} else if (
+		allowFieldDelete &&
+		Object.prototype.hasOwnProperty.call(payload, 'frequency')
+	) {
+		sanitized.frequency = deleteField();
 	}
 	if (payload.accountId !== undefined) {
 		sanitized.accountId = normalizeRequiredText(
@@ -100,6 +111,14 @@ const sanitizeRecurringPayload = (
 		);
 		if (subcategory) sanitized.subcategory = subcategory;
 		else if (allowFieldDelete) sanitized.subcategory = deleteField();
+	}
+	if (payload.mode === 'scheduled') {
+		if (payload.frequency !== 'monthly' || payload.expectedDate === undefined) {
+			throw new Error('Monthly reminders need a monthly frequency and day of month.');
+		}
+	}
+	if (payload.mode === 'template' && (payload.frequency !== undefined || payload.expectedDate !== undefined)) {
+		throw new Error('Template-only items cannot include a frequency or reminder date.');
 	}
 
 	return sanitized;
