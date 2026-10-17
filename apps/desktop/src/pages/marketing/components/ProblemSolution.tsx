@@ -9,11 +9,11 @@ const steps = [
 	},
 	{
 		title: 'Plan before the month gets away',
-		body: 'Use planning for upcoming expenses, a simple wishlist with links, payment-plan progress, and budget drafts compared to real activity.',
+		body: 'Use Plan for category budgets, upcoming expenses, a wishlist with links, and payment-plan progress compared to real activity.',
 	},
 	{
 		title: 'Review with less guesswork',
-		body: 'Use filters, reports, and the AI assistant to answer practical questions about categories, merchants, accounts, and trends.',
+		body: 'Use filters, month-by-month reports, and category drill-downs to answer practical questions about accounts and spending trends.',
 	},
 ];
 

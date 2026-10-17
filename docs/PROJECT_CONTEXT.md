@@ -12,7 +12,7 @@ The core app flow is:
 2. Create at least one account.
 3. Add income, expense, or transfer transactions.
 4. Review dashboard totals and transaction history.
-5. Add budgets when planning is useful.
+5. Use the Plan hub for category budgets and upcoming spending.
 6. Import or export data when moving between files and the app.
 
 Core features:
@@ -22,8 +22,7 @@ Core features:
 - Transactions
 - Transfers
 - Dashboard
-- Budgets
-- Planning
+- Plan hub
 - Import/export
 - Categories and subcategories
 
@@ -32,7 +31,6 @@ Supporting features:
 - Recurring transactions
 - Wishlist bookmarks and payment-plan progress
 - Reports
-- AI assistant
 - Random private notes
 - Filter preferences
 - Privacy mode
@@ -46,12 +44,12 @@ The friendly first-run path is:
 2. Create at least one account in desktop admin.
 3. Choose a main account for new transactions.
 4. Add income/expense transactions from desktop or `/mobisite`.
-5. Use saved recurring templates as quick-fill options when adding transactions on `/mobisite`.
-6. Review transaction history, balances, budgets, recurring expenses, and reports from desktop.
+5. Use saved recurring templates as quick-fill options, with monthly reminders only when a due prompt is wanted.
+6. Review transaction history, balances, plans, recurring items, and reports from desktop.
 
-Core capabilities include Firebase auth, multi-account management for debit/credit/savings/cash, optional credit limits, atomic income and expense writes, linked transfer records, account reconciliation, desktop dashboard/admin views, mobile transaction capture, planning projections, wishlist bookmarks, payment-plan progress, recurring due/upcoming prompts, import/export, category management, filter preferences, reports, settings, privacy mode, random notes, and the AI assistant.
+Core capabilities include Firebase auth, multi-account management for debit/credit/savings/cash, optional credit limits, atomic income and expense writes, linked transfer records, confirmed balance updates through adjustment transactions, desktop dashboard/admin views, mobile transaction capture, planning projections, wishlist bookmarks, payment-plan progress, optional monthly due prompts, import/export, category management, filter preferences, reports, settings, privacy mode, and random notes.
 
-Budget planning supports category-wide or optional sub-category scopes, monthly or custom date ranges, draft publishing, repeating completed periods, and persistent card ordering. A user can keep up to eight budgets, including budgets outside the currently selected month. Planned expenses and payment plans are separate from budgets and transactions: they feed projections and progress views, but real balances still change only through transactions.
+The Plan hub presents category and optional subcategory budgets beside real spending and planned items. Draft budgets remain available for review and activation. Planned expenses and payment plans remain separate from real transactions: they feed projections and progress views, but real balances change only through transactions.
 
 ## Architecture Map
 
@@ -59,7 +57,7 @@ The app now follows an app-flow structure with domain logic separated from pages
 
 - `apps/desktop/src/app/`: host app shell concerns such as routes, theme, and privacy mode.
 - `apps/desktop/src/pages/`: route-level screens and page-specific dashboard, account, marketing, and mobisite components.
-- `apps/desktop/src/domains/`: desktop domain logic, views, hooks, models, controllers, and contexts for accounts, transactions, budgets, planning, categories, recurring transactions, reports, auth, and AI.
+- `apps/desktop/src/domains/`: desktop domain logic, views, hooks, models, controllers, and contexts for accounts, transactions, budgets, planning, categories, recurring transactions, reports, and auth.
 - `apps/desktop/src/shared/`: app-local shared logic such as filter preferences that are reused across multiple pages.
 - `apps/mobisite/src/`: small mobile app mounted inside the host router at `/mobisite`.
 - `packages/shared/src/`: Firebase, shared types, models, hooks, and date/currency/category utilities used across app shells.
@@ -78,6 +76,8 @@ There is only one deployed SPA. `apps/mobisite` is internal separation, not a se
 - Transfers are represented as two linked transaction records and two account balance updates.
 - Transfer records must keep shared `transferId` and opposite `transferDirection` metadata.
 - Recurring confirmations should store `recurringTransactionId` and `recurringOccurrenceDate`.
+- Template-only recurring items omit frequency and expected date; new scheduled reminders are monthly.
+- Balance corrections must use the normal atomic transaction write, never a direct balance overwrite.
 - Keep data normalization in domain models and Firebase behavior in domain hooks.
 - Use shared types from `apps/desktop/src/types/` or `packages/shared/src/` instead of redefining domain shapes in UI components.
 - Keep the UI friendly and direct; do not turn the app into a marketing surface.

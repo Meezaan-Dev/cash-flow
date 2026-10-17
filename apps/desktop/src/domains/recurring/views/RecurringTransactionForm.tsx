@@ -27,13 +27,6 @@ interface RecurringTransactionFormProps {
 	transaction?: RecurringTransaction;
 }
 
-const FREQUENCIES = [
-	{ value: 'daily', label: 'Daily' },
-	{ value: 'weekly', label: 'Weekly' },
-	{ value: 'monthly', label: 'Monthly' },
-	{ value: 'yearly', label: 'Yearly' },
-];
-
 const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onClose, transaction: expense }) => {
 	const { addRecurringTransaction, updateRecurringTransaction } = useTransactionsContext();
 	const { categories, categoryOptions } = useCategoriesContext();
@@ -47,8 +40,8 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 	const [category, setCategory] = useState(expense?.category ?? '');
 	const [subcategory, setSubcategory] = useState(expense?.subcategory ?? '');
 	const [description, setDescription] = useState(expense?.description ?? '');
-	const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>(
-		expense?.frequency ?? 'monthly'
+	const [mode, setMode] = useState<'template' | 'scheduled'>(
+		expense?.mode ?? (expense?.expectedDate ? 'scheduled' : 'template')
 	);
 	const [expectedDate, setExpectedDate] = useState<number | ''>(expense?.expectedDate ?? '');
 	const [accountId, setAccountId] = useState(expense?.accountId ?? '');
@@ -99,7 +92,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			setCategory(expense.category ?? '');
 			setSubcategory(expense.subcategory ?? '');
 			setDescription(expense.description ?? '');
-			setFrequency(expense.frequency ?? 'monthly');
+			setMode(expense.mode ?? (expense.expectedDate ? 'scheduled' : 'template'));
 			setExpectedDate(expense.expectedDate ?? '');
 			setAccountId(expense.accountId ?? '');
 			setError('');
@@ -110,7 +103,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			setCategory('');
 			setSubcategory('');
 			setDescription('');
-			setFrequency('monthly');
+			setMode('template');
 			setExpectedDate('');
 			setAccountId('');
 			setError('');
@@ -138,6 +131,10 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 			setError('Please select a category.');
 			return;
 		}
+		if (mode === 'scheduled' && expectedDate === '') {
+			setError('Choose the day of month for this reminder.');
+			return;
+		}
 		setIsSubmitting(true);
 		try {
 			const normalizedExpectedDate = expectedDate === '' ? undefined : expectedDate;
@@ -153,6 +150,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 				| 'category'
 				| 'subcategory'
 				| 'description'
+				| 'mode'
 				| 'frequency'
 				| 'expectedDate'
 				| 'accountId'
@@ -164,8 +162,9 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 				subcategory: subcategory || undefined,
 				description,
 				accountId: accountId || undefined,
-				frequency,
-				expectedDate: normalizedExpectedDate,
+				mode,
+				frequency: mode === 'scheduled' ? 'monthly' : undefined,
+				expectedDate: mode === 'scheduled' ? normalizedExpectedDate : undefined,
 			};
 
 			if (expense && expense.id) {
@@ -309,7 +308,7 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 					</div>
 				</div>
 
-				{/* Category and Frequency */}
+				{/* Category and schedule */}
 				<div className="grid gap-5 md:grid-cols-2">
 					<div className="space-y-2">
 						<Label
@@ -367,37 +366,38 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 
 					<div className="space-y-2">
 						<Label
-							htmlFor="re-frequency"
+							htmlFor="re-mode"
 							className="flex items-center gap-2 text-sm font-medium"
 						>
 							<FiRefreshCw className="h-4 w-4 text-muted-foreground" />
-							Frequency
+							Reminder
 						</Label>
 						<Select
-							value={frequency}
-							onValueChange={(value) =>
-								setFrequency(value as 'daily' | 'weekly' | 'monthly' | 'yearly')
-							}
+							value={mode}
+							onValueChange={(value) => {
+								setMode(value as 'template' | 'scheduled');
+								if (value === 'template') setExpectedDate('');
+							}}
 						>
 							<SelectTrigger
-								id="re-frequency"
+								id="re-mode"
 								className="h-10 rounded-lg border-2 transition-all focus:border-primary"
 							>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								{FREQUENCIES.map((freq) => (
-									<SelectItem key={freq.value} value={freq.value}>
-										{freq.label}
-									</SelectItem>
-								))}
+								<SelectItem value="template">Template only</SelectItem>
+								<SelectItem value="scheduled">Monthly reminder</SelectItem>
 							</SelectContent>
 						</Select>
+						<p className="text-xs text-muted-foreground">
+							Templates appear in Quick Fill without creating reminders.
+						</p>
 					</div>
 
-					<div className="space-y-2">
+					{mode === 'scheduled' && <div className="space-y-2">
 						<Label htmlFor="re-expected-date" className="text-sm font-medium">
-							Expected Day (Optional)
+							Day of month
 						</Label>
 						<Input
 							id="re-expected-date"
@@ -413,9 +413,9 @@ const RecurringTransactionForm: React.FC<RecurringTransactionFormProps> = ({ onC
 							className="h-10 rounded-lg border-2 transition-all focus:border-primary"
 						/>
 						<p className="text-xs text-muted-foreground">
-							Use this for monthly schedules, like salary on day 1.
+							Shorter months use their final day.
 						</p>
-					</div>
+					</div>}
 				</div>
 
 				{/* Description */}

@@ -23,10 +23,13 @@ import type {
 } from '@cash-flow/shared/planning/PlanningModel';
 import { sortPlannedExpensesByDisplayOrder } from '@cash-flow/shared/planning/PlanningModel';
 import { getAppErrorMessage } from '@cash-flow/shared/errors';
+import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 import { usePlanningContext } from '@/domains/planning/context/PlanningContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
+import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
+import BudgetForm from '@/domains/budgets/views/BudgetForm';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import { Label } from '@/components/app/ui/label';
@@ -65,6 +68,7 @@ import { liquidGlassPanel, liquidGlassSoft } from '@/styles/marketingStyles';
 
 type WizardMode = 'planned' | 'wishlist' | 'payment';
 type PlanningListTab = 'all' | 'planned' | 'wishlist';
+type PlanHubTab = 'monthly' | 'wishlist' | 'payments';
 
 const WISHLIST_CATEGORY = 'Wishlist';
 
@@ -173,12 +177,11 @@ const PlanningView: React.FC = () => {
 		convertPlannedExpense,
 		linkPaymentTransaction,
 		unlinkPaymentTransaction,
-		calculatePlannedExpenseTotal,
 		calculatePaymentPlansProgress,
-		getRemainingPlannedExpenses,
 		getCurrentMonthKey,
 	} = usePlanningContext();
 	const { transactions, addTransaction } = useTransactionsContext();
+	const { budgets, publishBudget } = useBudgetsContext();
 	const { accounts } = useAccountsContext();
 	const { categories, categoryOptions, getCategoryPathLabel, getCategoryLabel } =
 		useCategoriesContext();
@@ -192,10 +195,46 @@ const PlanningView: React.FC = () => {
 	const [isSaving, setIsSaving] = useState(false);
 	const [linkingPlanId, setLinkingPlanId] = useState<string | null>(null);
 	const [selectedLinkTransactionId, setSelectedLinkTransactionId] = useState('');
-	const [activePlanningTab, setActivePlanningTab] = useState<PlanningListTab>('all');
+	const [, setActivePlanningTab] = useState<PlanningListTab>('all');
+	const [activeHubTab, setActiveHubTab] = useState<PlanHubTab>('monthly');
+	const [selectedCategory, setSelectedCategory] = useState('all');
+	const [showBudgetForm, setShowBudgetForm] = useState(false);
 	const [draggingPlannedExpenseId, setDraggingPlannedExpenseId] = useState<string>();
 
 	const currentMonth = getCurrentMonthKey();
+	const monthStart = new Date(`${currentMonth}-01T00:00:00`);
+	const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+	const monthlyPlans = plannedExpenses.filter(
+		(expense) => expense.status === 'planned' && expense.targetMonth === currentMonth
+	);
+	const categoryPlans = selectedCategory === 'all'
+		? monthlyPlans
+		: monthlyPlans.filter((expense) => expense.category === selectedCategory);
+	const groupedCategoryPlans = Object.entries(
+		categoryPlans.reduce<Record<string, PlannedExpense[]>>((groups, expense) => {
+			const key = expense.subcategory || 'other';
+			(groups[key] ??= []).push(expense);
+			return groups;
+		}, {})
+	);
+	const monthExpenses = transactions.filter((transaction) => {
+		const value = parseDbDateOrNull(transaction.date ?? transaction.createdAt);
+		return transaction.type === 'expense' && value && value >= monthStart && value < monthEnd;
+	});
+	const visibleMonthExpenses = selectedCategory === 'all'
+		? monthExpenses
+		: monthExpenses.filter((transaction) => transaction.category === selectedCategory);
+	const visibleBudgets = budgets.filter(
+		(budget) => budget.month === currentMonth &&
+			(selectedCategory === 'all' || budget.categoryId === selectedCategory)
+	);
+	const draftBudgets = visibleBudgets.filter((budget) => budget.lifecycleStatus === 'draft');
+	const budgetedTotal = visibleBudgets
+		.filter((budget) => budget.lifecycleStatus === 'published')
+		.reduce((sum, budget) => sum + budget.amount, 0);
+	const spentTotal = visibleMonthExpenses.reduce((sum, transaction) => sum + transaction.amount, 0);
+	const plannedTotal = categoryPlans.reduce((sum, expense) => sum + expense.amount, 0);
+	const remainingTotal = budgetedTotal - spentTotal - plannedTotal;
 	const serverOrderedPlannedExpenses = useMemo(
 		() => sortPlannedExpensesByDisplayOrder(plannedExpenses),
 		[plannedExpenses]
@@ -229,11 +268,6 @@ const PlanningView: React.FC = () => {
 			...serverOrderedPlannedExpenses.filter((expense) => !orderedIds.has(expense.id)),
 		];
 	}, [localPlannedOrderIds, plannedExpenses, serverOrderedPlannedExpenses]);
-	const remainingPlanned = useMemo(
-		() => getRemainingPlannedExpenses(currentMonth),
-		[getRemainingPlannedExpenses, currentMonth]
-	);
-	const plannedRemainingTotal = calculatePlannedExpenseTotal(currentMonth);
 	const wishlistItems = orderedPlannedExpenses.filter((expense) => expense.status === 'wishlist');
 	const activePaymentProgress = calculatePaymentPlansProgress(transactions).filter(
 		(item) => item.plan.status === 'active'
@@ -579,11 +613,25 @@ const PlanningView: React.FC = () => {
 		setWizardStep((current) => current + 1);
 	};
 
+	if (showBudgetForm) {
+		const matchingBudget = selectedCategory === 'all'
+			? undefined
+			: visibleBudgets.find((budget) => !budget.subCategoryId);
+		return (
+			<BudgetForm
+				budget={matchingBudget}
+				defaultMonth={currentMonth}
+				defaultCategoryId={selectedCategory === 'all' ? undefined : selectedCategory}
+				onClose={() => setShowBudgetForm(false)}
+			/>
+		);
+	}
+
 	return (
 		<PageShell>
 			<PageHeader
-				title="Planning"
-				subtitle="Simple projections, bookmarks, and payment progress."
+				title="Plan"
+				subtitle="Budgets, planned spending, wishes, and payment progress in one place."
 				actions={
 					<Button type="button" variant="marketing" onClick={openChooser}>
 						<FiPlus className="h-4 w-4" />
@@ -592,63 +640,84 @@ const PlanningView: React.FC = () => {
 				}
 			/>
 
-			<div className="space-y-8">
-				<SummaryCardGrid>
-					<SummaryCard
-						label="Planned this month"
-						amount={plannedRemainingTotal}
-						note={`${remainingPlanned.length} items still expected`}
-					/>
-					<SummaryCard label="Wishlist" value={wishlistItems.length} note="Ideas for later" />
-					<SummaryCard
-						label="Payment plans"
-						value={activePaymentProgress.length}
-						note="Active progress trackers"
-					/>
-					<SummaryCard
-						label="Still committed"
-						amount={activePaymentProgress.reduce((sum, item) => sum + item.remaining, 0)}
-						note="Across active plans"
-					/>
-				</SummaryCardGrid>
+			<div className="space-y-6">
+				<nav className="flex gap-2 overflow-x-auto rounded-2xl border bg-white/70 p-1 dark:bg-gray-950/50" aria-label="Plan views">
+					{([
+						['monthly', 'Monthly plan'],
+						['wishlist', `Wishlist (${wishlistItems.length})`],
+						['payments', `Payment plans (${activePaymentProgress.length})`],
+					] as const).map(([value, label]) => (
+						<button key={value} type="button" onClick={() => setActiveHubTab(value)} className={cn('whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold', activeHubTab === value ? 'bg-gray-950 text-white dark:bg-white dark:text-gray-950' : 'text-muted-foreground')}>
+							{label}
+						</button>
+					))}
+				</nav>
 
-				<section
-					className={cn(
-						'flex flex-col gap-4 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between',
-						liquidGlassSoft
-					)}
-				>
-					<div>
-						<h2 className="text-lg font-semibold text-gray-950 dark:text-white">
-							Add something without thinking about the model
-						</h2>
-						<p className="text-sm text-gray-600 dark:text-gray-300">
-							Start with intent. Cash Flow will save it as a plan, wishlist item, or payment plan.
-						</p>
-					</div>
-					<div className="flex flex-wrap gap-2">
-						<Button type="button" variant="outline" onClick={() => openPlannedWizard('planned')}>
-							<FiShoppingBag className="h-4 w-4" />
-							Planned expense
-						</Button>
-						<Button type="button" variant="outline" onClick={() => openPlannedWizard('wishlist')}>
-							<FiGift className="h-4 w-4" />
-							Wishlist
-						</Button>
-						<Button type="button" variant="outline" onClick={() => openPaymentWizard()}>
-							<FiCreditCard className="h-4 w-4" />
-							Payment plan
-						</Button>
-					</div>
-				</section>
+				{activeHubTab === 'monthly' && (
+					<section className="space-y-5">
+						<div className="flex gap-2 overflow-x-auto pb-1" aria-label="Plan categories">
+							<button type="button" onClick={() => setSelectedCategory('all')} className={cn('whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium', selectedCategory === 'all' && 'border-blue-600 bg-blue-600 text-white')}>All</button>
+							{categories.map((item) => (
+								<button key={item.value} type="button" onClick={() => setSelectedCategory(item.value)} className={cn('whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium', selectedCategory === item.value && 'border-blue-600 bg-blue-600 text-white')}>
+									{item.label}
+								</button>
+							))}
+						</div>
 
-				<section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
+						<SummaryCardGrid>
+							<SummaryCard label="Budgeted" amount={budgetedTotal} />
+							<SummaryCard label="Spent" amount={spentTotal} tone="expense" />
+							<SummaryCard label="Planned" amount={plannedTotal} />
+							<SummaryCard label="Remaining" amount={remainingTotal} tone={remainingTotal >= 0 ? 'balance-positive' : 'balance-negative'} />
+						</SummaryCardGrid>
+						{draftBudgets.map((budget) => (
+							<div key={budget.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+								<div><p className="font-semibold">Draft budget · {getCategoryLabel(budget.categoryId)}</p><p className="text-sm text-muted-foreground">{formatCurrency(budget.amount)} is not included until activated.</p></div>
+								<div className="flex gap-2"><Button variant="outline" onClick={() => setShowBudgetForm(true)}>Edit draft</Button><Button variant="marketing" onClick={() => publishBudget(budget.id)}>Activate budget</Button></div>
+							</div>
+						))}
+
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<div>
+								<h2 className="text-lg font-semibold">{selectedCategory === 'all' ? 'All planned spending' : getCategoryLabel(selectedCategory)}</h2>
+								<p className="text-sm text-muted-foreground">Grouped by subcategory for {currentMonth}.</p>
+							</div>
+							<div className="flex gap-2">
+								<Button variant="outline" onClick={() => setShowBudgetForm(true)}>{selectedCategory === 'all' ? 'Set budget' : 'Set or edit budget'}</Button>
+								<Button variant="marketing" onClick={() => openPlannedWizard('planned')}><FiPlus className="h-4 w-4" />Add item</Button>
+							</div>
+						</div>
+
+						{groupedCategoryPlans.length === 0 ? (
+							<EmptyState title="Nothing planned here yet" description="Add a planned expense or choose another category." />
+						) : (
+							<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+								{groupedCategoryPlans.map(([subcategory, items]) => (
+									<div key={subcategory} className={cn('rounded-3xl p-5', liquidGlassSoft)}>
+										<h3 className="font-semibold">{subcategory === 'other' ? 'Other' : items[0] ? getCategoryPathLabel(items[0].category, subcategory).split(' / ').pop() : subcategory}</h3>
+										<div className="mt-3 divide-y dark:divide-gray-800">
+											{items.map((item) => (
+												<div key={item.id} className="flex items-center justify-between gap-3 py-3">
+													<div className="min-w-0"><p className="truncate text-sm font-medium"><SensitiveText widthClassName="w-28">{item.title}</SensitiveText></p><p className="text-xs text-muted-foreground">{formatCurrency(item.amount)} · {statusLabels[item.status]}</p></div>
+													<Button size="sm" variant="outline" onClick={() => openPlannedWizard('planned', item)}>Edit</Button>
+												</div>
+											))}
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</section>
+				)}
+
+				{activeHubTab === 'wishlist' && (
 					<PlansList
-						plannedExpenses={orderedPlannedExpenses}
-						activeTab={activePlanningTab}
+						plannedExpenses={wishlistItems}
+						activeTab="wishlist"
 						draggingExpenseId={draggingPlannedExpenseId}
 						getCategoryPathLabel={getCategoryPathLabel}
 						onTabChange={setActivePlanningTab}
+						hideTabs
 						onEdit={(expense) =>
 							openPlannedWizard(expense.status === 'wishlist' ? 'wishlist' : 'planned', expense)
 						}
@@ -660,6 +729,8 @@ const PlanningView: React.FC = () => {
 						onMove={movePlanningItem}
 						onReorder={reorderPlanningGroup}
 					/>
+				)}
+				{activeHubTab === 'payments' && (
 					<PaymentPlansList
 						progress={calculatePaymentPlansProgress(transactions)}
 						transactions={transactions}
@@ -678,7 +749,7 @@ const PlanningView: React.FC = () => {
 						onUnlink={unlinkPaymentTransaction}
 						onComplete={(plan) => updatePaymentPlan(plan.id, { status: 'completed' })}
 					/>
-				</section>
+				)}
 			</div>
 
 			<Dialog open={wizardOpen} onOpenChange={(open) => !open && closeWizard()}>
@@ -1156,6 +1227,7 @@ interface PlansListProps {
 	onDragEnd: () => void;
 	onMove: (group: PlannedExpense[], expenseId: string, direction: -1 | 1) => void;
 	onReorder: (group: PlannedExpense[], sourceId: string, targetId: string) => void;
+	hideTabs?: boolean;
 }
 
 const PlansList: React.FC<PlansListProps> = ({
@@ -1172,6 +1244,7 @@ const PlansList: React.FC<PlansListProps> = ({
 	onDragEnd,
 	onMove,
 	onReorder,
+	hideTabs = false,
 }) => {
 	const visibleExpenses = plannedExpenses.filter((expense) =>
 		isInPlanningTab(expense, activeTab)
@@ -1193,7 +1266,7 @@ const PlansList: React.FC<PlansListProps> = ({
 						Planned items affect projections. Wishlist items wait quietly.
 					</p>
 				</div>
-				<div
+				{!hideTabs && <div
 					className="flex rounded-2xl border border-gray-200 bg-white/70 p-1 dark:border-gray-800 dark:bg-gray-950/50"
 					aria-label="Planning view"
 				>
@@ -1212,7 +1285,7 @@ const PlansList: React.FC<PlansListProps> = ({
 							{planningTabLabels[tab]}
 						</button>
 					))}
-				</div>
+				</div>}
 			</div>
 
 			<div className="grid gap-3 sm:grid-cols-3">

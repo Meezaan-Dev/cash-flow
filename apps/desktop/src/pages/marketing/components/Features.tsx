@@ -3,13 +3,11 @@ import { motion } from 'framer-motion';
 import {
 	BarChart3,
 	BriefcaseBusiness,
-	Cpu,
 	FileText,
 	List,
 	RefreshCw,
 	ShoppingBag,
 	Smartphone,
-	Target,
 	type LucideIcon,
 } from 'lucide-react';
 
@@ -154,25 +152,6 @@ function IllustrationData() {
 	);
 }
 
-function IllustrationAI() {
-	return (
-		<svg viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-			<defs>
-				<linearGradient id="fe5" x1="0" y1="0" x2="1" y2="1">
-					<stop offset="0%" stopColor="#3b82f6" />
-					<stop offset="100%" stopColor="#6366f1" />
-				</linearGradient>
-			</defs>
-			<rect x="30" y="40" width="160" height="38" rx="10" fill="#eff6ff" stroke="#bfdbfe" strokeWidth="1.2" />
-			<rect x="44" y="54" width="120" height="10" rx="5" fill="#3b82f6" opacity="0.25" />
-			<rect x="90" y="100" width="160" height="38" rx="10" fill="#f5f3ff" stroke="#c4b5fd" strokeWidth="1.2" />
-			<rect x="104" y="114" width="100" height="10" rx="5" fill="#6366f1" opacity="0.25" />
-			<circle cx="240" cy="130" r="16" fill="url(#fe5)" opacity="0.15" />
-			<path d="M232,130 l6,6 l10-12" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-		</svg>
-	);
-}
-
 function IllustrationSync() {
 	return (
 		<div className="relative flex h-full w-full items-center justify-center">
@@ -237,26 +216,20 @@ const features: Feature[] = [
 	},
 	{
 		icon: ShoppingBag,
-		title: 'Planning & wishlist',
-		desc: 'Track planned spending, bookmark wishlist items with links, and follow payment-plan progress.',
-		illustration: <IllustrationRecurring />,
-	},
-	{
-		icon: Target,
-		title: 'Real budgets',
-		desc: 'Draft, publish, and compare planned spending to actual activity.',
+		title: 'Plan hub',
+		desc: 'Category budgets, planned spending, wishlist bookmarks, and payment-plan progress in one place.',
 		illustration: <IllustrationBudget />,
 	},
 	{
 		icon: RefreshCw,
 		title: 'Recurring + Quick Fill',
-		desc: 'Save regular bills once, then fill new transactions in seconds.',
+		desc: 'Save templates for Quick Fill, or set a monthly reminder for due bills.',
 		illustration: <IllustrationRecurring />,
 	},
 	{
 		icon: BarChart3,
 		title: 'Clear reports',
-		desc: 'Spending by category, account, trend, income, and net worth.',
+		desc: 'Last 12 months, category drill-down, and CSV or JSON export of the active view.',
 		illustration: <IllustrationReports />,
 	},
 	{
@@ -264,12 +237,6 @@ const features: Feature[] = [
 		title: 'Data tools',
 		desc: 'Import and export CSV or JSON. Manage categories and filters.',
 		illustration: <IllustrationData />,
-	},
-	{
-		icon: Cpu,
-		title: 'AI spending questions',
-		desc: 'Ask about patterns, merchants, categories, and account trends.',
-		illustration: <IllustrationAI />,
 	},
 	{
 		icon: Smartphone,

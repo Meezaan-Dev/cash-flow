@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LedgerGhostMascot } from '@cash-flow/ui';
-import { FiEdit2, FiTrash2, FiPlus, FiArrowUpRight, FiArrowDownRight } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiArrowUpRight, FiArrowDownRight, FiRefreshCw } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { Account } from '@/types';
 import {
@@ -60,6 +60,11 @@ const AccountsList: React.FC = () => {
 		e.stopPropagation();
 		setAccountToDelete(id);
 		setDeleteDialogOpen(true);
+	};
+
+	const handleUpdateBalance = (e: React.MouseEvent, id: string) => {
+		e.stopPropagation();
+		navigate(`/dashboard/accounts/${id}?action=balance`);
 	};
 
 	const handleConfirmDelete = async () => {
@@ -247,6 +252,13 @@ const AccountsList: React.FC = () => {
 										</div>
 
 										<div className="absolute right-3 top-3 flex gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+											<button
+												onClick={(event) => account.id && handleUpdateBalance(event, account.id)}
+												className="rounded-md border border-gray-200 bg-white p-1.5 text-gray-500 shadow-sm transition-colors hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:text-gray-50"
+												aria-label="Update balance"
+											>
+												<FiRefreshCw className="h-3.5 w-3.5" />
+											</button>
 											<button
 												onClick={(e) => handleEdit(e, account)}
 												className="rounded-md border border-gray-200 bg-white p-1.5 text-gray-500 shadow-sm transition-colors hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:text-gray-50"

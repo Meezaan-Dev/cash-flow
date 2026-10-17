@@ -45,7 +45,7 @@ agents/skills/    # Agent skills (project-specific)
 - Run `npm test` before opening PRs when code changed
 - Desktop UI: marketing-style tokens in `apps/desktop/src/styles/marketingStyles.ts`
 - Mobile: authenticated users on viewports `<768px` redirect to `/mobisite`
-- Current app surfaces include accounts, transactions, budgets, recurring templates, reports, random notes, assistant, settings, categories, filters, import/export, and privacy mode
+- Current app surfaces include accounts, transactions, the combined Plan hub, recurring templates/reminders, reports, random notes, settings, categories, filters, import/export, and privacy mode
 
 ## Testing
 

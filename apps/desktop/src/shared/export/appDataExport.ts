@@ -186,6 +186,7 @@ export const buildWholeAppCsvFiles = (data: WholeAppExportData): ExportFile[] =>
 				'category',
 				'subcategory',
 				'description',
+				'mode',
 				'frequency',
 				'expectedDate',
 				'createdAt',

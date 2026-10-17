@@ -65,12 +65,10 @@ describe('Sidebar', () => {
 		expect(screen.getByRole('navigation', { name: /main navigation/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /transactions/i })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /planning/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /^plan$/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /accounts/i })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /budgets/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /recurring/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /reports/i })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /assistant/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /view mobisite/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /new transaction/i })).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: /^more$/i })).not.toBeInTheDocument();

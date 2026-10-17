@@ -13,12 +13,10 @@ import TransactionsTable from '@/domains/transactions/views/TransactionsTable';
 import AccountsList from '@/domains/accounts/views/AccountsList';
 import TransferForm from '@/domains/accounts/views/TransferForm';
 import ReconcileForm from '@/domains/accounts/views/ReconcileForm';
-import BudgetsList from '@/domains/budgets/views/BudgetsList';
 import PlanningView from '@/domains/planning/views/PlanningView';
 import ReportsView from '@/domains/reports/views/ReportsView';
 import RecurringTransactionsView from '@/domains/recurring/views/RecurringTransactionsView';
 import RandomView from '@/domains/random/views/RandomView';
-import AIChatbot from '@/domains/ai/components/AIChatbot';
 import AuthModals from '@/domains/auth/components/AuthModals';
 import {
 	Dialog,
@@ -53,12 +51,12 @@ import {
 const routeToView = (pathname: string, isMobile: boolean): ViewType => {
 	if (pathname.startsWith('/dashboard/transactions')) return isMobile ? 'list' : 'table';
 	if (pathname.startsWith('/dashboard/accounts')) return 'accounts';
-	if (pathname.startsWith('/dashboard/budgets')) return 'budgets';
-	if (pathname.startsWith('/dashboard/planning')) return 'planning';
+	if (pathname.startsWith('/dashboard/plan')) return 'plan';
+	if (pathname.startsWith('/dashboard/budgets')) return 'plan';
+	if (pathname.startsWith('/dashboard/planning')) return 'plan';
 	if (pathname.startsWith('/dashboard/recurring')) return 'recurring';
 	if (pathname.startsWith('/dashboard/reports')) return 'reports';
 	if (pathname.startsWith('/dashboard/random')) return 'random';
-	if (pathname.startsWith('/dashboard/assistant')) return 'assistant';
 	return 'dashboard';
 };
 
@@ -69,18 +67,14 @@ const viewToRoute = (view: ViewType): string => {
 			return '/dashboard/transactions';
 		case 'accounts':
 			return '/dashboard/accounts';
-		case 'budgets':
-			return '/dashboard/budgets';
-		case 'planning':
-			return '/dashboard/planning';
+		case 'plan':
+			return '/dashboard/plan';
 		case 'recurring':
 			return '/dashboard/recurring';
 		case 'reports':
 			return '/dashboard/reports';
 		case 'random':
 			return '/dashboard/random';
-		case 'assistant':
-			return '/dashboard/assistant';
 		default:
 			return '/dashboard';
 	}
@@ -128,6 +122,20 @@ const DashboardContent: React.FC = () => {
 			window.removeEventListener('resize', handleResize);
 		};
 	}, []);
+
+	useEffect(() => {
+		if (
+			location.pathname.startsWith('/dashboard/budgets') ||
+			location.pathname.startsWith('/dashboard/planning')
+		) {
+			navigate('/dashboard/plan', { replace: true });
+			return;
+		}
+		if (location.pathname.startsWith('/dashboard/assistant')) {
+			navigate('/dashboard', { replace: true });
+			return;
+		}
+	}, [location.pathname, navigate]);
 
 	useEffect(() => {
 		if (location.pathname.startsWith('/dashboard/settings')) {
@@ -319,9 +327,7 @@ const DashboardContent: React.FC = () => {
 				return <TransferForm onClose={() => setActiveView('accounts')} />;
 			case 'reconcile':
 				return <ReconcileForm onClose={() => setActiveView('accounts')} />;
-			case 'budgets':
-				return <BudgetsList />;
-			case 'planning':
+			case 'plan':
 				return <PlanningView />;
 			case 'recurring':
 				return <RecurringTransactionsView onOpenSettings={() => handleOpenSettings('filters')} />;
@@ -329,14 +335,12 @@ const DashboardContent: React.FC = () => {
 				return <ReportsView onOpenSettings={() => handleOpenSettings('filters')} />;
 			case 'random':
 				return <RandomView />;
-			case 'assistant':
-				return <AIChatbot />;
 			default:
 				return (
 					<DashboardOverview
 						onOpenHistory={handleOpenHistory}
-						onOpenBudgets={() => navigate('/dashboard/budgets')}
-						onOpenPlanning={() => navigate('/dashboard/planning')}
+						onOpenBudgets={() => navigate('/dashboard/plan')}
+						onOpenPlanning={() => navigate('/dashboard/plan')}
 						onOpenSettings={() => handleOpenSettings('general')}
 						onCreateTransaction={handleCreate}
 						onOpenTransactions={handleOpenTransactions}

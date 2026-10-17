@@ -80,7 +80,7 @@ describe('AccountDetailPage', () => {
 		renderAccountDetail();
 
 		expect(screen.getByRole('heading', { name: 'Checking' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /Reconcile/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /Update balance/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /Transfer/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /Edit/i })).toBeInTheDocument();
 		expect(screen.getByText('Current Balance')).toBeInTheDocument();

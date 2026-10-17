@@ -81,33 +81,17 @@ VITE_API_BASE_URL=
 
 `VITE_API_BASE_URL` is optional because the client has a production Cloud Functions fallback. Set it when targeting a different Firebase project or emulator.
 
-The AI assistant requires a server-side Firebase secret:
-
-```bash
-firebase functions:secrets:set GEMINI_API_KEY
-firebase deploy --only functions:askAI
-```
-
-For local emulation, copy `functions/.secret.local.example` to `functions/.secret.local` and add the real key there. Never commit the real value and never expose it as `VITE_GEMINI_API_KEY`.
-
 ## Cloud Functions
 
 Main API endpoints live in `functions/src/index.ts`:
 
 - `GET /healthCheck`
 - `GET /getUserTransactions`
-- `POST /askAI`
 
 Deploy all default functions:
 
 ```bash
 firebase deploy --only functions:default
-```
-
-Deploy one function when appropriate:
-
-```bash
-firebase deploy --only functions:askAI
 ```
 
 Useful checks:
@@ -153,12 +137,11 @@ cd functions
 npm run build
 ```
 
-After deployment, verify the SPA route you touched and check Cloud Function logs when API or assistant behavior changed.
+After deployment, verify the SPA route you touched and check Cloud Function logs when API behavior changed.
 
 ## Troubleshooting
 
 - **SPA route 404 on refresh:** confirm Vercel rewrites still send app routes to `/`.
 - **Permission errors:** deploy `firestore.rules` and confirm the signed-in user owns the target `users/{userId}` path.
-- **AI assistant unavailable:** confirm `GEMINI_API_KEY` exists in Firebase Secret Manager and is attached to the deployed `askAI` function.
 - **Auth errors from API:** refresh/sign in again and confirm the request uses `Authorization: Bearer <firebase_id_token>`.
 - **Wrong API project:** set `VITE_API_BASE_URL` to the intended Cloud Functions base URL.

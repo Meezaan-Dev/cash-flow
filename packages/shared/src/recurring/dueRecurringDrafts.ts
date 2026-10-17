@@ -50,6 +50,7 @@ export const getDueRecurringDrafts = (
 	return recurringTransactions
 		.filter(
 			(transaction) =>
+				transaction.mode !== 'template' &&
 				isExpectedOnDate(transaction.expectedDate, today) &&
 				transaction.id &&
 				!confirmedKeys.has(`${transaction.id}:${occurrenceDateKey}`)
@@ -80,6 +81,7 @@ export const getUpcomingRecurringDrafts = (
 				.filter(
 					(transaction) =>
 						transaction.id &&
+						transaction.mode !== 'template' &&
 						isExpectedOnDate(transaction.expectedDate, occurrenceDate) &&
 						!confirmedKeys.has(`${transaction.id}:${occurrenceDateKey}`)
 				)

@@ -37,6 +37,8 @@ interface BudgetFormProps {
 	onClose: () => void;
 	budget?: Budget;
 	defaultMonth: string;
+	defaultCategoryId?: string;
+	defaultSubCategoryId?: string;
 }
 
 const NO_SUBCATEGORY = '__no_subcategory__';
@@ -48,6 +50,8 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 	onClose,
 	budget,
 	defaultMonth,
+	defaultCategoryId = '',
+	defaultSubCategoryId,
 }) => {
 	const { budgets, addBudget, updateBudget } = useBudgetsContext();
 	const { toast } = useToast();
@@ -59,8 +63,8 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 	const [period, setPeriod] = useState<Budget['period']>('monthly');
 	const [month, setMonth] = useState(defaultMonth);
 	const [cycleDay, setCycleDay] = useState(25);
-	const [categoryId, setCategoryId] = useState('');
-	const [subCategoryId, setSubCategoryId] = useState(NO_SUBCATEGORY);
+	const [categoryId, setCategoryId] = useState(defaultCategoryId);
+	const [subCategoryId, setSubCategoryId] = useState(defaultSubCategoryId ?? NO_SUBCATEGORY);
 	const [amount, setAmount] = useState('');
 	const [saving, setSaving] = useState(false);
 	const [formError, setFormError] = useState('');

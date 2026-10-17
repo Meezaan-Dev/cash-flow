@@ -1,81 +1,90 @@
-import React, { useState } from 'react';
-import { getAppErrorMessage } from '@cash-flow/shared/errors';
+import React, { useMemo, useState } from 'react';
 import { FiCheckCircle } from 'react-icons/fi';
+import { getAppErrorMessage } from '@cash-flow/shared/errors';
+import { useMainAccountPreference } from '@cash-flow/shared/accounts/mainAccountPreference';
+import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
+import { Button } from '@/components/app/ui/button';
+import { Input } from '@/components/app/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/app/ui/select';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
-import { ACCOUNT_TYPE_LABELS } from '@cash-flow/shared/accounts/AccountModel';
-import { FormPageCard, FormPageShell } from '@/components/app/page-layout';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { Button } from '@/components/app/ui/button';
-import { Input } from '@/components/app/ui/input';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/app/ui/select';
+import { getBalanceAdjustment } from '@/domains/accounts/utils/balanceAdjustment';
 
 interface ReconcileFormProps {
 	onClose: () => void;
+	accountId?: string;
 }
 
-type Step = 'select' | 'reconcile' | 'done';
+type Step = 'edit' | 'confirm' | 'done';
+const todayKey = () => new Date().toISOString().split('T')[0];
 
-const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose }) => {
+const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose, accountId }) => {
 	const { accounts } = useAccountsContext();
 	const { addTransaction } = useTransactionsContext();
 	const { categoryOptions } = useCategoriesContext();
+	const { mainAccountId } = useMainAccountPreference();
+	const defaultAccountId =
+		accountId ?? accounts.find((item) => item.id === mainAccountId)?.id ?? accounts[0]?.id ?? '';
 
-	const [step, setStep] = useState<Step>('select');
-	const [selectedAccountId, setSelectedAccountId] = useState('');
-	const [statementBalance, setStatementBalance] = useState(0);
-	const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+	const [step, setStep] = useState<Step>('edit');
+	const [selectedAccountId, setSelectedAccountId] = useState(defaultAccountId);
+	const selectedAccount = useMemo(
+		() => accounts.find((item) => item.id === selectedAccountId),
+		[accounts, selectedAccountId]
+	);
+	const [balance, setBalance] = useState(
+		String(accounts.find((item) => item.id === defaultAccountId)?.balance ?? '')
+	);
+	const [title, setTitle] = useState('Balance adjustment');
+	const [category, setCategory] = useState(
+		categoryOptions.find((item) => item.value === 'other')?.value ?? categoryOptions[0]?.value ?? 'other'
+	);
+	const [date, setDate] = useState(todayKey());
+	const [notes, setNotes] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 
-	const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
-	const reconcileCategory =
-		categoryOptions.find((category) => category.value === 'other')?.value ??
-		categoryOptions[0]?.value ??
-		'other';
-	const discrepancy = selectedAccount
-		? Number(statementBalance) - selectedAccount.balance
-		: 0;
+	const newBalance = Number(balance);
+	const adjustment = getBalanceAdjustment(selectedAccount?.balance ?? 0, newBalance);
+	const difference = selectedAccount && Number.isFinite(newBalance) ? adjustment.difference : 0;
+	const hasAdjustment = Math.abs(difference) >= 0.005;
 
-	const handleSelectAccount = () => {
-		if (!selectedAccountId) {
-			setError('Please select an account.');
-			return;
-		}
-		setError('');
-		setStep('reconcile');
+	const handleAccountChange = (value: string) => {
+		setSelectedAccountId(value);
+		setBalance(String(accounts.find((item) => item.id === value)?.balance ?? ''));
 	};
 
-	const handleReconcile = async () => {
-		if (!selectedAccount?.id) return;
+	const review = () => {
+		if (!selectedAccount) return setError('Choose an account to update.');
+		if (!balance.trim() || !Number.isFinite(newBalance)) return setError('Enter a valid real balance.');
+		if (hasAdjustment && (!title.trim() || !category || !date)) {
+			return setError('Title, category, and date are required for the adjustment.');
+		}
+		setError('');
+		setStep('confirm');
+	};
 
+	const confirm = async () => {
+		if (!selectedAccount?.id) return;
 		setLoading(true);
 		setError('');
-
 		try {
-			if (Math.abs(discrepancy) > 0.001) {
-				// Create an adjustment transaction
-				const isPositive = discrepancy > 0;
+			if (hasAdjustment) {
 				await addTransaction({
-					type: isPositive ? 'income' : 'expense',
+					type: adjustment.type,
 					accountId: selectedAccount.id,
-					title: 'Reconciliation Adjustment',
-					category: reconcileCategory,
-					amount: Math.abs(discrepancy),
-					description: `Reconciled to statement balance of ${formatCurrency(statementBalance)}`,
-					date: date ? new Date(date) : new Date(),
+					title: title.trim(),
+					category,
+					amount: Math.abs(difference),
+					description: notes.trim() || `Balance updated to ${formatCurrency(newBalance)}`,
+					date: new Date(`${date}T12:00:00`),
 				});
 			}
 			setStep('done');
-		} catch (err: unknown) {
-			setError(getAppErrorMessage(err, { operation: 'Account reconciliation' }));
+		} catch (caught) {
+			setError(getAppErrorMessage(caught, { operation: 'Balance update' }));
 		} finally {
 			setLoading(false);
 		}
@@ -85,31 +94,14 @@ const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose }) => {
 		return (
 			<FormPageShell>
 				<FormPageCard className="max-w-md text-center">
-					<div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-						<FiCheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
-					</div>
-					<h2 className="text-2xl font-bold tracking-tight mb-2">
-						Reconciliation Complete
-					</h2>
-					<p className="text-muted-foreground mb-2">
-						{selectedAccount?.name} has been reconciled to
+					<FiCheckCircle className="mx-auto mb-4 h-12 w-12 text-emerald-600" />
+					<h2 className="text-2xl font-bold">Balance updated</h2>
+					<p className="mt-2 text-muted-foreground">
+						{hasAdjustment
+							? `One ${difference > 0 ? 'income' : 'expense'} adjustment was recorded for ${formatCurrency(Math.abs(difference))}.`
+							: 'The balance already matched, so no transaction was created.'}
 					</p>
-					<p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-4">
-						{formatCurrency(Number(statementBalance))}
-					</p>
-					{Math.abs(discrepancy) > 0.001 && (
-						<p className="text-sm text-muted-foreground mb-6">
-							An adjustment of {formatCurrency(Math.abs(discrepancy))} was recorded.
-						</p>
-					)}
-					{Math.abs(discrepancy) <= 0.001 && (
-						<p className="text-sm text-muted-foreground mb-6">
-							Your records were already balanced. No adjustment needed.
-						</p>
-					)}
-					<Button className="w-full" onClick={onClose}>
-						Done
-					</Button>
+					<Button className="mt-6 w-full" onClick={onClose}>Done</Button>
 				</FormPageCard>
 			</FormPageShell>
 		);
@@ -117,170 +109,77 @@ const ReconcileForm: React.FC<ReconcileFormProps> = ({ onClose }) => {
 
 	return (
 		<FormPageShell>
-			<FormPageCard className="max-w-lg">
-				<div className="mb-8 border-b pb-6">
-					<h2 className="text-3xl font-bold tracking-tight">Reconcile Account</h2>
-					<p className="mt-1.5 text-sm text-muted-foreground">
-						Match your account balance against your bank statement
-					</p>
-				</div>
+			<FormPageCard className="max-w-xl">
+				<h2 className="text-3xl font-bold tracking-tight">Update balance</h2>
+				<p className="mt-1.5 text-sm text-muted-foreground">
+					Enter the real balance. Cash Flow will record the difference as one normal transaction.
+				</p>
+				{error && <p className="mt-5 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
 
-				{error && (
-					<div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-						{error}
-					</div>
-				)}
-
-				{step === 'select' && (
-					<div className="space-y-5">
-						<div className="space-y-1.5">
-							<label className="text-sm font-medium">Select Account</label>
-							<Select
-								value={selectedAccountId}
-								onValueChange={setSelectedAccountId}
-							>
-								<SelectTrigger className="h-11">
-									<SelectValue placeholder="Choose an account to reconcile" />
-								</SelectTrigger>
+				<div className="mt-6 space-y-5">
+					{!accountId && (
+						<label className="block space-y-1.5 text-sm font-medium">
+							Account
+							<Select value={selectedAccountId} onValueChange={handleAccountChange} disabled={step === 'confirm'}>
+								<SelectTrigger><SelectValue placeholder="Choose an account" /></SelectTrigger>
 								<SelectContent>
-									{accounts.map((a) => (
-										<SelectItem key={a.id} value={a.id!}>
-											<span className="flex items-center gap-2">
-												<span
-													className="h-2 w-2 rounded-full flex-shrink-0"
-													style={{
-														backgroundColor: a.color ?? '#6366f1',
-													}}
-												/>
-												<span>
-													{a.name}
-													{a.bank ? ` — ${a.bank}` : ''}
-												</span>
-												<span className="ml-auto text-xs text-muted-foreground">
-													{ACCOUNT_TYPE_LABELS[a.type]}
-												</span>
-											</span>
-										</SelectItem>
-									))}
+									{accounts.map((item) => item.id && <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
 								</SelectContent>
 							</Select>
-						</div>
+						</label>
+					)}
 
-						{selectedAccount && (
-							<div className="rounded-xl border bg-muted/30 p-4">
-								<p className="text-sm text-muted-foreground">Current balance</p>
-								<p className="text-xl font-bold mt-1">
-									{formatCurrency(selectedAccount.balance)}
-								</p>
+					<div className="grid gap-3 sm:grid-cols-3">
+						{[
+							['Current balance', selectedAccount?.balance ?? 0],
+							['New balance', Number.isFinite(newBalance) ? newBalance : 0],
+							['Difference', difference],
+						].map(([label, amount]) => (
+							<div key={String(label)} className="rounded-xl border bg-muted/30 p-4">
+								<p className="text-xs text-muted-foreground">{label}</p>
+								<p className="mt-1 font-bold">{label === 'Difference' && difference > 0 ? '+' : ''}{formatCurrency(Number(amount))}</p>
 							</div>
-						)}
-
-						<div className="flex gap-3 pt-2">
-							<Button
-								className="flex-1 h-12"
-								onClick={handleSelectAccount}
-								disabled={!selectedAccountId}
-							>
-								Continue
-							</Button>
-							<Button type="button" variant="outline" onClick={onClose}>
-								Cancel
-							</Button>
-						</div>
+						))}
 					</div>
-				)}
 
-				{step === 'reconcile' && selectedAccount && (
-					<div className="space-y-5">
-						{/* Current vs Statement */}
-						<div className="grid grid-cols-2 gap-4">
-							<div className="rounded-xl border bg-muted/30 p-4">
-								<p className="text-xs text-muted-foreground mb-1">
-									CashFlow Balance
-								</p>
-								<p className="text-lg font-bold">
-									{formatCurrency(selectedAccount.balance)}
-								</p>
-							</div>
-							<div className="rounded-xl border bg-muted/30 p-4">
-								<p className="text-xs text-muted-foreground mb-1">
-									Discrepancy
-								</p>
-								<p
-									className={`text-lg font-bold ${
-										Math.abs(discrepancy) < 0.001
-											? 'text-green-600 dark:text-green-400'
-											: 'text-amber-600 dark:text-amber-400'
-									}`}
-								>
-									{discrepancy >= 0 ? '+' : ''}
-									{formatCurrency(discrepancy)}
-								</p>
-							</div>
-						</div>
-
-						{/* Statement balance input */}
-						<div className="space-y-1.5">
-							<label className="text-sm font-medium">
-								Statement Balance (ZAR)
+					{step === 'edit' ? (
+						<>
+							<label className="block space-y-1.5 text-sm font-medium">
+								Real balance
+								<Input type="number" step="0.01" value={balance} onChange={(event) => setBalance(event.target.value)} />
 							</label>
-							<Input
-								type="number"
-								step="0.01"
-								value={statementBalance}
-								onChange={(e) => setStatementBalance(Number(e.target.value))}
-								placeholder="Enter your bank statement balance"
-							/>
+							{hasAdjustment && (
+								<div className="grid gap-4 sm:grid-cols-2">
+									<label className="space-y-1.5 text-sm font-medium">Title<Input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+									<label className="space-y-1.5 text-sm font-medium">Category
+										<Select value={category} onValueChange={setCategory}>
+											<SelectTrigger><SelectValue /></SelectTrigger>
+											<SelectContent>{categoryOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+										</Select>
+									</label>
+									<label className="space-y-1.5 text-sm font-medium">Date<Input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+									<label className="space-y-1.5 text-sm font-medium">Notes<Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional" /></label>
+								</div>
+							)}
+						</>
+					) : (
+						<div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950/30">
+							<p className="font-semibold">Confirm this is correct</p>
+							<p className="mt-1 text-muted-foreground">
+								{hasAdjustment
+									? `Create one ${difference > 0 ? 'income' : 'expense'} transaction for ${formatCurrency(Math.abs(difference))} in ${selectedAccount?.name}?`
+									: `${selectedAccount?.name} already matches the entered balance. No transaction will be written.`}
+							</p>
 						</div>
+					)}
 
-						<div className="space-y-1.5">
-							<label className="text-sm font-medium">Statement Date</label>
-							<Input
-								type="date"
-								value={date}
-								onChange={(e) => setDate(e.target.value)}
-							/>
-						</div>
-
-						{Math.abs(discrepancy) > 0.001 && (
-							<div className="rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-4 text-sm">
-								<p className="font-medium text-amber-700 dark:text-amber-400 mb-1">
-									Adjustment required
-								</p>
-								<p className="text-amber-600 dark:text-amber-500">
-									A {discrepancy > 0 ? 'income' : 'expense'} transaction of{' '}
-									{formatCurrency(Math.abs(discrepancy))} will be created to
-									balance your account.
-								</p>
-							</div>
-						)}
-
-						{Math.abs(discrepancy) <= 0.001 && Number(statementBalance) !== 0 && (
-							<div className="rounded-xl border border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-900/20 p-4 text-sm">
-								<p className="font-medium text-green-700 dark:text-green-400">
-									Balances match — no adjustment needed.
-								</p>
-							</div>
-						)}
-
-						<div className="flex gap-3 pt-2">
-							<Button
-								className="flex-1 h-12"
-								onClick={handleReconcile}
-								disabled={loading}
-							>
-								{loading ? 'Reconciling...' : 'Reconcile Account'}
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => setStep('select')}
-							>
-								Back
-							</Button>
-						</div>
+					<div className="flex gap-3 pt-2">
+						<Button className="flex-1" onClick={step === 'edit' ? review : confirm} disabled={loading || !selectedAccount}>
+							{step === 'edit' ? 'Review update' : loading ? 'Updating...' : 'Confirm update'}
+						</Button>
+						<Button variant="outline" onClick={step === 'confirm' ? () => setStep('edit') : onClose}>{step === 'confirm' ? 'Back' : 'Cancel'}</Button>
 					</div>
-				)}
+				</div>
 			</FormPageCard>
 		</FormPageShell>
 	);

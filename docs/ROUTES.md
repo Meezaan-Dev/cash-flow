@@ -11,12 +11,13 @@ Cash Flow is one deployed SPA. `apps/desktop/src/App.tsx` owns routing for both 
 | `/dashboard/transactions` | Desktop transaction history/table, or mobile-width desktop list if reached on a non-mobile guarded viewport. |
 | `/dashboard/accounts` | Desktop accounts management. |
 | `/dashboard/accounts/:accountId` | Desktop per-account history/detail view. |
-| `/dashboard/budgets` | Desktop budget management. |
-| `/dashboard/planning` | Desktop planned expenses, wishlist bookmarks, and payment-plan progress. |
+| `/dashboard/plan` | Category-first monthly budgets and planned spending, wishlist bookmarks, and payment-plan progress. |
+| `/dashboard/budgets` | Compatibility redirect to `/dashboard/plan`. |
+| `/dashboard/planning` | Compatibility redirect to `/dashboard/plan`. |
 | `/dashboard/recurring` | Desktop recurring transaction management. |
-| `/dashboard/reports` | Desktop reports. |
+| `/dashboard/reports` | Twelve-month and custom reports with category drill-down and active-view exports. |
 | `/dashboard/random` | Desktop freeform private notes area. |
-| `/dashboard/assistant` | Gemini-powered financial assistant workspace. |
+| `/dashboard/assistant` | Retired compatibility URL; redirects safely to `/dashboard`. |
 | `/dashboard/settings` | Desktop settings modal route. |
 | `/mobisite` | Mobile capture experience. On desktop/tablet it is shown inside a mobile browser-style frame; on actual small screens it renders full-screen. |
 
@@ -45,4 +46,3 @@ Out of scope for `/mobisite`:
 - Reports
 - Settings
 - Import/export
-- AI assistant

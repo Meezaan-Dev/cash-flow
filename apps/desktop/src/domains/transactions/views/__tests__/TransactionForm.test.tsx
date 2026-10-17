@@ -82,7 +82,10 @@ jest.mock('@/components/app/ui/dialog', () => ({
 	),
 }));
 
-jest.mock('@/components/app/ui/select', () => require('@/utils/test-utils/selectMock').createSelectMock(jest.requireActual('react')));
+jest.mock('@/components/app/ui/select', () => {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	return require('@/utils/test-utils/selectMock').createSelectMock(jest.requireActual('react'));
+});
 
 const selectOption = async (user: ReturnType<typeof userEvent.setup>, name: string, option: string) => {
 	await user.click(screen.getByRole('combobox', { name }));
@@ -96,11 +99,6 @@ const selectOption = async (user: ReturnType<typeof userEvent.setup>, name: stri
 const renderForm = (props: Partial<React.ComponentProps<typeof TransactionForm>> = {}) =>
 	render(<TransactionForm onClose={mockOnClose} onSuccess={mockOnSuccess} {...props} />);
 
-const fillAmountAndContinue = async (user: ReturnType<typeof userEvent.setup>, amount = '85') => {
-	await user.type(screen.getByLabelText('Amount *'), amount);
-	await user.click(screen.getByRole('button', { name: 'Continue' }));
-};
-
 describe('TransactionForm', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -109,21 +107,17 @@ describe('TransactionForm', () => {
 		mockUpdateTransaction.mockResolvedValue(undefined);
 	});
 
-	it('navigates the modal wizard and saves with default account and date', async () => {
+	it('shows the four required controls on one screen and saves with defaults', async () => {
 		const user = userEvent.setup();
-
 		renderForm();
-
-		expect(screen.getByText('Type & amount')).toBeInTheDocument();
-		await fillAmountAndContinue(user);
-
+		expect(screen.getByRole('button', { name: 'expense' })).toBeInTheDocument();
+		expect(screen.getByLabelText('Amount *')).toBeInTheDocument();
 		expect(screen.getByLabelText('Title *')).toBeInTheDocument();
+		expect(screen.getByRole('combobox', { name: 'Category *' })).toBeInTheDocument();
+		await user.type(screen.getByLabelText('Amount *'), '85');
 		await user.type(screen.getByLabelText('Title *'), 'Coffee');
 		await selectOption(user, 'Category *', 'Food');
-		await user.click(screen.getByRole('button', { name: 'Continue' }));
-
-		expect(screen.getAllByText('Review').length).toBeGreaterThan(0);
-		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
+		await user.click(screen.getByRole('button', { name: 'Add expense' }));
 
 		await waitFor(() => expect(mockAddTransaction).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -135,27 +129,24 @@ describe('TransactionForm', () => {
 				date: expect.any(Date),
 			})
 		));
-		expect(mockOnClose).not.toHaveBeenCalled();
-		expect(screen.getByLabelText('Amount *')).toHaveValue(null);
+		expect(mockOnClose).toHaveBeenCalledTimes(1);
 	});
 
-	it('requires category before the review step', async () => {
+	it('requires category before saving', async () => {
 		const user = userEvent.setup();
-
 		renderForm();
-		await fillAmountAndContinue(user);
+		await user.type(screen.getByLabelText('Amount *'), '85');
 		await user.type(screen.getByLabelText('Title *'), 'Coffee');
-		await user.click(screen.getByRole('button', { name: 'Continue' }));
-
+		await user.click(screen.getByRole('button', { name: 'Add expense' }));
 		expect(await screen.findByText('Please select a category.')).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'Add transaction' })).not.toBeInTheDocument();
+		expect(mockAddTransaction).not.toHaveBeenCalled();
 	});
 
 	it('submits optional subcategory and notes from the details step', async () => {
 		const user = userEvent.setup();
 
 		renderForm();
-		await fillAmountAndContinue(user, '240');
+		await user.type(screen.getByLabelText('Amount *'), '240');
 		await user.type(screen.getByLabelText('Title *'), 'Groceries');
 		await selectOption(user, 'Category *', 'Food');
 		await user.click(screen.getByText('Optional details'));
@@ -163,8 +154,7 @@ describe('TransactionForm', () => {
 		await user.clear(screen.getByLabelText('Date'));
 		await user.type(screen.getByLabelText('Date'), '2026-08-12');
 		await user.type(screen.getByLabelText('Notes'), 'Weekly shop');
-		await user.click(screen.getByRole('button', { name: 'Continue' }));
-		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
+		await user.click(screen.getByRole('button', { name: 'Add expense' }));
 
 		await waitFor(() => expect(mockAddTransaction).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -173,41 +163,23 @@ describe('TransactionForm', () => {
 				category: 'food',
 				subcategory: 'groceries',
 				description: 'Weekly shop',
-				date: new Date('2026-08-12'),
+				date: new Date('2026-08-12T12:00:00'),
 			})
 		));
 	});
 
-	it('runs transfer through the transfer wizard path', async () => {
-		const user = userEvent.setup();
-
+	it('keeps transfers out of the transaction form', () => {
 		renderForm();
-		await user.click(screen.getByRole('button', { name: 'Transfer between accounts' }));
-		await fillAmountAndContinue(user, '500');
-		await user.type(screen.getByLabelText('Title *'), 'Move to savings');
-		await selectOption(user, 'To account *', 'Savings');
-		await user.click(screen.getByRole('button', { name: 'Continue' }));
-		await user.click(screen.getByRole('button', { name: 'Add transfer' }));
-
-		await waitFor(() => expect(mockAddTransfer).toHaveBeenCalledWith(
-			expect.objectContaining({
-				fromAccountId: 'acc-main',
-				toAccountId: 'acc-save',
-				amount: 500,
-				title: 'Move to savings',
-			})
-		));
-		expect(mockAddTransaction).not.toHaveBeenCalled();
+		expect(screen.queryByText(/Transfer between accounts/i)).not.toBeInTheDocument();
 	});
 
 	it('quick-fills from recurring templates and links the saved transaction', async () => {
 		const user = userEvent.setup();
 
 		renderForm();
-		await selectOption(user, 'Quick fill', 'Rent');
-		await user.click(screen.getByRole('button', { name: 'Continue' }));
-		await user.click(screen.getByRole('button', { name: 'Continue' }));
-		await user.click(screen.getByRole('button', { name: 'Add transaction' }));
+		await user.click(screen.getByText('Optional details'));
+		await selectOption(user, 'Quick Fill', 'Rent');
+		await user.click(screen.getByRole('button', { name: 'Add expense' }));
 
 		await waitFor(() => expect(mockAddTransaction).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -241,7 +213,6 @@ describe('TransactionForm', () => {
 		expect(screen.getByLabelText('Title *')).toHaveValue('Coffee');
 		await user.clear(screen.getByLabelText('Title *'));
 		await user.type(screen.getByLabelText('Title *'), 'Morning coffee');
-		await user.click(screen.getByRole('button', { name: 'Continue' }));
 		await user.click(screen.getByRole('button', { name: 'Save changes' }));
 
 		await waitFor(() => expect(mockUpdateTransaction).toHaveBeenCalledWith(

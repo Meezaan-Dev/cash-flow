@@ -50,8 +50,7 @@ jest.mock('@/pages/dashboard/components/Sidebar', () => ({
 	}) => (
 		<>
 			<button onClick={onCreate}>Create transaction</button>
-			<button onClick={() => onViewChange('budgets')}>Open budgets</button>
-			<button onClick={() => onViewChange('planning')}>Open planning</button>
+			<button onClick={() => onViewChange('plan')}>Open plan</button>
 			<button onClick={() => onViewChange('random')}>Open random</button>
 		</>
 	),
@@ -130,11 +129,6 @@ jest.mock('@/domains/recurring/views/RecurringTransactionsView', () => ({
 	default: () => <div>Recurring transactions</div>,
 }));
 
-jest.mock('@/domains/ai/components/AIChatbot', () => ({
-	__esModule: true,
-	default: () => <div>AI assistant</div>,
-}));
-
 jest.mock('@/domains/random/views/RandomView', () => ({
 	__esModule: true,
 	default: () => <div>Random notes</div>,
@@ -155,6 +149,7 @@ const renderDashboard = (initialPath = '/dashboard') =>
 			<Routes>
 				<Route path="/dashboard" element={<Dashboard />} />
 				<Route path="/dashboard/transactions" element={<Dashboard />} />
+				<Route path="/dashboard/plan" element={<Dashboard />} />
 				<Route path="/dashboard/budgets" element={<Dashboard />} />
 				<Route path="/dashboard/planning" element={<Dashboard />} />
 				<Route path="/dashboard/random" element={<Dashboard />} />
@@ -190,7 +185,7 @@ describe('Dashboard', () => {
 		);
 	});
 
-	it('closes the transaction modal before navigating to budgets', () => {
+	it('closes the transaction modal before navigating to plan', () => {
 		renderDashboard();
 
 		fireEvent.click(screen.getByRole('button', { name: 'Create transaction' }));
@@ -199,8 +194,8 @@ describe('Dashboard', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 		expect(screen.queryByText('Transaction form')).not.toBeInTheDocument();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Open budgets' }));
-		expect(screen.getByText('Budgets list')).toBeInTheDocument();
+		fireEvent.click(screen.getByRole('button', { name: 'Open plan' }));
+		expect(screen.getByText('Planning view')).toBeInTheDocument();
 	});
 
 	it('navigates to random notes from the dashboard shell', () => {
@@ -210,10 +205,10 @@ describe('Dashboard', () => {
 		expect(screen.getByText('Random notes')).toBeInTheDocument();
 	});
 
-	it('navigates to planning from the dashboard shell', () => {
+	it('navigates to the plan hub from the dashboard shell', () => {
 		renderDashboard();
 
-		fireEvent.click(screen.getByRole('button', { name: 'Open planning' }));
+		fireEvent.click(screen.getByRole('button', { name: 'Open plan' }));
 		expect(screen.getByText('Planning view')).toBeInTheDocument();
 	});
 

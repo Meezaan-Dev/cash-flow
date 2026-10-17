@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const faqs = [
 	{
 		question: 'Is CashFlow free to use?',
-		answer: 'Yes. You can register and start tracking accounts, transactions, planning, budgets, and reports without a credit card.',
+		answer: 'Yes. You can register and start tracking accounts, transactions, the Plan hub, and reports without a credit card.',
 	},
 	{
 		question: 'How is my financial data stored?',
@@ -17,15 +17,15 @@ const faqs = [
 	},
 	{
 		question: 'Does CashFlow support recurring expenses?',
-		answer: 'Yes. Save regular bills or income as recurring items, then use Quick Fill in the transaction side panel to create new entries faster when they come up.',
+		answer: 'Yes. Save a reusable template for Quick Fill, or a monthly reminder with a day of month for due prompts.',
 	},
 	{
-		question: 'What is planning on the dashboard?',
-		answer: 'Planning covers upcoming expenses, a simple wishlist with optional links and estimated prices, and payment-plan progress—separate from your day-to-day transaction list.',
+		question: 'What is the Plan hub?',
+		answer: 'Plan is category-first monthly budgets and planned spending, plus a wishlist and payment-plan progress—separate from your day-to-day transaction list.',
 	},
 	{
 		question: 'Can CashFlow help me understand my spending?',
-		answer: 'Yes. Reports show income, expenses, categories, accounts, monthly trends, and net worth. The AI assistant can also answer simple questions about your own spending data.',
+		answer: 'Yes. Reports compare income, expenses, and net position across months, with category drill-down and CSV or JSON exports for the active view.',
 	},
 	{
 		question: 'Can I access my data from multiple devices?',

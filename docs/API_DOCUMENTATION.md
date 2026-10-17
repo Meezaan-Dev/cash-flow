@@ -131,76 +131,6 @@ Transfer records may also include `transferAccountId`. The desktop app primarily
 - `405` - Method not allowed
 - `500` - Internal server error
 
-### POST `/askAI`
-
-Generates a concise answer from the authenticated user's account and transaction data.
-
-**Authentication:** required
-
-**Request:**
-
-```http
-POST /askAI
-Authorization: Bearer <firebase_id_token>
-Content-Type: application/json
-```
-
-```json
-{
-	"question": "How much did I spend this month?",
-	"userId": "user_uid",
-	"history": [
-		{ "role": "user", "content": "Focus on my main account." },
-		{ "role": "assistant", "content": "Sure, I will focus there." }
-	]
-}
-```
-
-**Response:**
-
-```json
-{
-	"success": true,
-	"answer": "You spent R2,350.00 this month across 12 expenses..."
-}
-```
-
-**Status codes:**
-
-- `200` - Success
-- `400` - Missing/invalid question, user id, or history
-- `401` - Missing/invalid Firebase token
-- `403` - Authenticated token user does not match `userId`
-- `405` - Method not allowed
-- `429` - Gemini rate or quota limit reached
-- `502` - Gemini did not return a usable answer
-- `503` - Gemini configuration, auth, or availability problem
-
-**Important behavior:**
-
-- `question` is required and limited to 2000 characters.
-- `history` is optional and limited to 12 user/assistant messages of 2000 characters each.
-- The function verifies the Firebase token before loading data.
-- The function rejects requests where the token uid does not match `userId`.
-- The prompt includes up to 2000 user transactions and all user accounts.
-- Monthly calculations are instructed to use `date` and fall back to `createdAt`.
-- Transfers are excluded from income/expense totals unless the user asks about transfers.
-- The model is `gemini-2.5-flash`.
-- The function requires `GEMINI_API_KEY` in Firebase Secret Manager or local Functions secrets.
-
-**Example structured error:**
-
-```json
-{
-	"success": false,
-	"error": "Gemini rejected the request because its rate or quota limit was reached.",
-	"code": "GEMINI_RATE_LIMITED",
-	"details": "Wait 30-60 seconds before retrying. If it continues, review the Gemini API project quota and billing status.",
-	"retryable": true,
-	"requestId": "request-reference"
-}
-```
-
 ## Data Models
 
 ### Transaction
@@ -266,16 +196,6 @@ curl -X GET \
   https://us-central1-cash-flow-eb5bd.cloudfunctions.net/getUserTransactions
 ```
 
-AI assistant:
-
-```bash
-curl -X POST \
-  -H "Authorization: Bearer YOUR_FIREBASE_ID_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"question":"Summarize this month","userId":"YOUR_UID","history":[]}' \
-  https://us-central1-cash-flow-eb5bd.cloudfunctions.net/askAI
-```
-
 ## Monitoring
 
 Use Firebase tools for production status and logs:
@@ -283,11 +203,10 @@ Use Firebase tools for production status and logs:
 ```bash
 firebase functions:list
 firebase functions:log
-firebase functions:log --only askAI
 ```
 
 ## Future Enhancements
 
 - Add rate limiting around authenticated API calls.
-- Split `functions/src/index.ts` into smaller request, auth, analytics, and AI helper modules.
+- Split `functions/src/index.ts` into smaller request, auth, and analytics helper modules when needed.
 - Consider dedicated analytics endpoints only if the frontend needs server-side aggregation.

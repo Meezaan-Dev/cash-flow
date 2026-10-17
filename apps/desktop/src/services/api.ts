@@ -1,6 +1,5 @@
 import { auth } from './firebase';
 import { getIdToken } from 'firebase/auth';
-import { AskAIRequest, AskAIResponse } from '@/types';
 
 // API response interface
 export interface ApiResponse<T> {
@@ -216,93 +215,6 @@ class ApiService {
 		return response.json();
 	}
 
-	async askAI(payload: AskAIRequest): Promise<AskAIResponse> {
-		if (!payload.question.trim()) {
-			throw new Error('Please enter a question before sending.');
-		}
-
-		if (!payload.userId.trim()) {
-			throw new Error('Please log in to use the AI assistant.');
-		}
-
-		try {
-			const token = await this.getAuthToken();
-			const response = await fetch(`${API_BASE_URL}/askAI`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`,
-				},
-				body: JSON.stringify({
-					question: payload.question.trim(),
-					userId: payload.userId,
-					history: payload.history,
-				}),
-			});
-
-			const executionId = response.headers.get('function-execution-id');
-			const traceContext = response.headers.get('x-cloud-trace-context');
-			const rawResponse = await response.text();
-
-			let responseBody: Partial<AskAIResponse & ApiErrorResponse & { data?: AskAIResponse }> = {};
-
-			if (rawResponse) {
-				try {
-					responseBody = JSON.parse(rawResponse) as Partial<
-						AskAIResponse & ApiErrorResponse & { data?: AskAIResponse }
-					>;
-				} catch {
-					// Keep fallback empty when backend returns non-JSON content.
-				}
-			}
-
-			if (!response.ok) {
-				const backendMessage = responseBody.error || responseBody.message;
-				const requestId = responseBody.requestId || executionId || traceContext || undefined;
-
-				if (response.status >= 500) {
-					console.error('askAI server error', {
-						status: response.status,
-						executionId,
-						traceContext,
-						body: rawResponse,
-					});
-				}
-
-				throw new ApiRequestError(
-					backendMessage || `The AI request failed with HTTP ${response.status}.`,
-					response.status,
-					responseBody.code || 'AI_REQUEST_FAILED',
-					responseBody.details || (rawResponse.trim() || 'The server did not provide structured error details.'),
-					Boolean(responseBody.retryable),
-					requestId
-				);
-			}
-
-			const answer =
-				typeof responseBody.answer === 'string'
-					? responseBody.answer
-					: responseBody.data?.answer;
-
-			if (!answer) {
-				throw new ApiRequestError(
-					'The AI endpoint returned HTTP 200 without an answer.',
-					200,
-					'AI_RESPONSE_MISSING',
-					'Retry once. If it repeats, check the Function logs using the response execution ID.',
-					true,
-					executionId || traceContext || undefined
-				);
-			}
-
-			return { answer };
-		} catch (error) {
-			throw this.normalizeRequestError(
-				error,
-				'Unable to get an AI response right now. Please try again.'
-			);
-		}
-	}
 }
 
 export const apiService = new ApiService();

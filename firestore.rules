@@ -65,7 +65,7 @@ service cloud.firestore {
     function validRecurringTransaction(data, userId) {
       return data.keys().hasOnly([
           'userId', 'accountId', 'title', 'amount', 'type', 'category',
-          'subcategory', 'description', 'frequency', 'expectedDate',
+          'subcategory', 'description', 'mode', 'frequency', 'expectedDate',
           'createdAt', 'updatedAt'
         ]) &&
         data.userId == userId &&
@@ -76,9 +76,13 @@ service cloud.firestore {
         requiredString(data, 'category', 80) &&
         optionalString(data, 'subcategory', 80) &&
         optionalString(data, 'description', 2000) &&
+        (!('mode' in data) || data.mode in ['template', 'scheduled']) &&
         (!('frequency' in data) || data.frequency in ['daily', 'weekly', 'monthly', 'yearly']) &&
         (!('expectedDate' in data) ||
           (data.expectedDate is int && data.expectedDate >= 1 && data.expectedDate <= 31)) &&
+		(!('mode' in data) ||
+			(data.mode == 'template' && !('frequency' in data) && !('expectedDate' in data)) ||
+			(data.mode == 'scheduled' && data.frequency == 'monthly' && 'expectedDate' in data)) &&
         data.createdAt is timestamp &&
         optionalTimestamp(data, 'updatedAt');
     }

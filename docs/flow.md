@@ -263,10 +263,6 @@ Dashboard due/upcoming recurring prompts are derived from templates and existing
 
 The main account preference is stored locally through `packages/shared/src/accounts/mainAccountPreference.ts`. Desktop transaction creation and mobisite transaction creation default to that account when it still exists.
 
-### AI Assistant
-
-The assistant calls the `/askAI` Cloud Function with the authenticated user's question, recent local chat history, and user id. The function verifies the Firebase token, loads up to 2000 user transactions plus accounts, and sends only that scoped data to Gemini.
-
 ### Privacy Mode
 
 Privacy mode is a client-side display state that masks sensitive values in supported dashboard surfaces. It can be toggled from the dashboard control or keyboard shortcuts.
@@ -281,6 +277,6 @@ Privacy mode is a client-side display state that masks sensitive values in suppo
 | Delete income | `account.balance -= amount` |
 | Delete expense | `account.balance += amount` |
 | Delete transfer pair | Reverse both linked transfer balance updates |
-| Reconcile | Create an income or expense adjustment transaction |
+| Update balance | Confirm and create one income or expense adjustment transaction for the difference |
 
 All transaction balance writes use Firestore `writeBatch` and `increment()` so account totals do not depend on read-modify-write races.

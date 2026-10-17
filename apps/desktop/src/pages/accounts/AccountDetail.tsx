@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
 	FiArrowLeft,
 	FiArrowUp,
@@ -36,16 +36,19 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { parseDbDate, parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
-type SubView = 'detail' | 'edit' | 'transfer' | 'reconcile';
+type SubView = 'detail' | 'edit' | 'transfer' | 'balance';
 
 const AccountDetailPage: React.FC = () => {
 	const { accountId } = useParams<{ accountId: string }>();
 	const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
 	const { accounts } = useAccountsContext();
 	const { transactions } = useTransactionsContext();
 	const { getCategoryPathLabel } = useCategoriesContext();
 
-	const [subView, setSubView] = useState<SubView>('detail');
+	const [subView, setSubView] = useState<SubView>(
+		searchParams.get('action') === 'balance' ? 'balance' : 'detail'
+	);
 
 	const account = useMemo(
 		() => accounts.find((a) => a.id === accountId),
@@ -85,8 +88,8 @@ const AccountDetailPage: React.FC = () => {
 	if (subView === 'transfer') {
 		return <TransferForm onClose={() => setSubView('detail')} />;
 	}
-	if (subView === 'reconcile') {
-		return <ReconcileForm onClose={() => setSubView('detail')} />;
+	if (subView === 'balance') {
+		return <ReconcileForm accountId={accountId} onClose={() => setSubView('detail')} />;
 	}
 
 	if (!account) {
@@ -133,9 +136,9 @@ const AccountDetailPage: React.FC = () => {
 							<FiArrowLeft className="mr-1.5 h-3.5 w-3.5" />
 							Accounts
 						</Button>
-						<Button variant="outline" size="sm" onClick={() => setSubView('reconcile')}>
+						<Button variant="outline" size="sm" onClick={() => setSubView('balance')}>
 							<FiRefreshCw className="mr-1.5 h-3.5 w-3.5" />
-							Reconcile
+							Update balance
 						</Button>
 						<Button variant="outline" size="sm" onClick={() => setSubView('transfer')}>
 							<FiRepeat className="mr-1.5 h-3.5 w-3.5" />

@@ -55,6 +55,7 @@ const exportData: WholeAppExportData = {
 			title: 'Rent',
 			amount: 8000,
 			category: 'home',
+			mode: 'scheduled',
 			frequency: 'monthly',
 			expectedDate: 1,
 		},

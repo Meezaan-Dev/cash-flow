@@ -68,7 +68,10 @@ jest.mock('@cash-flow/shared/accounts/mainAccountPreference', () => ({
 	useMainAccountPreference: () => ({ mainAccountId: 'savings' }),
 }));
 
-jest.mock('@/components/app/ui/select', () => require('@/utils/test-utils/selectMock').createSelectMock(jest.requireActual('react')));
+jest.mock('@/components/app/ui/select', () => {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	return require('@/utils/test-utils/selectMock').createSelectMock(jest.requireActual('react'));
+});
 
 jest.mock('@/components/marketing/SectionHeader', () => ({
 	__esModule: true,

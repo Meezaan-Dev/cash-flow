@@ -8,6 +8,7 @@ export interface RecurringTransaction {
 	category: string;
 	subcategory?: string;
 	description?: string;
+	mode?: 'template' | 'scheduled';
 	frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
 	expectedDate?: number;
 	createdAt?: Date | { toDate: () => Date };
@@ -23,6 +24,7 @@ type RecurringDoc = {
 	category?: string;
 	subcategory?: string;
 	description?: string;
+	mode?: string;
 	frequency?: string;
 	expectedDate?: unknown;
 	createdAt?: unknown;
@@ -54,6 +56,12 @@ export const normalizeRecurringTransaction = (doc: RecurringDoc): RecurringTrans
 		category: doc.category ?? '',
 		subcategory: doc.subcategory || undefined,
 		description: doc.description,
+		mode:
+			doc.mode === 'scheduled' || doc.mode === 'template'
+				? doc.mode
+				: normalizeExpectedDate(doc.expectedDate)
+					? 'scheduled'
+					: 'template',
 		frequency: doc.frequency as RecurringTransaction['frequency'],
 		expectedDate: normalizeExpectedDate(doc.expectedDate),
 	};
@@ -95,10 +103,30 @@ export const validateRecurringTransaction = (transaction: Partial<RecurringTrans
 	}
 
 	if (
+		transaction.mode &&
+		!['template', 'scheduled'].includes(transaction.mode)
+	) {
+		errors.push('Mode must be template or scheduled');
+	}
+
+	if (
 		transaction.frequency &&
 		!['daily', 'weekly', 'monthly', 'yearly'].includes(transaction.frequency)
 	) {
 		errors.push('Frequency must be daily, weekly, monthly, or yearly');
+	}
+
+	if (transaction.mode === 'scheduled' && transaction.expectedDate === undefined) {
+		errors.push('Monthly reminders need an expected day');
+	}
+	if (transaction.mode === 'scheduled' && transaction.frequency !== 'monthly') {
+		errors.push('Scheduled reminders must be monthly');
+	}
+	if (
+		transaction.mode === 'template' &&
+		(transaction.frequency !== undefined || transaction.expectedDate !== undefined)
+	) {
+		errors.push('Template-only items cannot have a schedule');
 	}
 
 	if (

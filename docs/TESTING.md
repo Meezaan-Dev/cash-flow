@@ -18,7 +18,7 @@ Tests live next to the app/domain code they cover:
 apps/desktop/src/__tests__/                 # host routing
 apps/desktop/src/app/                       # shell/theme/privacy behavior
 apps/desktop/src/components/marketing/      # shared display helpers
-apps/desktop/src/domains/*/                 # account, auth, budget, category, recurring, report, transaction, AI tests
+apps/desktop/src/domains/*/                 # account, auth, budget, category, recurring, report, transaction tests
 apps/desktop/src/pages/*/                   # route/page-level tests
 apps/desktop/src/shared/filters/            # filter preferences and URL filter helpers
 apps/mobisite/src/__tests__/                # mobile capture app tests
@@ -37,7 +37,7 @@ npm run test:watch
 npm run test:coverage
 ```
 
-Before shipping route, transaction, account, budget, recurring, mobisite, or assistant changes, run:
+Before shipping route, transaction, account, plan, recurring, mobisite, or report changes, run:
 
 ```bash
 npm test -- --runInBand
@@ -59,7 +59,6 @@ Known lint output may include existing Fast Refresh warnings for files that expo
 - Dashboard summary, digest periods, dashboard overview, account strip, recurring prompts, and privacy mode shortcuts
 - Recurring transaction list/form/calendar behavior and saved account handling
 - Reports controller summaries for categories, subcategories, accounts, date ranges, monthly trends, and net worth
-- AI chatbot UI, auth-required state, loading, errors, clearing, and recent history payloads
 - Mobisite home/list/add flows, last-view restore, success messages, recurring Quick Fill, and stale recurring account handling
 - Shared recurring due/upcoming draft helpers and shared error messages
 
@@ -67,7 +66,7 @@ Known lint output may include existing Fast Refresh warnings for files that expo
 
 - First-run flow: sign in, create an account, add the first transaction
 - Desktop/mobile routing: `/`, `/dashboard`, `/dashboard/*`, and `/mobisite` at desktop and mobile widths
-- Multi-account transfer and reconcile flows, including balance updates
+- Multi-account transfer and Update balance flows, including positive, negative, and zero differences
 - Transaction create/edit/delete, bulk category edit, filtering, sorting, and date range behavior
 - Import/export flows for CSV/JSON, including duplicate handling and empty-account guard
 - Category and subcategory create/rename/delete, including in-use protections
@@ -75,7 +74,6 @@ Known lint output may include existing Fast Refresh warnings for files that expo
 - Mobile-created expense transactions appearing in matching desktop budgets
 - Recurring template CRUD, dashboard due/upcoming prompts, and Quick Fill on desktop and `/mobisite`
 - Reports date range and breakdown views
-- AI assistant responses and API error states
 - Settings tabs: general, data, filters, categories, theme, main account, and sign out
 - Privacy mode masking and keyboard shortcuts
 - Light/dark mode and key responsive layouts
@@ -85,7 +83,6 @@ Known lint output may include existing Fast Refresh warnings for files that expo
 These are the remaining high-value gaps based on current test names:
 
 1. Single-confirm transaction deletion flow at the full table/dialog interaction level.
-2. `askAI` Cloud Function analytics/prompt behavior with transactions that only have `createdAt`.
 3. End-to-end import UI behavior from Settings, beyond pure import/export utilities.
 4. Manual visual coverage for landing page copy fit on narrow mobile widths.
 
