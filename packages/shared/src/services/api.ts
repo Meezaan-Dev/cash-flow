@@ -1,6 +1,5 @@
 import { getIdToken } from 'firebase/auth';
 import { auth } from './firebase';
-import type { AskAIRequest, AskAIResponse } from '../types';
 
 export interface ApiResponse<T> {
 	success: boolean;
@@ -276,58 +275,6 @@ class ApiService {
 		if (!response.success) {
 			throw new Error(response.error || 'Failed to delete all transactions');
 		}
-	}
-
-	async askAI(payload: AskAIRequest): Promise<AskAIResponse> {
-		if (!payload.question.trim()) {
-			throw new Error('Please enter a question before sending.');
-		}
-
-		if (!payload.userId.trim()) {
-			throw new Error('Please log in to use the AI assistant.');
-		}
-
-		const token = await this.getAuthToken();
-		const response = await fetch(`${API_BASE_URL}/askAI`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify({
-				question: payload.question.trim(),
-				userId: payload.userId,
-				history: payload.history,
-			}),
-		});
-
-		let responseBody: Partial<AskAIResponse & ApiErrorResponse & { data?: AskAIResponse }> = {};
-		try {
-			responseBody = await response.json() as Partial<
-				AskAIResponse & ApiErrorResponse & { data?: AskAIResponse }
-			>;
-		} catch {
-			responseBody = {};
-		}
-
-		if (!response.ok) {
-			const apiError = new ApiRequestError(
-				responseBody.error || responseBody.message || `The AI assistant returned HTTP ${response.status}.`,
-				response.status,
-				responseBody.code,
-				responseBody.details,
-				Boolean(responseBody.retryable),
-				responseBody.requestId || response.headers.get('function-execution-id') || undefined
-			);
-			throw new Error(apiError.toUserMessage());
-		}
-
-		const normalized = responseBody.data ?? responseBody;
-		const answer = normalized.answer?.trim();
-		if (!answer) {
-			throw new Error('The AI assistant returned an empty answer. Please try again.');
-		}
-		return { answer };
 	}
 }
 
