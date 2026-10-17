@@ -29,8 +29,8 @@ import { useTransactionsContext } from '@/domains/transactions/context/Transacti
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
-import BudgetForm from '@/domains/budgets/views/BudgetForm';
-import type { Budget } from '@/types';
+import { budgetOverlapsMonth } from '@/domains/budgets/models/BudgetModel';
+import PlanBudgetsTab from '@/domains/planning/views/PlanBudgetsTab';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import { Label } from '@/components/app/ui/label';
@@ -69,7 +69,7 @@ import { liquidGlassPanel, liquidGlassSoft } from '@/styles/marketingStyles';
 
 type WizardMode = 'planned' | 'wishlist' | 'payment';
 type PlanningListTab = 'all' | 'planned' | 'wishlist';
-type PlanHubTab = 'monthly' | 'wishlist' | 'payments';
+type PlanHubTab = 'monthly' | 'budgets' | 'wishlist' | 'payments';
 
 const WISHLIST_CATEGORY = 'Wishlist';
 
@@ -182,7 +182,7 @@ const PlanningView: React.FC = () => {
 		getCurrentMonthKey,
 	} = usePlanningContext();
 	const { transactions, addTransaction } = useTransactionsContext();
-	const { budgets, publishBudget } = useBudgetsContext();
+	const { budgets } = useBudgetsContext();
 	const { accounts } = useAccountsContext();
 	const { categories, categoryOptions, getCategoryPathLabel, getCategoryLabel } =
 		useCategoriesContext();
@@ -199,18 +199,6 @@ const PlanningView: React.FC = () => {
 	const [, setActivePlanningTab] = useState<PlanningListTab>('all');
 	const [activeHubTab, setActiveHubTab] = useState<PlanHubTab>('monthly');
 	const [selectedCategory, setSelectedCategory] = useState('all');
-	const [showBudgetForm, setShowBudgetForm] = useState(false);
-	const [budgetFormBudget, setBudgetFormBudget] = useState<Budget | undefined>(undefined);
-
-	const openBudgetForm = (budget?: Budget) => {
-		setBudgetFormBudget(budget);
-		setShowBudgetForm(true);
-	};
-
-	const closeBudgetForm = () => {
-		setShowBudgetForm(false);
-		setBudgetFormBudget(undefined);
-	};
 	const [draggingPlannedExpenseId, setDraggingPlannedExpenseId] = useState<string>();
 
 	const currentMonth = getCurrentMonthKey();
@@ -236,17 +224,12 @@ const PlanningView: React.FC = () => {
 	const visibleMonthExpenses = selectedCategory === 'all'
 		? monthExpenses
 		: monthExpenses.filter((transaction) => transaction.category === selectedCategory);
-	const visibleBudgets = budgets.filter(
-		(budget) => budget.month === currentMonth &&
-			(selectedCategory === 'all' || budget.categoryId === selectedCategory)
-	);
-	const draftBudgets = visibleBudgets.filter((budget) => budget.lifecycleStatus === 'draft');
-	const budgetedTotal = visibleBudgets
-		.filter((budget) => budget.lifecycleStatus === 'published')
-		.reduce((sum, budget) => sum + budget.amount, 0);
 	const spentTotal = visibleMonthExpenses.reduce((sum, transaction) => sum + transaction.amount, 0);
 	const plannedTotal = categoryPlans.reduce((sum, expense) => sum + expense.amount, 0);
-	const remainingTotal = budgetedTotal - spentTotal - plannedTotal;
+	const budgetsForMonthCount = useMemo(
+		() => budgets.filter((budget) => budgetOverlapsMonth(budget, currentMonth)).length,
+		[budgets, currentMonth]
+	);
 	const serverOrderedPlannedExpenses = useMemo(
 		() => sortPlannedExpensesByDisplayOrder(plannedExpenses),
 		[plannedExpenses]
@@ -625,27 +608,11 @@ const PlanningView: React.FC = () => {
 		setWizardStep((current) => current + 1);
 	};
 
-	if (showBudgetForm) {
-		const matchingBudget =
-			budgetFormBudget ??
-			(selectedCategory === 'all'
-				? undefined
-				: visibleBudgets.find((budget) => !budget.subCategoryId));
-		return (
-			<BudgetForm
-				budget={matchingBudget}
-				defaultMonth={currentMonth}
-				defaultCategoryId={selectedCategory === 'all' ? undefined : selectedCategory}
-				onClose={closeBudgetForm}
-			/>
-		);
-	}
-
 	return (
 		<PageShell>
 			<PageHeader
 				title="Plan"
-				subtitle="Budgets, planned spending, wishes, and payment progress in one place."
+				subtitle="Monthly planned spending, budgets, wishlist, and payment progress in one hub."
 				actions={
 					<Button type="button" variant="marketing" onClick={openChooser}>
 						<FiPlus className="h-4 w-4" />
@@ -658,6 +625,7 @@ const PlanningView: React.FC = () => {
 				<nav className="flex gap-2 overflow-x-auto rounded-2xl border bg-white/70 p-1 dark:bg-gray-950/50" aria-label="Plan views">
 					{([
 						['monthly', 'Monthly plan'],
+						['budgets', `Budgets (${budgetsForMonthCount})`],
 						['wishlist', `Wishlist (${wishlistItems.length})`],
 						['payments', `Payment plans (${activePaymentProgress.length})`],
 					] as const).map(([value, label]) => (
@@ -669,6 +637,9 @@ const PlanningView: React.FC = () => {
 
 				{activeHubTab === 'monthly' && (
 					<section className="space-y-5">
+						<p className="text-sm text-muted-foreground">
+							Set spending limits in the <span className="font-medium text-foreground">Budgets</span> tab.
+						</p>
 						<div className="flex gap-2 overflow-x-auto pb-1" aria-label="Plan categories">
 							<button type="button" onClick={() => setSelectedCategory('all')} className={cn('whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium', selectedCategory === 'all' && 'border-blue-600 bg-blue-600 text-white')}>All</button>
 							{categories.map((item) => (
@@ -679,27 +650,16 @@ const PlanningView: React.FC = () => {
 						</div>
 
 						<SummaryCardGrid>
-							<SummaryCard label="Budgeted" amount={budgetedTotal} />
-							<SummaryCard label="Spent" amount={spentTotal} tone="expense" />
-							<SummaryCard label="Planned" amount={plannedTotal} />
-							<SummaryCard label="Remaining" amount={remainingTotal} tone={remainingTotal >= 0 ? 'balance-positive' : 'balance-negative'} />
+							<SummaryCard label="Planned this month" amount={plannedTotal} />
+							<SummaryCard label="Spent this month" amount={spentTotal} tone="expense" />
 						</SummaryCardGrid>
-						{draftBudgets.map((budget) => (
-							<div key={budget.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
-								<div><p className="font-semibold">Draft budget · {getCategoryLabel(budget.categoryId)}</p><p className="text-sm text-muted-foreground">{formatCurrency(budget.amount)} is not included until activated.</p></div>
-								<div className="flex gap-2"><Button variant="outline" onClick={() => openBudgetForm(budget)}>Edit draft</Button><Button variant="marketing" onClick={() => publishBudget(budget.id)}>Activate budget</Button></div>
-							</div>
-						))}
 
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<div>
 								<h2 className="text-lg font-semibold">{selectedCategory === 'all' ? 'All planned spending' : getCategoryLabel(selectedCategory)}</h2>
 								<p className="text-sm text-muted-foreground">Grouped by subcategory for {currentMonth}.</p>
 							</div>
-							<div className="flex gap-2">
-								<Button variant="outline" onClick={() => openBudgetForm()}>{selectedCategory === 'all' ? 'Set budget' : 'Set or edit budget'}</Button>
-								<Button variant="marketing" onClick={() => openPlannedWizard('planned')}><FiPlus className="h-4 w-4" />Add item</Button>
-							</div>
+							<Button variant="marketing" onClick={() => openPlannedWizard('planned')}><FiPlus className="h-4 w-4" />Add item</Button>
 						</div>
 
 						{groupedCategoryPlans.length === 0 ? (
@@ -722,6 +682,10 @@ const PlanningView: React.FC = () => {
 							</div>
 						)}
 					</section>
+				)}
+
+				{activeHubTab === 'budgets' && (
+					<PlanBudgetsTab defaultMonth={currentMonth} />
 				)}
 
 				{activeHubTab === 'wishlist' && (
