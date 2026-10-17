@@ -95,12 +95,12 @@ const BudgetForm: React.FC<BudgetFormProps> = ({
 				budget?.startDay ??
 				(Number(budget?.startDate.slice(-2)) || 25)
 		);
-		setCategoryId(budget?.categoryId ?? '');
-		setSubCategoryId(budget?.subCategoryId ?? NO_SUBCATEGORY);
+		setCategoryId(budget?.categoryId ?? defaultCategoryId);
+		setSubCategoryId(budget?.subCategoryId ?? defaultSubCategoryId ?? NO_SUBCATEGORY);
 		setAmount(budget ? String(budget.amount) : '');
 		setFormError('');
 		setFieldErrors({});
-	}, [budget, defaultMonth]);
+	}, [budget, defaultCategoryId, defaultMonth, defaultSubCategoryId]);
 
 	const handleMonthChange = (value: string) => {
 		setMonth(value);

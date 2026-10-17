@@ -92,9 +92,13 @@ jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 	}),
 }));
 
+const mockBudgetForm = jest.fn(({ budget }: { budget?: { id?: string } }) => (
+	<div>Budget form {budget?.id ?? 'new'}</div>
+));
+
 jest.mock('@/domains/budgets/views/BudgetForm', () => ({
 	__esModule: true,
-	default: () => <div>Budget form</div>,
+	default: (props: { budget?: { id?: string } }) => mockBudgetForm(props),
 }));
 
 jest.mock('@/domains/accounts/context/AccountsContext', () => ({
@@ -163,6 +167,17 @@ describe('PlanningView', () => {
 		render(<PlanningView />);
 		await user.click(screen.getByRole('button', { name: /activate budget/i }));
 		expect(mockPublishBudget).toHaveBeenCalledWith('budget-1');
+	});
+
+	it('passes the clicked draft budget into BudgetForm', async () => {
+		const user = userEvent.setup();
+		render(<PlanningView />);
+		mockBudgetForm.mockClear();
+		await user.click(screen.getByRole('button', { name: /edit draft/i }));
+		expect(mockBudgetForm).toHaveBeenCalledWith(
+			expect.objectContaining({ budget: expect.objectContaining({ id: 'budget-1' }) })
+		);
+		expect(screen.getByText('Budget form budget-1')).toBeInTheDocument();
 	});
 
 	it('starts new planning from intent choices', async () => {

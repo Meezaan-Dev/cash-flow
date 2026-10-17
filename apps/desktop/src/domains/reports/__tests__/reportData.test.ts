@@ -1,6 +1,7 @@
 import {
 	buildReportBreakdown,
 	filterReportTransactions,
+	getReportMatrixCellAmount,
 	getReportMonthKeys,
 	reportRowsToCsv,
 	reportTransactionsToCsv,
@@ -23,6 +24,13 @@ const filters: ReportFilters = {
 };
 
 describe('reportData', () => {
+	it('sums matrix cells by the active type filter', () => {
+		const income = transactions[0];
+		expect(getReportMatrixCellAmount(income, 'all')).toBe(0);
+		expect(getReportMatrixCellAmount(income, 'income')).toBe(1000);
+		expect(getReportMatrixCellAmount(transactions[1], 'expense')).toBe(250);
+	});
+
 	it('filters by the active dates, account, and transaction type', () => {
 		expect(filterReportTransactions(transactions, filters).map((item) => item.id)).toEqual(['1', '2']);
 		expect(filterReportTransactions(transactions, { ...filters, accountId: 'main', type: 'expense' }).map((item) => item.id)).toEqual(['2']);

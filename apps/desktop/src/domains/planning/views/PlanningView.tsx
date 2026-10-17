@@ -30,6 +30,7 @@ import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useBudgetsContext } from '@/domains/budgets/context/BudgetsContext';
 import BudgetForm from '@/domains/budgets/views/BudgetForm';
+import type { Budget } from '@/types';
 import { Button } from '@/components/app/ui/button';
 import { Input } from '@/components/app/ui/input';
 import { Label } from '@/components/app/ui/label';
@@ -199,6 +200,17 @@ const PlanningView: React.FC = () => {
 	const [activeHubTab, setActiveHubTab] = useState<PlanHubTab>('monthly');
 	const [selectedCategory, setSelectedCategory] = useState('all');
 	const [showBudgetForm, setShowBudgetForm] = useState(false);
+	const [budgetFormBudget, setBudgetFormBudget] = useState<Budget | undefined>(undefined);
+
+	const openBudgetForm = (budget?: Budget) => {
+		setBudgetFormBudget(budget);
+		setShowBudgetForm(true);
+	};
+
+	const closeBudgetForm = () => {
+		setShowBudgetForm(false);
+		setBudgetFormBudget(undefined);
+	};
 	const [draggingPlannedExpenseId, setDraggingPlannedExpenseId] = useState<string>();
 
 	const currentMonth = getCurrentMonthKey();
@@ -614,15 +626,17 @@ const PlanningView: React.FC = () => {
 	};
 
 	if (showBudgetForm) {
-		const matchingBudget = selectedCategory === 'all'
-			? undefined
-			: visibleBudgets.find((budget) => !budget.subCategoryId);
+		const matchingBudget =
+			budgetFormBudget ??
+			(selectedCategory === 'all'
+				? undefined
+				: visibleBudgets.find((budget) => !budget.subCategoryId));
 		return (
 			<BudgetForm
 				budget={matchingBudget}
 				defaultMonth={currentMonth}
 				defaultCategoryId={selectedCategory === 'all' ? undefined : selectedCategory}
-				onClose={() => setShowBudgetForm(false)}
+				onClose={closeBudgetForm}
 			/>
 		);
 	}
@@ -673,7 +687,7 @@ const PlanningView: React.FC = () => {
 						{draftBudgets.map((budget) => (
 							<div key={budget.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
 								<div><p className="font-semibold">Draft budget · {getCategoryLabel(budget.categoryId)}</p><p className="text-sm text-muted-foreground">{formatCurrency(budget.amount)} is not included until activated.</p></div>
-								<div className="flex gap-2"><Button variant="outline" onClick={() => setShowBudgetForm(true)}>Edit draft</Button><Button variant="marketing" onClick={() => publishBudget(budget.id)}>Activate budget</Button></div>
+								<div className="flex gap-2"><Button variant="outline" onClick={() => openBudgetForm(budget)}>Edit draft</Button><Button variant="marketing" onClick={() => publishBudget(budget.id)}>Activate budget</Button></div>
 							</div>
 						))}
 
@@ -683,7 +697,7 @@ const PlanningView: React.FC = () => {
 								<p className="text-sm text-muted-foreground">Grouped by subcategory for {currentMonth}.</p>
 							</div>
 							<div className="flex gap-2">
-								<Button variant="outline" onClick={() => setShowBudgetForm(true)}>{selectedCategory === 'all' ? 'Set budget' : 'Set or edit budget'}</Button>
+								<Button variant="outline" onClick={() => openBudgetForm()}>{selectedCategory === 'all' ? 'Set budget' : 'Set or edit budget'}</Button>
 								<Button variant="marketing" onClick={() => openPlannedWizard('planned')}><FiPlus className="h-4 w-4" />Add item</Button>
 							</div>
 						</div>

@@ -54,6 +54,16 @@ export const filterReportTransactions = (
 	});
 };
 
+export const getReportMatrixCellAmount = (
+	transaction: Transaction,
+	typeFilter: ReportTransactionType
+): number => {
+	if (typeFilter === 'all') {
+		return transaction.type === 'expense' ? transaction.amount : 0;
+	}
+	return transaction.type === typeFilter ? transaction.amount : 0;
+};
+
 export const getReportGroupKey = (transaction: Transaction, grouping: ReportGrouping): string => {
 	if (grouping === 'category') return transaction.category || 'uncategorised';
 	if (grouping === 'subcategory') return `${transaction.category || 'uncategorised'}::${transaction.subcategory || 'other'}`;
