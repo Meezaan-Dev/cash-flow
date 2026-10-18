@@ -6,9 +6,16 @@ const mockGetDoc = jest.fn();
 const mockGetDocs = jest.fn();
 const mockBatchUpdate = jest.fn();
 const mockBatchCommit = jest.fn();
+const mockCreateBudget = jest.fn();
 
 jest.mock('@/services/firebase', () => ({
 	db: {},
+}));
+
+jest.mock('@cash-flow/shared/services/api', () => ({
+	apiService: {
+		createBudget: (...args: unknown[]) => mockCreateBudget(...args),
+	},
 }));
 
 jest.mock('firebase/firestore', () => ({
@@ -47,6 +54,7 @@ describe('budgetService updateBudget', () => {
 			}),
 		});
 		mockGetDocs.mockResolvedValue({ docs: [] });
+		mockCreateBudget.mockResolvedValue('budget-new');
 	});
 
 	it('never sends undefined optional fields to Firestore', async () => {
@@ -72,36 +80,21 @@ describe('budgetService updateBudget', () => {
 		expect(Object.values(payload)).not.toContain(undefined);
 	});
 
-	it('prevents creating more than eight budgets', async () => {
-		mockGetDocs.mockResolvedValue({
-			docs: Array.from({ length: 8 }, (_, index) => ({
-				id: `budget-${index}`,
-				data: () => ({
-					userId: 'user-1',
-					categoryId: `category-${index}`,
-					amount: 100,
-					period: 'monthly',
-					month: '2026-06',
-					startDate: '2026-06-01',
-					endDate: '2026-06-30',
-					lifecycleStatus: 'draft',
-				}),
-			})),
-		});
-
-		await expect(
-			createBudget({
-				userId: 'user-1',
-				categoryId: 'food',
-				amount: 1000,
-				period: 'monthly',
-				month: '2026-06',
-				startDate: '2026-06-01',
-				endDate: '2026-06-30',
-				lifecycleStatus: 'draft',
-			})
-		).rejects.toThrow('You can create up to 8 budgets.');
-		expect(mockAddDoc).not.toHaveBeenCalled();
+	it('delegates budget creation to the server-owned API', async () => {
+		await expect(createBudget({
+			userId: 'user-1',
+			categoryId: 'food',
+			amount: 1000,
+			period: 'monthly',
+			month: '2026-06',
+			startDate: '2026-06-01',
+			endDate: '2026-06-30',
+			lifecycleStatus: 'draft',
+		})).resolves.toBe('budget-new');
+		expect(mockCreateBudget).toHaveBeenCalledWith(expect.objectContaining({
+			categoryId: 'food',
+			amount: 1000,
+		}));
 	});
 
 	it('persists the complete display order in one batch', async () => {

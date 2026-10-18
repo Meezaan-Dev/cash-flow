@@ -1,6 +1,5 @@
 import {
 	Timestamp,
-	addDoc,
 	collection,
 	deleteDoc,
 	doc,
@@ -12,12 +11,12 @@ import {
 	type UpdateData,
 } from 'firebase/firestore';
 import { db } from '@/services/firebase';
+import { apiService } from '@cash-flow/shared/services/api';
 import { Budget } from '@/types';
 import {
 	budgetOverlapsMonth,
 	buildRepeatedBudget,
 	isDuplicateBudget,
-	MAX_BUDGETS,
 	normalizeBudget,
 } from '@/domains/budgets/models/BudgetModel';
 
@@ -83,33 +82,19 @@ export const createBudget = async (
 	input: CreateBudgetInput
 ): Promise<string> => {
 	validateBudget(input);
-	const existing = await getBudgets(input.userId);
-	if (existing.length >= MAX_BUDGETS) {
-		throw new Error(`You can create up to ${MAX_BUDGETS} budgets.`);
-	}
-	if (isDuplicateBudget(existing, input)) {
-		throw new Error('A budget already exists for this category and period.');
-	}
-
-	const created = await addDoc(
-		budgetCollection(input.userId),
-		omitUndefined({
-			...input,
-			displayOrder:
-				input.displayOrder ??
-				existing.reduce(
-					(highest, budget) =>
-						Math.max(highest, budget.displayOrder ?? -1),
-					-1
-				) +
-					1,
-			subCategoryId: input.subCategoryId || null,
-			month: input.period === 'monthly' ? input.month : null,
-			createdAt: Timestamp.now(),
-			updatedAt: Timestamp.now(),
-		})
-	);
-	return created.id;
+	return apiService.createBudget({
+		accountId: input.accountId,
+		categoryId: input.categoryId,
+		subCategoryId: input.subCategoryId,
+		amount: input.amount,
+		period: input.period,
+		month: input.month,
+		cycleDay: input.cycleDay,
+		startDate: input.startDate,
+		endDate: input.endDate,
+		lifecycleStatus: input.lifecycleStatus,
+		displayOrder: input.displayOrder,
+	});
 };
 
 export const reorderBudgets = async (

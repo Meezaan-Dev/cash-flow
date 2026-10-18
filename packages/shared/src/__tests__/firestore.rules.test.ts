@@ -9,6 +9,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
 	doc,
+	deleteDoc,
 	getDoc,
 	serverTimestamp,
 	setDoc,
@@ -90,6 +91,14 @@ describeIfEmulator('Firestore rules ledger boundary', () => {
 			updateDoc(doc(authedDb('alice'), 'users/alice/accounts/account-1'), {
 				balance: 2000,
 			})
+		);
+	});
+
+	it('blocks direct browser account deletion', async () => {
+		await seedAliceLedger();
+
+		await assertFails(
+			deleteDoc(doc(authedDb('alice'), 'users/alice/accounts/account-1'))
 		);
 	});
 

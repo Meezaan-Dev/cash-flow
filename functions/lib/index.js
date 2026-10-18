@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.healthCheck = exports.getUserTransactions = exports.deleteAllTransactions = exports.deleteTransaction = exports.updateTransaction = exports.addTransfer = exports.addTransaction = void 0;
+exports.healthCheck = exports.getUserTransactions = exports.createBudget = exports.deleteAccount = exports.deleteAllTransactionsStatus = exports.deleteAllTransactions = exports.deleteTransaction = exports.updateTransaction = exports.addTransfer = exports.addTransaction = void 0;
 const functions = require("firebase-functions");
 const firebase_1 = require("./firebase");
 const http_1 = require("./http");
@@ -10,6 +10,27 @@ Object.defineProperty(exports, "addTransfer", { enumerable: true, get: function 
 Object.defineProperty(exports, "updateTransaction", { enumerable: true, get: function () { return ledger_1.updateTransaction; } });
 Object.defineProperty(exports, "deleteTransaction", { enumerable: true, get: function () { return ledger_1.deleteTransaction; } });
 Object.defineProperty(exports, "deleteAllTransactions", { enumerable: true, get: function () { return ledger_1.deleteAllTransactions; } });
+Object.defineProperty(exports, "deleteAllTransactionsStatus", { enumerable: true, get: function () { return ledger_1.deleteAllTransactionsStatus; } });
+var accounts_1 = require("./accounts");
+Object.defineProperty(exports, "deleteAccount", { enumerable: true, get: function () { return accounts_1.deleteAccount; } });
+var budgets_1 = require("./budgets");
+Object.defineProperty(exports, "createBudget", { enumerable: true, get: function () { return budgets_1.createBudget; } });
+function decodeCursor(value) {
+    if (typeof value !== 'string' || !value)
+        return null;
+    try {
+        const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+        if (typeof parsed.date !== 'string' || typeof parsed.id !== 'string' || !parsed.id)
+            return null;
+        return { date: parsed.date, id: parsed.id };
+    }
+    catch (_a) {
+        return null;
+    }
+}
+function encodeCursor(cursor) {
+    return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+}
 function parseDate(value) {
     if (!value)
         return null;
@@ -76,18 +97,36 @@ exports.getUserTransactions = functions.https.onRequest(async (req, res) => {
             return;
         }
         const { uid } = await (0, http_1.verifyToken)(req.headers.authorization);
-        const snapshot = await firebase_1.db
+        const requestedLimit = Number(req.query.limit);
+        const isPaged = Boolean(req.query.cursor || req.query.limit);
+        const pageSize = isPaged
+            ? Number.isInteger(requestedLimit) && requestedLimit > 0
+                ? Math.min(requestedLimit, 500)
+                : 100
+            : undefined;
+        const cursor = decodeCursor(req.query.cursor);
+        if (req.query.cursor && !cursor) {
+            res.status(400).json({ success: false, error: 'Invalid transaction cursor' });
+            return;
+        }
+        let transactionsQuery = firebase_1.db
             .collection('users')
             .doc(uid)
             .collection('transactions')
             .orderBy('date', 'desc')
-            .get();
+            .orderBy('__name__', 'desc');
+        if (cursor)
+            transactionsQuery = transactionsQuery.startAfter(new Date(cursor.date), cursor.id);
+        if (pageSize)
+            transactionsQuery = transactionsQuery.limit(pageSize);
+        const snapshot = await transactionsQuery.get();
         const transactions = snapshot.docs.map(toTransaction);
-        res.status(200).json({
-            success: true,
-            data: transactions,
-            message: `Successfully retrieved ${transactions.length} transactions`,
-        });
+        const last = snapshot.docs[snapshot.docs.length - 1];
+        const lastDate = last ? parseDate(last.get('date')) : null;
+        const nextCursor = isPaged && lastDate
+            ? encodeCursor({ date: lastDate.toISOString(), id: last.id })
+            : undefined;
+        res.status(200).json(Object.assign(Object.assign({ success: true, data: transactions }, (nextCursor ? { nextCursor } : {})), { message: `Successfully retrieved ${transactions.length} transactions` }));
     }
     catch (error) {
         console.error('Error in getUserTransactions:', error);

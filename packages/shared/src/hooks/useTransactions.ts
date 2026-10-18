@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../services/firebase';
 import {
 	collection,
 	doc,
 	query,
 	onSnapshot,
+	getDocs,
+	limit,
+	orderBy,
+	startAfter,
 	deleteField,
 	writeBatch,
 } from 'firebase/firestore';
 import { Transaction } from '../types';
 import { normalizeTransaction } from '../transactions/TransactionModel';
-import { apiService } from '../services/api';
+import { apiService, type TransactionResetJob } from '../services/api';
 import { useAuthUser } from '../auth/AuthContext';
 import {
 	TEXT_LIMITS,
@@ -56,9 +60,18 @@ export const useTransactions = () => {
 	const { user, authReady } = useAuthUser();
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [loadingMore, setLoadingMore] = useState(false);
+	const [hasMore, setHasMore] = useState(true);
+	const loadingMoreRef = useRef(false);
+	const hasMoreRef = useRef(true);
+	const lastDocumentRef = useRef<unknown>(null);
 
 	useEffect(() => {
 		if (!authReady) return;
+		lastDocumentRef.current = null;
+		hasMoreRef.current = true;
+		loadingMoreRef.current = false;
+		setHasMore(true);
 		if (!user) {
 			setTransactions([]);
 			setLoading(false);
@@ -67,13 +80,20 @@ export const useTransactions = () => {
 
 		setLoading(true);
 		const txCol = collection(db, 'users', user.uid, 'transactions');
-		const q = query(txCol);
+		const q = query(txCol, orderBy('createdAt', 'desc'), limit(500));
 
 		const unsubscribe = onSnapshot(q, (snapshot) => {
 			const fetched = snapshot.docs.map((d) =>
 				normalizeTransaction({ id: d.id, ...d.data() })
 			);
-			setTransactions(fetched);
+			lastDocumentRef.current = snapshot.docs[snapshot.docs.length - 1] ?? null;
+			const nextHasMore = snapshot.docs.length === 500;
+			hasMoreRef.current = nextHasMore;
+			setHasMore(nextHasMore);
+			setTransactions((current) => {
+				const fetchedIds = new Set(fetched.map((transaction) => transaction.id));
+				return [...fetched, ...current.filter((transaction) => !fetchedIds.has(transaction.id))];
+			});
 			setLoading(false);
 		}, (error) => {
 			console.error('Error fetching transactions:', error);
@@ -82,6 +102,43 @@ export const useTransactions = () => {
 
 		return () => unsubscribe();
 	}, [user, authReady]);
+
+	const loadMoreTransactions = useCallback(async () => {
+		if (!user || loadingMoreRef.current || !hasMoreRef.current || !lastDocumentRef.current) return false;
+		loadingMoreRef.current = true;
+		setLoadingMore(true);
+		try {
+			const snapshot = await getDocs(
+				query(
+					collection(db, 'users', user.uid, 'transactions'),
+					orderBy('createdAt', 'desc'),
+					startAfter(lastDocumentRef.current),
+					limit(500)
+				)
+			);
+			const fetched = snapshot.docs.map((document) =>
+				normalizeTransaction({ id: document.id, ...document.data() })
+			);
+			lastDocumentRef.current = snapshot.docs[snapshot.docs.length - 1] ?? lastDocumentRef.current;
+			const nextHasMore = snapshot.docs.length === 500;
+			hasMoreRef.current = nextHasMore;
+			setHasMore(nextHasMore);
+			setTransactions((current) => {
+				const knownIds = new Set(current.map((transaction) => transaction.id));
+				return [...current, ...fetched.filter((transaction) => !knownIds.has(transaction.id))];
+			});
+			return snapshot.docs.length > 0;
+		} finally {
+			loadingMoreRef.current = false;
+			setLoadingMore(false);
+		}
+	}, [user]);
+
+	const loadAllTransactions = useCallback(async () => {
+		while (await loadMoreTransactions()) {
+			// Continue until the repository has reached the oldest page.
+		}
+	}, [loadMoreTransactions]);
 	const addTransaction = async (data: AddTransactionData): Promise<string> => {
 		if (!user) throw new Error('User not authenticated');
 		if (data.type !== 'income' && data.type !== 'expense') {
@@ -277,11 +334,13 @@ export const useTransactions = () => {
 		}
 	};
 
-	const deleteAllTransactions = async () => {
+	const deleteAllTransactions = async (
+		onProgress?: (job: TransactionResetJob) => void
+	) => {
 		if (!user) throw new Error('User not authenticated');
 
 		try {
-			await apiService.deleteAllTransactions();
+			await apiService.deleteAllTransactions(onProgress);
 		} catch (error) {
 			console.error('Error deleting all transactions:', error);
 			throw error;
@@ -296,6 +355,10 @@ export const useTransactions = () => {
 		bulkUpdateTransactionCategories,
 		deleteTransaction,
 		deleteAllTransactions,
+		loadMoreTransactions,
+		loadAllTransactions,
+		hasMoreTransactions: hasMore,
+		loadingMoreTransactions: loadingMore,
 		loading,
 	};
 };

@@ -251,7 +251,8 @@ service cloud.firestore {
       }
 
       match /accounts/{accountId} {
-        allow read, delete: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow delete: if false;
         allow create: if isOwner(userId) && validAccount(request.resource.data, userId);
         allow update: if isOwner(userId) &&
           validAccount(request.resource.data, userId) &&
@@ -306,6 +307,10 @@ service cloud.firestore {
           validPaymentPlan(request.resource.data, userId) &&
           request.resource.data.userId == resource.data.userId &&
           request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      match /ledgerMaintenance/{jobId} {
+        allow read, write: if false;
       }
     }
 

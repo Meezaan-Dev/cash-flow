@@ -7,6 +7,7 @@ import Currency from '@/components/marketing/Currency';
 import { SensitiveText } from '@/app/privacy/SensitiveValue';
 import { usePrivacyMode } from '@/app/privacy/PrivacyModeContext';
 import { Input } from '@/components/app/ui/input';
+import { Button } from '@/components/app/ui/button';
 import { Avatar, AvatarFallback } from '@/components/app/ui/avatar';
 import { Card } from '@/components/app/ui/card';
 import { useFilterPreferences } from '@/shared/filters/context/FilterPreferencesContext';
@@ -21,7 +22,7 @@ interface TransactionsListProps {
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedId, onOpenSettings }) => {
-	const { transactions } = useTransactionsContext();
+	const { transactions, loadMoreTransactions, hasMoreTransactions, loadingMoreTransactions } = useTransactionsContext();
 	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { getCategoryPathLabel } = useCategoriesContext();
 	const { prefs } = useFilterPreferences();
@@ -220,6 +221,13 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onSelect, selectedI
 								</p>
 							</div>
 						</Card>
+					)}
+					{hasMoreTransactions && (
+						<div className="flex justify-center py-4">
+							<Button type="button" variant="outline" onClick={() => void loadMoreTransactions()} disabled={loadingMoreTransactions}>
+								{loadingMoreTransactions ? 'Loading history...' : 'Load older transactions'}
+							</Button>
+						</div>
 					)}
 				</div>
 			</div>

@@ -36,11 +36,13 @@ import {
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/formatCurrency';
 import AccountForm from './AccountForm';
+import { useToast } from '@/components/app/ui/use-toast';
 
 const AccountsList: React.FC = () => {
 	const navigate = useNavigate();
 	const { accounts, deleteAccount, calculateAvailableBalance, calculateNetWorth } =
 		useAccountsContext();
+	const { toast } = useToast();
 
 	const [showForm, setShowForm] = useState(false);
 	const [editingAccount, setEditingAccount] = useState<Account | undefined>(undefined);
@@ -68,9 +70,21 @@ const AccountsList: React.FC = () => {
 	};
 
 	const handleConfirmDelete = async () => {
-		if (accountToDelete) await deleteAccount(accountToDelete);
-		setDeleteDialogOpen(false);
-		setAccountToDelete(null);
+		if (!accountToDelete) return;
+		try {
+			await deleteAccount(accountToDelete);
+			setDeleteDialogOpen(false);
+			setAccountToDelete(null);
+		} catch (error) {
+			toast({
+				title: 'Account was not deleted',
+				description:
+					error instanceof Error
+						? error.message
+						: 'Accounts with transaction history cannot be deleted.',
+				variant: 'destructive',
+			});
+		}
 	};
 
 	const handleCloseForm = () => {

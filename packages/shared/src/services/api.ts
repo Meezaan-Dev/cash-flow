@@ -56,6 +56,28 @@ export interface UpdateTransactionRequest extends Partial<AddTransactionRequest>
 	id: string;
 }
 
+export interface TransactionResetJob {
+	status: 'running' | 'completed' | 'error';
+	phase: 'transactions' | 'accounts';
+	deletedTransactions: number;
+	resetAccounts: number;
+	error?: string;
+}
+
+export interface CreateBudgetRequest {
+	accountId?: string;
+	categoryId: string;
+	subCategoryId?: string;
+	amount: number;
+	period: 'monthly' | 'custom';
+	month?: string;
+	cycleDay?: number;
+	startDate: string;
+	endDate: string;
+	lifecycleStatus: 'draft' | 'published';
+	displayOrder?: number;
+}
+
 export class ApiRequestError extends Error {
 	constructor(
 		message: string,
@@ -270,11 +292,56 @@ class ApiService {
 		}
 	}
 
-	async deleteAllTransactions(): Promise<void> {
-		const response = await this.post<null>('/deleteAllTransactions', {});
-		if (!response.success) {
-			throw new Error(response.error || 'Failed to delete all transactions');
+	async deleteAllTransactions(
+		onProgress?: (job: TransactionResetJob) => void
+	): Promise<void> {
+		let polling = true;
+		const pollStatus = async () => {
+			while (polling) {
+				try {
+					const job = await this.getDeleteAllTransactionsStatus();
+					if (job) onProgress?.(job);
+					if (!polling || job?.status === 'completed' || job?.status === 'error') return;
+				} catch {
+					// The main request remains authoritative; status polling is best effort.
+				}
+				await new Promise((resolve) => setTimeout(resolve, 500));
+			}
+		};
+		const poll = pollStatus();
+		try {
+			const response = await this.post<TransactionResetJob>('/deleteAllTransactions', {});
+			if (response.data) onProgress?.(response.data);
+			if (!response.success) {
+				throw new Error(response.error || 'Failed to delete all transactions');
+			}
+			await poll;
+		} finally {
+			polling = false;
 		}
+	}
+
+	async getDeleteAllTransactionsStatus(): Promise<TransactionResetJob | null> {
+		const response = await this.post<TransactionResetJob | null>('/deleteAllTransactionsStatus', {});
+		if (!response.success) {
+			throw new Error(response.error || 'Failed to fetch transaction reset status');
+		}
+		return response.data ?? null;
+	}
+
+	async deleteAccount(id: string): Promise<void> {
+		const response = await this.post<null>('/deleteAccount', { id });
+		if (!response.success) {
+			throw new Error(response.error || 'Failed to delete account');
+		}
+	}
+
+	async createBudget(payload: CreateBudgetRequest): Promise<string> {
+		const response = await this.post<{ id: string }>('/createBudget', payload);
+		if (!response.success || !response.data?.id) {
+			throw new Error(response.error || 'Failed to create budget');
+		}
+		return response.data.id;
 	}
 }
 

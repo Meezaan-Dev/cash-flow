@@ -87,7 +87,13 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 	selectedId,
 	onOpenSettings,
 }) => {
-	const { transactions, bulkUpdateTransactionCategories } = useTransactionsContext();
+	const {
+		transactions,
+		bulkUpdateTransactionCategories,
+		loadMoreTransactions,
+		hasMoreTransactions,
+		loadingMoreTransactions,
+	} = useTransactionsContext();
 	const { accounts, loading: accountsLoading } = useAccountsContext();
 	const { categories, categoryOptions, getCategoryPathLabel } = useCategoriesContext();
 	const { budgets } = useBudgetsContext();
@@ -767,6 +773,13 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 						}
 					>
 						Load more
+					</Button>
+				</div>
+			)}
+			{hasMoreTransactions && (
+				<div className="mt-4 flex justify-center">
+					<Button type="button" variant="outline" onClick={() => void loadMoreTransactions()} disabled={loadingMoreTransactions}>
+						{loadingMoreTransactions ? 'Loading history...' : 'Load older transactions'}
 					</Button>
 				</div>
 			)}

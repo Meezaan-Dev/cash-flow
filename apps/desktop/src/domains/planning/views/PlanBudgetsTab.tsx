@@ -52,9 +52,12 @@ const PlanBudgetsTab: React.FC<PlanBudgetsTabProps> = ({ defaultMonth }) => {
 	);
 
 	const monthProgress = useMemo(() => {
+		const selectedMonthReferenceDate = new Date(`${selectedMonth}-15T12:00:00`);
 		return orderedBudgets
 			.filter((budget) => Boolean(budget.categoryId))
-			.map((budget) => calculateBudgetProgress(budget, transactions, referenceDate))
+			.map((budget) =>
+				calculateBudgetProgress(budget, transactions, selectedMonthReferenceDate)
+			)
 			.filter((item) => budgetOverlapsMonth(item.budget, selectedMonth));
 	}, [orderedBudgets, referenceDate, selectedMonth, transactions]);
 
