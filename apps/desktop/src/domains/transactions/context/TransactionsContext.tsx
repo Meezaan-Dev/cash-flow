@@ -60,6 +60,7 @@ recurringTransactionsLoading: boolean;
 addRecurringTransaction: (transaction: Omit<RecurringTransaction, 'id' | 'createdAt' | 'userId'>) => Promise<void>;
 updateRecurringTransaction: (id: string, updates: Partial<RecurringTransaction>) => Promise<void>;
 deleteRecurringTransaction: (id: string) => Promise<void>;
+reorderRecurringTransactions: (orderedIds: string[]) => Promise<void>;
 }
 
 const TransactionsContext = createContext<TransactionsContextValue | undefined>(undefined);

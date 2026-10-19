@@ -179,7 +179,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 	}
 
 	return (
-		<div className="flex max-h-[82vh] min-h-0 flex-col overflow-hidden">
+		<div className="flex w-full min-w-0 max-h-[82vh] min-h-0 flex-col overflow-hidden">
 			<DialogHeader className="shrink-0 border-b border-gray-200 pb-4 dark:border-gray-800">
 				<DialogTitle>{transaction ? 'Edit transaction' : 'Add transaction'}</DialogTitle>
 				<DialogDescription>Enter the essentials and save. Everything else is optional.</DialogDescription>
@@ -189,15 +189,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 				<div className="grid grid-cols-2 gap-2">
 					{(['expense', 'income'] as const).map((item) => <Button key={item} type="button" variant={type === item ? 'marketing' : 'outline'} onClick={() => setType(item)} className="h-11 capitalize">{item}</Button>)}
 				</div>
-				<div className="grid gap-4 sm:grid-cols-2">
-					<div className="space-y-1.5"><Label htmlFor="transaction-amount">Amount *</Label><Input id="transaction-amount" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min="0.01" step="0.01" className={inputClass} autoFocus /></div>
-					<div className="space-y-1.5"><Label htmlFor="transaction-title">Title *</Label><Input id="transaction-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What was this?" className={inputClass} /></div>
+				{!transaction && recurringTransactions.length > 0 ? <div className="min-w-0 space-y-1.5"><Label htmlFor="quick-fill" className="flex items-center gap-2"><FiRefreshCw className="h-4 w-4" />Quick Fill</Label><Select value={selectedRecurringId || '__none__'} onValueChange={(value) => setSelectedRecurringId(value === '__none__' ? null : value)}><SelectTrigger id="quick-fill" className={inputClass}><SelectValue placeholder="Choose a template" /></SelectTrigger><SelectContent><SelectItem value="__none__">Start fresh</SelectItem>{recurringTransactions.map((item) => <SelectItem key={item.id} value={item.id!}>{item.title}</SelectItem>)}</SelectContent></Select></div> : null}
+				<div className="grid min-w-0 gap-4 sm:grid-cols-2">
+					<div className="min-w-0 space-y-1.5"><Label htmlFor="transaction-amount">Amount *</Label><Input id="transaction-amount" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min="0.01" step="0.01" className={`${inputClass} min-w-0`} autoFocus /></div>
+					<div className="min-w-0 space-y-1.5"><Label htmlFor="transaction-title">Title *</Label><Input id="transaction-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What was this?" className={`${inputClass} min-w-0`} /></div>
 				</div>
 				<div className="space-y-1.5"><Label htmlFor="transaction-category">Category *</Label><Select value={category} onValueChange={(value) => { setCategory(value); setSubcategory(''); }}><SelectTrigger id="transaction-category" className={inputClass}><SelectValue placeholder="Select category" /></SelectTrigger><SelectContent>{availableCategories.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
 				<details className="group overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800" open={transaction ? true : undefined}>
 					<summary className="cursor-pointer px-4 py-3 text-sm font-medium">Optional details <span className="ml-1 text-xs font-normal text-gray-500">account, date, subcategory and notes</span></summary>
 					<div className="grid gap-4 border-t border-gray-200 p-4 dark:border-gray-800 sm:grid-cols-2">
-						{!transaction && recurringTransactions.length > 0 ? <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="quick-fill" className="flex items-center gap-2"><FiRefreshCw className="h-4 w-4" />Quick Fill</Label><Select value={selectedRecurringId || '__none__'} onValueChange={(value) => setSelectedRecurringId(value === '__none__' ? null : value)}><SelectTrigger id="quick-fill" className={inputClass}><SelectValue placeholder="Choose a template" /></SelectTrigger><SelectContent><SelectItem value="__none__">Start fresh</SelectItem>{recurringTransactions.map((item) => <SelectItem key={item.id} value={item.id!}>{item.title}</SelectItem>)}</SelectContent></Select></div> : null}
 						<div className="space-y-1.5"><Label htmlFor="transaction-account">Account</Label><Select value={accountId} onValueChange={setAccountId}><SelectTrigger id="transaction-account" className={inputClass}><SelectValue placeholder="Select account" /></SelectTrigger><SelectContent>{accounts.map((account) => <SelectItem key={account.id} value={account.id!}>{account.name}</SelectItem>)}</SelectContent></Select></div>
 						<div className="space-y-1.5"><Label htmlFor="transaction-date">Date</Label><Input id="transaction-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} className={inputClass} /></div>
 						{availableSubcategories.length > 0 ? <div className="space-y-1.5"><Label htmlFor="transaction-subcategory">Subcategory</Label><Select value={subcategory || '__none__'} onValueChange={(value) => setSubcategory(value === '__none__' ? '' : value)}><SelectTrigger id="transaction-subcategory" className={inputClass}><SelectValue placeholder="Optional" /></SelectTrigger><SelectContent><SelectItem value="__none__">No subcategory</SelectItem>{availableSubcategories.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div> : null}

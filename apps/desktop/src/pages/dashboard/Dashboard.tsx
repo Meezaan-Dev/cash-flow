@@ -361,7 +361,7 @@ const DashboardContent: React.FC = () => {
 				}}
 			>
 				{transactionFormOpen && (
-					<DialogContent className={cn('w-[92vw] p-6 sm:max-w-2xl', modalShell)}>
+					<DialogContent className={cn('w-[calc(100vw-2rem)] min-w-0 p-6 sm:max-w-2xl', modalShell)}>
 						<TransactionForm
 							transaction={selectedTx || undefined}
 							recurringTransaction={editingRecurringDraft?.recurringTransaction}

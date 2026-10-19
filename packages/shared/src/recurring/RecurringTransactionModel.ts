@@ -11,6 +11,7 @@ export interface RecurringTransaction {
 	mode?: 'template' | 'scheduled';
 	frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
 	expectedDate?: number;
+	displayOrder?: number;
 	createdAt?: Date | { toDate: () => Date };
 }
 
@@ -27,6 +28,7 @@ type RecurringDoc = {
 	mode?: string;
 	frequency?: string;
 	expectedDate?: unknown;
+	displayOrder?: unknown;
 	createdAt?: unknown;
 };
 
@@ -64,6 +66,10 @@ export const normalizeRecurringTransaction = (doc: RecurringDoc): RecurringTrans
 					: 'template',
 		frequency: doc.frequency as RecurringTransaction['frequency'],
 		expectedDate: normalizeExpectedDate(doc.expectedDate),
+		displayOrder:
+			typeof doc.displayOrder === 'number' && Number.isInteger(doc.displayOrder) && doc.displayOrder >= 0
+				? doc.displayOrder
+				: undefined,
 	};
 
 	if (doc.createdAt) {

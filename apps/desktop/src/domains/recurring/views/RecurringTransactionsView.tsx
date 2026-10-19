@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiEdit, FiTrash2, FiPlus, FiDollarSign, FiX, FiSettings } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiPlus, FiDollarSign, FiX, FiSettings, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { useTransactionsContext } from '@/domains/transactions/context/TransactionsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
@@ -114,7 +114,7 @@ const buildFilterLabel = (
 };
 
 const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ onOpenSettings }) => {
-	const { recurringTransactions, deleteRecurringTransaction, recurringTransactionsLoading } =
+	const { recurringTransactions, deleteRecurringTransaction, reorderRecurringTransactions, recurringTransactionsLoading } =
 		useTransactionsContext();
 	const { categoryOptions, getCategoryPathLabel } = useCategoriesContext();
 	const { accounts } = useAccountsContext();
@@ -232,6 +232,8 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 				const dayB = b.expectedDate ?? Number.MIN_SAFE_INTEGER;
 				return dayB - dayA;
 			});
+		} else {
+			filtered.sort((a, b) => (a.displayOrder ?? Number.MAX_SAFE_INTEGER) - (b.displayOrder ?? Number.MAX_SAFE_INTEGER));
 		}
 
 		return filtered;
@@ -293,6 +295,19 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 		setTypeFilter('all');
 		setExpectedDateFilter('all');
 		setSortBy('default');
+	};
+
+	const handleMove = async (transactionId: string, direction: -1 | 1) => {
+		const currentIndex = recurringTransactions.findIndex((item) => item.id === transactionId);
+		const nextIndex = currentIndex + direction;
+		if (currentIndex < 0 || nextIndex < 0 || nextIndex >= recurringTransactions.length) return;
+		const orderedIds = recurringTransactions.map((item) => item.id).filter((id): id is string => Boolean(id));
+		[orderedIds[currentIndex], orderedIds[nextIndex]] = [orderedIds[nextIndex], orderedIds[currentIndex]];
+		try {
+			await reorderRecurringTransactions(orderedIds);
+		} catch (error) {
+			console.error('Error reordering recurring transactions:', error);
+		}
 	};
 
 	if (recurringTransactionsLoading) {
@@ -472,7 +487,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 				</div>
 			) : viewMode === 'list' ? (
 				<DataListSurface>
-					<DataListHeader className="md:grid-cols-[minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(160px,0.7fr)_minmax(240px,1fr)_96px]">
+					<DataListHeader className="md:grid-cols-[minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(160px,0.7fr)_minmax(240px,1fr)_184px]">
 						<span>Name</span>
 						<span>Schedule</span>
 						<span>Amount</span>
@@ -486,7 +501,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 						return (
 							<DataListRow
 								key={transaction.id}
-								className="md:grid-cols-[minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(160px,0.7fr)_minmax(240px,1fr)_96px]"
+								className="md:grid-cols-[minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(160px,0.7fr)_minmax(240px,1fr)_184px]"
 							>
 								<div className="min-w-0">
 									<h4 className="truncate text-sm font-semibold text-gray-950 dark:text-white">
@@ -548,6 +563,14 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 								</div>
 
 								<div className="flex items-center justify-start gap-2 md:justify-end">
+									{sortBy === 'default' && !hasActiveFilters ? <div className="flex items-center gap-1" aria-label="Reorder recurring transaction">
+										<Button variant="ghost" size="icon" onClick={() => transaction.id && handleMove(transaction.id, -1)} className="h-9 w-9" aria-label={`Move ${transaction.title} up`} disabled={filteredTransactions[0]?.id === transaction.id}>
+											<FiChevronUp className="h-4 w-4" />
+										</Button>
+										<Button variant="ghost" size="icon" onClick={() => transaction.id && handleMove(transaction.id, 1)} className="h-9 w-9" aria-label={`Move ${transaction.title} down`} disabled={filteredTransactions[filteredTransactions.length - 1]?.id === transaction.id}>
+											<FiChevronDown className="h-4 w-4" />
+										</Button>
+									</div> : null}
 									<Button
 										variant="ghost"
 										size="icon"
