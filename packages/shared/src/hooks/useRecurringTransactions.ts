@@ -9,6 +9,7 @@ import {
 	query,
 	Timestamp,
 	updateDoc,
+	writeBatch,
 	type UpdateData,
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -88,6 +89,12 @@ const sanitizeRecurringPayload = (
 		} else {
 			throw new Error('Expected date must be a day between 1 and 31.');
 		}
+	}
+	if (payload.displayOrder !== undefined) {
+		if (!Number.isInteger(payload.displayOrder) || payload.displayOrder < 0) {
+			throw new Error('Recurring transaction order must be a non-negative integer.');
+		}
+		sanitized.displayOrder = payload.displayOrder;
 	}
 	if (
 		allowFieldDelete &&
@@ -191,11 +198,25 @@ export const useRecurringTransactions = () => {
 		);
 	};
 
+	const reorderRecurringTransactions = async (orderedIds: string[]) => {
+		if (!user) throw new Error('User not authenticated');
+		if (new Set(orderedIds).size !== orderedIds.length) {
+			throw new Error('Recurring transaction order contains duplicate entries.');
+		}
+		const batch = writeBatch(db);
+		const updatedAt = Timestamp.now();
+		orderedIds.forEach((id, displayOrder) => {
+			batch.update(doc(db, 'users', user.uid, 'recurringTransactions', id), { displayOrder, updatedAt });
+		});
+		await batch.commit();
+	};
+
 	return {
 		recurringTransactions,
 		addRecurringTransaction,
 		deleteRecurringTransaction,
 		updateRecurringTransaction,
+		reorderRecurringTransactions,
 		loading,
 	};
 };

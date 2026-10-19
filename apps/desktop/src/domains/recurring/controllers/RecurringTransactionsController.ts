@@ -12,6 +12,7 @@ loading: boolean;
 addRecurringTransaction: (transaction: Omit<RecurringTransaction, 'id' | 'createdAt' | 'userId'>) => Promise<void>;
 updateRecurringTransaction: (id: string, updates: Partial<RecurringTransaction>) => Promise<void>;
 deleteRecurringTransaction: (id: string) => Promise<void>;
+reorderRecurringTransactions: (orderedIds: string[]) => Promise<void>;
 }
 
 export const useRecurringTransactionsController = (): RecurringTransactionsControllerReturn => {
@@ -20,6 +21,7 @@ recurringTransactions,
 addRecurringTransaction,
 updateRecurringTransaction,
 deleteRecurringTransaction,
+reorderRecurringTransactions,
 loading,
 } = useRecurringTransactions();
 
@@ -32,5 +34,6 @@ loading,
 addRecurringTransaction,
 updateRecurringTransaction,
 deleteRecurringTransaction,
+reorderRecurringTransactions,
 };
 };

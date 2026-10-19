@@ -175,6 +175,8 @@ describe('TransactionForm', () => {
 		const user = userEvent.setup();
 
 		renderForm();
+		const quickFill = screen.getByRole('combobox', { name: 'Quick Fill' });
+		expect(quickFill.closest('details')).toBeNull();
 		await user.click(screen.getByText('Optional details'));
 		await selectOption(user, 'Quick Fill', 'Rent');
 		await user.click(screen.getByRole('button', { name: 'Add expense' }));
@@ -209,6 +211,7 @@ describe('TransactionForm', () => {
 		});
 
 		expect(screen.getByLabelText('Title *')).toHaveValue('Coffee');
+		expect(screen.queryByRole('combobox', { name: 'Quick Fill' })).not.toBeInTheDocument();
 		await user.clear(screen.getByLabelText('Title *'));
 		await user.type(screen.getByLabelText('Title *'), 'Morning coffee');
 		await user.click(screen.getByRole('button', { name: 'Save changes' }));
