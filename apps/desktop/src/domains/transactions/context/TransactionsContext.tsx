@@ -4,6 +4,7 @@ import { useRecurringTransactionsController } from '@/domains/recurring/controll
 import { Transaction } from '@cash-flow/shared/transactions/TransactionModel';
 import { RecurringTransaction } from '@cash-flow/shared';
 import { TransactionType } from '@/types';
+import type { TransactionResetJob } from '@cash-flow/shared/services/api';
 
 interface AddTransactionData {
 type: 'income' | 'expense';
@@ -39,7 +40,11 @@ category: string,
 subcategory?: string
 ) => Promise<void>;
 deleteTransaction: (id: string) => Promise<void>;
-deleteAllTransactions: () => Promise<void>;
+deleteAllTransactions: (onProgress?: (job: TransactionResetJob) => void) => Promise<void>;
+loadMoreTransactions: () => Promise<boolean>;
+loadAllTransactions: () => Promise<void>;
+hasMoreTransactions: boolean;
+loadingMoreTransactions: boolean;
 getExpenses: () => Transaction[];
 getIncome: () => Transaction[];
 getTransfers: () => Transaction[];

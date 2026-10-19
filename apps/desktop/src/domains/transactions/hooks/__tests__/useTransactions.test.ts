@@ -24,6 +24,7 @@ jest.mock('@cash-flow/shared/services/api', () => ({
 		updateTransaction: jest.fn(),
 		deleteTransaction: jest.fn(),
 		deleteAllTransactions: jest.fn(),
+		deleteAccount: jest.fn(),
 	},
 }));
 
@@ -53,7 +54,11 @@ jest.mock('firebase/firestore', () => ({
 	deleteField: jest.fn(() => '__delete_field__'),
 	doc: (...args: unknown[]) => mockDoc(...args),
 	onSnapshot: (...args: unknown[]) => mockOnSnapshot(...args),
+	getDocs: jest.fn(),
+	limit: jest.fn((value: number) => value),
+	orderBy: jest.fn((...args: unknown[]) => args),
 	query: jest.fn((collectionRef: unknown) => collectionRef),
+	startAfter: jest.fn((value: unknown) => value),
 	writeBatch: (...args: unknown[]) => mockWriteBatch(...args),
 }));
 

@@ -8,7 +8,10 @@ export {
 	updateTransaction,
 	deleteTransaction,
 	deleteAllTransactions,
+	deleteAllTransactionsStatus,
 } from './ledger';
+export { deleteAccount } from './accounts';
+export { createBudget } from './budgets';
 
 interface Transaction {
 	id: string;
@@ -29,8 +32,29 @@ interface Transaction {
 interface ApiResponse {
 	success: boolean;
 	data?: Transaction[];
+	nextCursor?: string;
 	error?: string;
 	message?: string;
+}
+
+interface TransactionCursor {
+	date: string;
+	id: string;
+}
+
+function decodeCursor(value: unknown): TransactionCursor | null {
+	if (typeof value !== 'string' || !value) return null;
+	try {
+		const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Partial<TransactionCursor>;
+		if (typeof parsed.date !== 'string' || typeof parsed.id !== 'string' || !parsed.id) return null;
+		return { date: parsed.date, id: parsed.id };
+	} catch {
+		return null;
+	}
+}
+
+function encodeCursor(cursor: TransactionCursor): string {
+	return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
 }
 
 function parseDate(value: unknown): Date | null {
@@ -99,16 +123,37 @@ export const getUserTransactions = functions.https.onRequest(async (req, res) =>
 			return;
 		}
 		const { uid } = await verifyToken(req.headers.authorization);
-		const snapshot = await db
+		const requestedLimit = Number(req.query.limit);
+		const isPaged = Boolean(req.query.cursor || req.query.limit);
+		const pageSize = isPaged
+			? Number.isInteger(requestedLimit) && requestedLimit > 0
+				? Math.min(requestedLimit, 500)
+				: 100
+			: undefined;
+		const cursor = decodeCursor(req.query.cursor);
+		if (req.query.cursor && !cursor) {
+			res.status(400).json({ success: false, error: 'Invalid transaction cursor' });
+			return;
+		}
+		let transactionsQuery = db
 			.collection('users')
 			.doc(uid)
 			.collection('transactions')
 			.orderBy('date', 'desc')
-			.get();
+			.orderBy('__name__', 'desc');
+		if (cursor) transactionsQuery = transactionsQuery.startAfter(new Date(cursor.date), cursor.id);
+		if (pageSize) transactionsQuery = transactionsQuery.limit(pageSize);
+		const snapshot = await transactionsQuery.get();
 		const transactions = snapshot.docs.map(toTransaction);
+		const last = snapshot.docs[snapshot.docs.length - 1];
+		const lastDate = last ? parseDate(last.get('date')) : null;
+		const nextCursor = isPaged && lastDate
+			? encodeCursor({ date: lastDate.toISOString(), id: last!.id })
+			: undefined;
 		res.status(200).json({
 			success: true,
 			data: transactions,
+			...(nextCursor ? { nextCursor } : {}),
 			message: `Successfully retrieved ${transactions.length} transactions`,
 		});
 	} catch (error) {

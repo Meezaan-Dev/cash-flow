@@ -87,7 +87,7 @@ Checks whether the default Functions API is running.
 
 ### GET `/getUserTransactions`
 
-Returns the authenticated user's transactions from `users/{uid}/transactions`, ordered by `date` descending.
+Returns the authenticated user's transactions from `users/{uid}/transactions`, ordered by `date` descending. With no query parameters it preserves the complete-result response used by existing callers. Add `limit` and/or an opaque `cursor` query parameter for bounded pages; paged responses include `nextCursor` when another page is available.
 
 **Authentication:** required
 
@@ -130,6 +130,43 @@ Transfer records may also include `transferAccountId`. The desktop app primarily
 - `401` - Missing, invalid, or expired token
 - `405` - Method not allowed
 - `500` - Internal server error
+
+Paged example:
+
+```http
+GET /getUserTransactions?limit=100&cursor=<opaque_cursor>
+Authorization: Bearer <firebase_id_token>
+```
+
+### POST `/deleteAllTransactions`
+
+Starts or resumes the authenticated user's transaction reset job. The job deletes transaction documents in bounded batches and resets account balances only after the transaction collection is empty. While the job is running, server-owned ledger writes are rejected.
+
+**Authentication:** required
+
+**Response:** a `TransactionResetJob` object containing `status`, `phase`, `deletedTransactions`, `resetAccounts`, timestamps, and an optional `error`.
+
+Retries are safe: an errored or stale job can be resumed, while a completed job is returned without repeating the reset.
+
+### POST `/deleteAllTransactionsStatus`
+
+Returns the current transaction reset job for the authenticated user. The browser client uses this endpoint to show progress and recoverable errors.
+
+### POST `/deleteAccount`
+
+Deletes an account only when it belongs to the authenticated user and has no transaction history. Accounts referenced by ordinary or transfer transactions are rejected so their history cannot be orphaned. Direct browser deletes are denied by Firestore rules.
+
+**Request:**
+
+```json
+{ "accountId": "account_id" }
+```
+
+### POST `/createBudget`
+
+Creates a budget through one server-side Firestore transaction. The transaction atomically checks ownership, the eight-budget limit, and duplicate scope (`accountId`, category, optional subcategory, period, and cycle) before creating the record.
+
+**Request:** the validated budget fields used by the desktop budget form.
 
 ## Data Models
 

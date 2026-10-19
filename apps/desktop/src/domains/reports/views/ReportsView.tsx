@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FiDownload } from 'react-icons/fi';
 import { useAccountsContext } from '@/domains/accounts/context/AccountsContext';
 import { useCategoriesContext } from '@/domains/categories/context/CategoriesContext';
@@ -47,12 +47,16 @@ const monthLabel = (key: string) => {
 };
 
 const ReportsView: React.FC<ReportsViewProps> = () => {
-	const { transactions } = useTransactionsContext();
+	const { transactions, loadAllTransactions } = useTransactionsContext();
 	const { accounts } = useAccountsContext();
 	const { getCategoryLabel, getSubcategoryLabel } = useCategoriesContext();
 	const [filters, setFilters] = useState<ReportFilters>(getDefaultFilters);
 	const [selectedMonth, setSelectedMonth] = useState('all');
 	const [selectedCategory, setSelectedCategory] = useState('all');
+
+	useEffect(() => {
+		void loadAllTransactions();
+	}, [loadAllTransactions]);
 
 	const baseTransactions = useMemo(
 		() => filterReportTransactions(transactions, filters),

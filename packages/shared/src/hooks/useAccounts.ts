@@ -3,7 +3,6 @@ import { db } from '../services/firebase';
 import {
 	collection,
 	addDoc,
-	deleteDoc,
 	updateDoc,
 	doc,
 	query,
@@ -21,6 +20,7 @@ import {
 	normalizeOptionalText,
 	normalizeRequiredText,
 } from '../validation';
+import { apiService } from '../services/api';
 
 const normalizeAccountFields = (
 	account: Partial<Account>,
@@ -119,8 +119,7 @@ export const useAccounts = () => {
 	const deleteAccount = async (id: string) => {
 		if (!user) throw new Error('User not authenticated');
 		const accountId = normalizeRequiredText(id, 'Account ID', TEXT_LIMITS.documentId);
-		const ref = doc(db, 'users', user.uid, 'accounts', accountId);
-		await deleteDoc(ref);
+		await apiService.deleteAccount(accountId);
 	};
 
 	const updateBalance = async () => {

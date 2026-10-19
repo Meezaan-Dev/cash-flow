@@ -13,6 +13,7 @@ import {
 	sortByDateDesc,
 } from '@cash-flow/shared/transactions/TransactionModel';
 import { TransactionType } from '@/types';
+import type { TransactionResetJob } from '@cash-flow/shared/services/api';
 
 interface AddTransactionData {
 	type: 'income' | 'expense';
@@ -48,7 +49,11 @@ interface TransactionsControllerReturn {
 		subcategory?: string
 	) => Promise<void>;
 	deleteTransaction: (id: string) => Promise<void>;
-	deleteAllTransactions: () => Promise<void>;
+	deleteAllTransactions: (onProgress?: (job: TransactionResetJob) => void) => Promise<void>;
+	loadMoreTransactions: () => Promise<boolean>;
+	loadAllTransactions: () => Promise<void>;
+	hasMoreTransactions: boolean;
+	loadingMoreTransactions: boolean;
 	getExpenses: () => Transaction[];
 	getIncome: () => Transaction[];
 	getTransfers: () => Transaction[];
@@ -71,6 +76,10 @@ export const useTransactionsController = (): TransactionsControllerReturn => {
 		bulkUpdateTransactionCategories,
 		deleteTransaction,
 		deleteAllTransactions,
+		loadMoreTransactions,
+		loadAllTransactions,
+		hasMoreTransactions,
+		loadingMoreTransactions,
 		loading,
 	} = useTransactions();
 
@@ -83,6 +92,10 @@ export const useTransactionsController = (): TransactionsControllerReturn => {
 		bulkUpdateTransactionCategories,
 		deleteTransaction,
 		deleteAllTransactions,
+		loadMoreTransactions,
+		loadAllTransactions,
+		hasMoreTransactions,
+		loadingMoreTransactions,
 		getExpenses: () => filterExpenses(transactions),
 		getIncome: () => filterIncome(transactions),
 		getTransfers: () => filterTransfers(transactions),

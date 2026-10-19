@@ -48,6 +48,7 @@ import {
 	type ExportFormat,
 } from '@/shared/export/appDataExport';
 import { downloadExportFiles } from '@/shared/export/downloadExportFiles';
+import type { TransactionResetJob } from '@cash-flow/shared/services/api';
 
 interface SettingsModalProps {
 	open: boolean;
@@ -70,6 +71,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 		transactions,
 		recurringTransactions,
 		deleteAllTransactions,
+		loadAllTransactions,
 	} = useTransactionsContext();
 	const { accounts } = useAccountsContext();
 	const { budgets } = useBudgetsContext();
@@ -92,6 +94,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 	const { currentUser } = useAuth();
 	const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 	const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
+	const [deleteAllJob, setDeleteAllJob] = useState<TransactionResetJob | null>(null);
 	const [exportDialogOpen, setExportDialogOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<'general' | 'data' | 'filters' | 'categories'>(
 		initialTab ?? 'general'
@@ -185,19 +188,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 	const confirmDeleteAllTransactions = async () => {
 		try {
-			await deleteAllTransactions();
+			setDeleteAllJob({
+				status: 'running',
+				phase: 'transactions',
+				deletedTransactions: 0,
+				resetAccounts: 0,
+			});
+			await deleteAllTransactions(setDeleteAllJob);
 			setDeleteAllConfirmOpen(false);
+			setDeleteAllJob(null);
 			onClose();
 		} catch (error) {
 			toast({
 				title: 'Transactions were not deleted',
 				description: getAppErrorMessage(error, { operation: 'Delete all transactions' }),
-				variant: 'destructive',
-			});
-		}
-	};
+					variant: 'destructive',
+				});
+				setDeleteAllJob((current) => current ? { ...current, status: 'error' } : current);
+			}
+		};
 
-	const handleWholeAppExport = (format: ExportFormat) => {
+	const handleWholeAppExport = async (format: ExportFormat) => {
+		await loadAllTransactions();
 		const files = buildWholeAppExportFiles(format, {
 			accounts,
 			transactions,
@@ -1087,18 +1099,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Confirm Delete All Transactions</DialogTitle>
-						<DialogDescription>
-							Are you sure you want to delete all transactions? This action cannot be
-							undone.
+					<DialogDescription>
+							{deleteAllJob?.status === 'running' ? (
+								<>
+									Resetting the ledger: {deleteAllJob.deletedTransactions} transactions removed
+									and {deleteAllJob.resetAccounts} accounts reset.
+								</>
+							) : deleteAllJob?.status === 'error' ? (
+								'Ledger reset did not finish. You can retry safely.'
+							) : (
+								'Are you sure you want to delete all transactions? This action cannot be undone.'
+							)}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button variant="outline" onClick={() => setDeleteAllConfirmOpen(false)}>
-							Cancel
-						</Button>
-						<Button variant="destructive" onClick={confirmDeleteAllTransactions}>
-							Delete All
-						</Button>
+							<Button
+								variant="outline"
+								disabled={deleteAllJob?.status === 'running'}
+								onClick={() => setDeleteAllConfirmOpen(false)}
+							>
+								Cancel
+							</Button>
+							<Button
+								variant="destructive"
+								disabled={deleteAllJob?.status === 'running'}
+								onClick={confirmDeleteAllTransactions}
+							>
+								{deleteAllJob?.status === 'running' ? 'Resetting...' : 'Delete All'}
+							</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

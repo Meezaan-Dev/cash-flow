@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions';
+import { randomUUID } from 'crypto';
 import { db, FieldValue, Timestamp } from './firebase';
 import { getRequestId, requirePostUser, sendError, setCorsHeaders } from './http';
 
@@ -66,6 +67,40 @@ const TEXT_LIMITS = {
 const usersRef = (uid: string) => db.collection('users').doc(uid);
 const accountsRef = (uid: string) => usersRef(uid).collection('accounts');
 const transactionsRef = (uid: string) => usersRef(uid).collection('transactions');
+const resetJobRef = (uid: string) =>
+	usersRef(uid).collection('ledgerMaintenance').doc('transactionReset');
+const RESET_BATCH_SIZE = 400;
+const RESET_WORKER_TIMEOUT_MS = 5 * 60 * 1000;
+
+type ResetPhase = 'transactions' | 'accounts';
+type ResetStatus = 'running' | 'completed' | 'error';
+
+export interface TransactionResetJob {
+	status: ResetStatus;
+	phase: ResetPhase;
+	deletedTransactions: number;
+	resetAccounts: number;
+	lastTransactionId?: string;
+	lastAccountId?: string;
+	updatedAt: FirebaseFirestore.Timestamp;
+	error?: string;
+}
+
+const readResetJob = async (uid: string): Promise<TransactionResetJob | null> => {
+	const snapshot = await resetJobRef(uid).get();
+	return snapshot.exists ? (snapshot.data() as TransactionResetJob) : null;
+};
+
+async function assertLedgerWritable(
+	transaction: FirebaseFirestore.Transaction,
+	userId: string
+): Promise<void> {
+	const resetSnapshot = await transaction.get(resetJobRef(userId));
+	const resetJob = resetSnapshot.data() as Partial<TransactionResetJob> | undefined;
+	if (resetJob?.status === 'running') {
+		throw new Error('Transactions are temporarily locked while the ledger is being reset.');
+	}
+}
 
 function requiredText(value: unknown, field: string, maxLength: number): string {
 	if (typeof value !== 'string') throw new Error(`${field} is required.`);
@@ -186,6 +221,7 @@ export async function addLedgerTransaction(uid: string, body: AddTransactionBody
 	const input = normalizeAddTransaction(body);
 	const transactionId = transactionsRef(uid).doc().id;
 	await db.runTransaction(async (transaction) => {
+		await assertLedgerWritable(transaction, uid);
 		const accountRef = await assertAccountExists(transaction, uid, input.accountId);
 		const txRef = transactionsRef(uid).doc(transactionId);
 		const now = Timestamp.now();
@@ -213,6 +249,7 @@ export async function addLedgerTransfer(uid: string, body: AddTransferBody): Pro
 	const outgoingId = transactionsRef(uid).doc().id;
 	const incomingId = transactionsRef(uid).doc().id;
 	await db.runTransaction(async (transaction) => {
+		await assertLedgerWritable(transaction, uid);
 		const fromRef = await assertAccountExists(transaction, uid, input.fromAccountId);
 		const toRef = await assertAccountExists(transaction, uid, input.toAccountId);
 		const now = Timestamp.now();
@@ -249,6 +286,7 @@ export async function addLedgerTransfer(uid: string, body: AddTransferBody): Pro
 export async function updateLedgerTransaction(uid: string, body: UpdateTransactionBody): Promise<void> {
 	const transactionId = requiredText(body.id, 'Transaction ID', TEXT_LIMITS.documentId);
 	await db.runTransaction(async (transaction) => {
+		await assertLedgerWritable(transaction, uid);
 		const txRef = transactionsRef(uid).doc(transactionId);
 		const old = dataFromTransactionSnap(await transaction.get(txRef));
 		if (old.type === 'transfer' || (body as { type?: string }).type === 'transfer') {
@@ -305,6 +343,7 @@ export async function updateLedgerTransaction(uid: string, body: UpdateTransacti
 export async function deleteLedgerTransaction(uid: string, body: DeleteTransactionBody): Promise<void> {
 	const transactionId = requiredText(body.id, 'Transaction ID', TEXT_LIMITS.documentId);
 	await db.runTransaction(async (transaction) => {
+		await assertLedgerWritable(transaction, uid);
 		const txRef = transactionsRef(uid).doc(transactionId);
 		const tx = dataFromTransactionSnap(await transaction.get(txRef));
 		if (tx.type === 'transfer') {
@@ -341,28 +380,141 @@ export async function deleteLedgerTransaction(uid: string, body: DeleteTransacti
 	});
 }
 
-export async function deleteAllLedgerTransactions(uid: string): Promise<void> {
-	const [txSnapshot, accountSnapshot] = await Promise.all([
-		transactionsRef(uid).get(),
-		accountsRef(uid).get(),
-	]);
-	const chunks = <T>(items: T[], size: number): T[][] => {
-		const result: T[][] = [];
-		for (let index = 0; index < items.length; index += size) {
-			result.push(items.slice(index, index + size));
+async function claimResetWorker(uid: string): Promise<
+	{ job: TransactionResetJob; claimed: boolean }
+> {
+	const now = Date.now();
+	let job!: TransactionResetJob;
+	let claimed = false;
+	await db.runTransaction(async (transaction) => {
+		const ref = resetJobRef(uid);
+		const snapshot = await transaction.get(ref);
+		const current = snapshot.data() as (TransactionResetJob & {
+			workerId?: string;
+			workerUntil?: FirebaseFirestore.Timestamp;
+		}) | undefined;
+		const workerUntil = current?.workerUntil?.toMillis() ?? 0;
+
+		if (current?.status === 'completed') {
+			job = current;
+			return;
 		}
-		return result;
-	};
-	for (const docs of chunks(txSnapshot.docs, 400)) {
-		const batch = db.batch();
-		docs.forEach((transactionDoc) => batch.delete(transactionDoc.ref));
-		await batch.commit();
+		if (current?.status === 'running' && workerUntil > now) {
+			job = current;
+			return;
+		}
+
+		job = {
+			status: 'running',
+			phase: current?.phase ?? 'transactions',
+			deletedTransactions: current?.deletedTransactions ?? 0,
+			resetAccounts: current?.resetAccounts ?? 0,
+			...(current?.lastTransactionId ? { lastTransactionId: current.lastTransactionId } : {}),
+			...(current?.lastAccountId ? { lastAccountId: current.lastAccountId } : {}),
+			updatedAt: Timestamp.now(),
+		};
+		transaction.set(ref, {
+			...job,
+			workerId: randomUUID(),
+			workerUntil: Timestamp.fromMillis(now + RESET_WORKER_TIMEOUT_MS),
+			error: FieldValue.delete(),
+		});
+		claimed = true;
+	});
+	return { job, claimed };
+}
+
+async function updateResetJob(
+	uid: string,
+	updates: Record<string, unknown>
+): Promise<void> {
+	await resetJobRef(uid).update({ ...updates, updatedAt: Timestamp.now() });
+}
+
+export async function deleteAllLedgerTransactions(uid: string): Promise<TransactionResetJob> {
+	const { job, claimed } = await claimResetWorker(uid);
+	if (!claimed) return job;
+
+	try {
+		let current = job;
+		while (current.phase === 'transactions') {
+			let query = transactionsRef(uid).orderBy('__name__').limit(RESET_BATCH_SIZE);
+			if (current.lastTransactionId) {
+				query = query.startAfter(current.lastTransactionId);
+			}
+			const snapshot = await query.get();
+			if (snapshot.empty) {
+				await updateResetJob(uid, {
+					phase: 'accounts',
+					lastTransactionId: FieldValue.delete(),
+				});
+				current = { ...current, phase: 'accounts' };
+				continue;
+			}
+
+			const batch = db.batch();
+			snapshot.docs.forEach((transactionDoc) => batch.delete(transactionDoc.ref));
+			await batch.commit();
+			const lastTransactionId = snapshot.docs[snapshot.docs.length - 1].id;
+			current = {
+				...current,
+				lastTransactionId,
+				deletedTransactions: current.deletedTransactions + snapshot.size,
+			};
+			await updateResetJob(uid, {
+				lastTransactionId,
+				deletedTransactions: current.deletedTransactions,
+				workerUntil: Timestamp.fromMillis(Date.now() + RESET_WORKER_TIMEOUT_MS),
+			});
+		}
+
+		while (current.phase === 'accounts') {
+			let query = accountsRef(uid).orderBy('__name__').limit(RESET_BATCH_SIZE);
+			if (current.lastAccountId) query = query.startAfter(current.lastAccountId);
+			const snapshot = await query.get();
+			if (snapshot.empty) {
+				current = { ...current, status: 'completed' };
+				await updateResetJob(uid, {
+					status: 'completed',
+					workerId: FieldValue.delete(),
+					workerUntil: FieldValue.delete(),
+					lastAccountId: FieldValue.delete(),
+				});
+				return current;
+			}
+
+			const batch = db.batch();
+			snapshot.docs.forEach((accountDoc) =>
+				batch.update(accountDoc.ref, { balance: 0, updatedAt: Timestamp.now() })
+			);
+			await batch.commit();
+			const lastAccountId = snapshot.docs[snapshot.docs.length - 1].id;
+			current = {
+				...current,
+				lastAccountId,
+				resetAccounts: current.resetAccounts + snapshot.size,
+			};
+			await updateResetJob(uid, {
+				lastAccountId,
+				resetAccounts: current.resetAccounts,
+				workerUntil: Timestamp.fromMillis(Date.now() + RESET_WORKER_TIMEOUT_MS),
+			});
+		}
+		return current;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Ledger reset failed.';
+		await updateResetJob(uid, {
+			status: 'error',
+			error: message,
+			workerId: FieldValue.delete(),
+			workerUntil: FieldValue.delete(),
+		});
+		throw error;
 	}
-	for (const docs of chunks(accountSnapshot.docs, 400)) {
-		const batch = db.batch();
-		docs.forEach((accountDoc) => batch.update(accountDoc.ref, { balance: 0, updatedAt: Timestamp.now() }));
-		await batch.commit();
-	}
+}
+
+export async function getDeleteAllTransactionsStatus(uid: string): Promise<TransactionResetJob | null> {
+	return readResetJob(uid);
 }
 
 function ledgerEndpoint(
@@ -402,6 +554,19 @@ export const deleteTransaction = ledgerEndpoint(async (uid, body) => {
 });
 
 export const deleteAllTransactions = ledgerEndpoint(async (uid) => {
-	await deleteAllLedgerTransactions(uid);
-	return null;
+	return deleteAllLedgerTransactions(uid);
+});
+
+export const deleteAllTransactionsStatus = functions.https.onRequest(async (req, res) => {
+	const requestId = getRequestId(req);
+	const decoded = await requirePostUser(req, res, requestId);
+	if (!decoded) return;
+	try {
+		const job = await getDeleteAllTransactionsStatus(decoded.uid);
+		setCorsHeaders(res);
+		res.status(200).json({ success: true, data: job });
+	} catch (error) {
+		console.error('Ledger reset status failed:', { requestId, error });
+		sendLedgerError(res, 500, error, requestId);
+	}
 });

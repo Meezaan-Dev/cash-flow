@@ -9,6 +9,20 @@ const monthRange = getMonthDateRange(currentMonth);
 
 const mockPublishBudget = jest.fn();
 const mockDeleteBudget = jest.fn();
+const mockBudgets = [
+	{
+		id: 'budget-1',
+		userId: 'user-1',
+		categoryId: 'personal',
+		amount: 2000,
+		period: 'monthly' as 'monthly' | 'custom',
+		month: currentMonth,
+		startDate: monthRange.startDate,
+		endDate: monthRange.endDate,
+		lifecycleStatus: 'draft' as 'draft' | 'published',
+	},
+];
+const mockTransactions: Array<Record<string, unknown>> = [];
 
 const mockBudgetForm = jest.fn(({ budget }: { budget?: { id?: string } }) => (
 	<div>Budget form {budget?.id ?? 'new'}</div>
@@ -21,19 +35,7 @@ jest.mock('@/domains/budgets/views/BudgetForm', () => ({
 
 jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 	useBudgetsContext: () => ({
-		budgets: [
-			{
-				id: 'budget-1',
-				userId: 'user-1',
-				categoryId: 'personal',
-				amount: 2000,
-				period: 'monthly',
-				month: currentMonth,
-				startDate: monthRange.startDate,
-				endDate: monthRange.endDate,
-				lifecycleStatus: 'draft',
-			},
-		],
+		budgets: mockBudgets,
 		publishBudget: mockPublishBudget,
 		deleteBudget: mockDeleteBudget,
 	}),
@@ -41,7 +43,7 @@ jest.mock('@/domains/budgets/context/BudgetsContext', () => ({
 
 jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 	useTransactionsContext: () => ({
-		transactions: [],
+		transactions: mockTransactions,
 	}),
 }));
 
@@ -59,6 +61,18 @@ jest.mock('@/hooks/useCurrentDate', () => ({
 describe('PlanBudgetsTab', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockBudgets.splice(0, mockBudgets.length, {
+			id: 'budget-1',
+			userId: 'user-1',
+			categoryId: 'personal',
+			amount: 2000,
+			period: 'monthly',
+			month: currentMonth,
+			startDate: monthRange.startDate,
+			endDate: monthRange.endDate,
+			lifecycleStatus: 'draft',
+		});
+		mockTransactions.splice(0);
 	});
 
 	it('activates a draft budget from the list', async () => {
@@ -97,5 +111,34 @@ describe('PlanBudgetsTab', () => {
 			expect.objectContaining({ layout: 'page', budget: undefined })
 		);
 		expect(screen.getByText('Budget form new')).toBeInTheDocument();
+	});
+
+	it('calculates custom-cycle spending for the selected month', () => {
+		mockBudgets.splice(0, mockBudgets.length, {
+			id: 'custom-budget',
+			userId: 'user-1',
+			categoryId: 'personal',
+			amount: 1000,
+			period: 'custom',
+			cycleDay: 25,
+			startDate: '2026-01-25',
+			endDate: '2026-02-25',
+			lifecycleStatus: 'published',
+		});
+		mockTransactions.push({
+			id: 'expense-in-selected-cycle',
+			userId: 'user-1',
+			accountId: 'account-1',
+			title: 'Selected cycle expense',
+			amount: 125,
+			type: 'expense',
+			category: 'personal',
+			date: new Date('2026-02-01T12:00:00Z'),
+		});
+
+		render(<PlanBudgetsTab defaultMonth="2026-02" />);
+
+		expect(screen.getAllByText(/125,00/).length).toBeGreaterThan(0);
+		expect(screen.getAllByText(/875,00/).length).toBeGreaterThan(0);
 	});
 });
