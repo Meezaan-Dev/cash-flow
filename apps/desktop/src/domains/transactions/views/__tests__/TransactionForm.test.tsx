@@ -166,9 +166,26 @@ describe('TransactionForm', () => {
 		));
 	});
 
-	it('keeps transfers out of the transaction form', () => {
+	it('adds a transfer between two different accounts', async () => {
+		const user = userEvent.setup();
 		renderForm();
-		expect(screen.queryByText(/Transfer between accounts/i)).not.toBeInTheDocument();
+		await user.click(screen.getByRole('button', { name: 'transfer' }));
+		await user.type(screen.getByLabelText('Amount *'), '250');
+		await user.type(screen.getByLabelText('Title *'), 'Move to savings');
+		await selectOption(user, 'From account', 'Main account');
+		await selectOption(user, 'To account', 'Savings');
+		await user.click(screen.getByRole('button', { name: 'Add transfer' }));
+
+		await waitFor(() => expect(mockAddTransfer).toHaveBeenCalledWith(
+			expect.objectContaining({
+				fromAccountId: 'acc-main',
+				toAccountId: 'acc-save',
+				amount: 250,
+				title: 'Move to savings',
+				date: expect.any(Date),
+			})
+		));
+		expect(mockAddTransaction).not.toHaveBeenCalled();
 	});
 
 	it('quick-fills from recurring templates and links the saved transaction', async () => {

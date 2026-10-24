@@ -70,6 +70,9 @@ import { liquidGlassPanel, liquidGlassSoft } from '@/styles/marketingStyles';
 type WizardMode = 'planned' | 'wishlist' | 'payment';
 type PlanningListTab = 'all' | 'planned' | 'wishlist';
 type PlanHubTab = 'monthly' | 'budgets' | 'wishlist' | 'payments';
+type PendingPlanDeletion =
+	| { kind: 'planned'; id: string; label: string }
+	| { kind: 'payment'; id: string; label: string };
 
 const WISHLIST_CATEGORY = 'Wishlist';
 
@@ -200,6 +203,7 @@ const PlanningView: React.FC = () => {
 	const [activeHubTab, setActiveHubTab] = useState<PlanHubTab>('monthly');
 	const [selectedCategory, setSelectedCategory] = useState('all');
 	const [draggingPlannedExpenseId, setDraggingPlannedExpenseId] = useState<string>();
+	const [pendingPlanDeletion, setPendingPlanDeletion] = useState<PendingPlanDeletion>();
 
 	const currentMonth = getCurrentMonthKey();
 	const monthStart = new Date(`${currentMonth}-01T00:00:00`);
@@ -541,6 +545,29 @@ const PlanningView: React.FC = () => {
 		}
 	};
 
+	const requestPlanDeletion = (deletion: PendingPlanDeletion) => {
+		setPendingPlanDeletion(deletion);
+	};
+
+	const confirmPlanDeletion = async () => {
+		if (!pendingPlanDeletion) return;
+		try {
+			if (pendingPlanDeletion.kind === 'planned') {
+				await deletePlannedExpense(pendingPlanDeletion.id);
+			} else {
+				await deletePaymentPlan(pendingPlanDeletion.id);
+			}
+			toast({ title: 'Plan deleted', description: 'The planning item was removed. Real transactions were not changed.' });
+			setPendingPlanDeletion(undefined);
+		} catch (error) {
+			toast({
+				title: 'Could not delete plan',
+				description: getAppErrorMessage(error, { operation: 'Delete planning item' }),
+				variant: 'destructive',
+			});
+		}
+	};
+
 	const reorderPlanningGroup = async (
 		group: PlannedExpense[],
 		sourceId: string,
@@ -701,7 +728,10 @@ const PlanningView: React.FC = () => {
 						}
 						onPlanWishlist={(expense) => openPlannedWizard('planned', expense)}
 						onConvert={handleConvert}
-						onDelete={deletePlannedExpense}
+						onDelete={(id) => {
+							const expense = plannedExpenses.find((item) => item.id === id);
+							requestPlanDeletion({ kind: 'planned', id, label: expense?.title ?? 'this planned item' });
+						}}
 						onDragStart={setDraggingPlannedExpenseId}
 						onDragEnd={() => setDraggingPlannedExpenseId(undefined)}
 						onMove={movePlanningItem}
@@ -717,7 +747,10 @@ const PlanningView: React.FC = () => {
 						selectedLinkTransactionId={selectedLinkTransactionId}
 						getCategoryLabel={getCategoryLabel}
 						onEdit={openPaymentWizard}
-						onDelete={deletePaymentPlan}
+						onDelete={(id) => {
+							const plan = paymentPlans.find((item) => item.id === id);
+							requestPlanDeletion({ kind: 'payment', id, label: plan?.itemName ?? 'this payment plan' });
+						}}
 						onStartLink={(plan) => {
 							setLinkingPlanId(linkingPlanId === plan.id ? null : plan.id);
 							setSelectedLinkTransactionId('');
@@ -784,6 +817,21 @@ const PlanningView: React.FC = () => {
 							</Button>
 						</DialogFooter>
 					)}
+				</DialogContent>
+			</Dialog>
+
+			<Dialog open={Boolean(pendingPlanDeletion)} onOpenChange={(open) => !open && setPendingPlanDeletion(undefined)}>
+				<DialogContent className={cn('max-w-md rounded-[2rem]', liquidGlassPanel)}>
+					<DialogHeader>
+						<DialogTitle>Delete planning item?</DialogTitle>
+						<DialogDescription>
+							Delete <SensitiveText widthClassName="w-32">{pendingPlanDeletion?.label ?? 'this item'}</SensitiveText>? Any linked real transactions will remain unchanged.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setPendingPlanDeletion(undefined)}>Cancel</Button>
+						<Button variant="destructive" onClick={() => void confirmPlanDeletion()}>Delete</Button>
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 		</PageShell>

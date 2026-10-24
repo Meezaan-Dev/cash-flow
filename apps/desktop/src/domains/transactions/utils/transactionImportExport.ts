@@ -1,7 +1,7 @@
 import { ImportResult, SerializableTransaction, Transaction } from '@/types';
 import { parseDbDateOrNull } from '@cash-flow/shared/utils/date';
 
-export type TransactionExportType = 'overall' | 'income' | 'expense';
+export type TransactionExportType = 'overall' | 'income' | 'expense' | 'transfer';
 
 export interface TransactionExportFilters {
 	accountIds: string[];
@@ -207,6 +207,9 @@ export const exportTransactionsToCsv = (transactions: Transaction[]): string => 
 		'createdAt',
 		'id',
 		'accountId',
+		'transferAccountId',
+		'transferId',
+		'transferDirection',
 	];
 	const safe = (value: unknown) => {
 		if (value == null) return '';
@@ -231,6 +234,9 @@ export const exportTransactionsToCsv = (transactions: Transaction[]): string => 
 			createdAt,
 			t.id ?? '',
 			t.accountId ?? '',
+			t.transferAccountId ?? '',
+			t.transferId ?? '',
+			t.transferDirection ?? '',
 		]
 			.map(safe)
 			.join(',');

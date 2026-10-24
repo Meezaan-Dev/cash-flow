@@ -91,6 +91,32 @@ describe('TransactionExportDialog', () => {
 		expect(screen.getByText('2 matching transactions')).toBeInTheDocument();
 	});
 
+	it('exports a selected month including transfers and constrains custom dates to it', async () => {
+		const user = userEvent.setup();
+		render(
+			<TransactionExportDialog
+				open
+				onOpenChange={jest.fn()}
+				accounts={accounts}
+				categories={categories}
+				transactions={transactions}
+				onExport={jest.fn()}
+			/>
+		);
+
+		await user.selectOptions(screen.getByLabelText('Date range'), 'month');
+		await user.clear(screen.getByLabelText('Month'));
+		await user.type(screen.getByLabelText('Month'), '2026-07');
+		expect(screen.getByText('1 matching transaction')).toBeInTheDocument();
+
+		await user.selectOptions(screen.getByLabelText('Transaction data'), 'transfer');
+		expect(screen.getByText('1 matching transaction')).toBeInTheDocument();
+		await user.selectOptions(screen.getByLabelText('Date range'), 'custom');
+		await user.type(screen.getByLabelText('Start date'), '2026-07-01');
+		await user.type(screen.getByLabelText('End date'), '2026-07-31');
+		expect(screen.getByText('1 matching transaction')).toBeInTheDocument();
+	});
+
 	it('resets filters from the reset and close actions', async () => {
 		const user = userEvent.setup();
 		const onOpenChange = jest.fn();
