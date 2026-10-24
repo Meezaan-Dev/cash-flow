@@ -697,12 +697,17 @@ const PlanningView: React.FC = () => {
 									<div key={subcategory} className={cn('rounded-3xl p-5', liquidGlassSoft)}>
 										<h3 className="font-semibold">{subcategory === 'other' ? 'Other' : items[0] ? getCategoryPathLabel(items[0].category, subcategory).split(' / ').pop() : subcategory}</h3>
 										<div className="mt-3 divide-y dark:divide-gray-800">
-											{items.map((item) => (
-												<div key={item.id} className="flex items-center justify-between gap-3 py-3">
-													<div className="min-w-0"><p className="truncate text-sm font-medium"><SensitiveText widthClassName="w-28">{item.title}</SensitiveText></p><p className="text-xs text-muted-foreground">{formatCurrency(item.amount)} · {statusLabels[item.status]}</p></div>
-													<Button size="sm" variant="outline" onClick={() => openPlannedWizard('planned', item)}>Edit</Button>
-												</div>
-											))}
+													{items.map((item) => (
+														<div key={item.id} className="flex items-center justify-between gap-3 py-3">
+															<div className="min-w-0"><p className="truncate text-sm font-medium"><SensitiveText widthClassName="w-28">{item.title}</SensitiveText></p><p className="text-xs text-muted-foreground">{formatCurrency(item.amount)} · {statusLabels[item.status]}</p></div>
+															<div className="flex shrink-0 items-center gap-2">
+																<Button size="sm" variant="outline" onClick={() => openPlannedWizard('planned', item)}>Edit</Button>
+																<Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-gray-400 hover:text-red-600 dark:hover:text-red-300" onClick={() => requestPlanDeletion({ kind: 'planned', id: item.id, label: item.title })} aria-label={`Delete ${item.title}`}>
+																	<FiTrash2 className="h-4 w-4" />
+																</Button>
+															</div>
+														</div>
+													))}
 										</div>
 									</div>
 								))}

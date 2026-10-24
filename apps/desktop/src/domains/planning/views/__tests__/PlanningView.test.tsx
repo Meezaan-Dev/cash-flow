@@ -167,6 +167,17 @@ describe('PlanningView', () => {
 		await waitFor(() => expect(mockDeletePlannedExpense).toHaveBeenCalledWith('wishlist-1'));
 	});
 
+	it('confirms deletion for a monthly planned expense', async () => {
+		const user = userEvent.setup();
+		render(<PlanningView />);
+		await user.click(screen.getByRole('button', { name: 'Delete Running shoes' }));
+
+		expect(screen.getByText(/Any linked real transactions will remain unchanged/i)).toBeInTheDocument();
+		expect(mockDeletePlannedExpense).not.toHaveBeenCalled();
+		await user.click(screen.getByRole('button', { name: 'Delete', exact: true }));
+		await waitFor(() => expect(mockDeletePlannedExpense).toHaveBeenCalledWith('planned-1'));
+	});
+
 	it('starts new planning from intent choices', async () => {
 		const user = userEvent.setup();
 		render(<PlanningView />);
