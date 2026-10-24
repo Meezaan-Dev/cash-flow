@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { SensitiveText } from '@/app/privacy/SensitiveValue';
 
 type ExportFormat = 'csv' | 'json';
-type DatePreset = 'all' | 'this-month' | 'last-month' | 'this-year' | 'custom';
+type DatePreset = 'all' | 'this-month' | 'last-month' | 'this-year' | 'month' | 'custom';
 
 interface Props {
 	open: boolean;
@@ -33,6 +33,15 @@ interface Props {
 
 const toDateKey = (date: Date) =>
 	[date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+
+const getMonthRange = (month: string) => {
+	if (!/^\d{4}-\d{2}$/.test(month)) return {};
+	const [year, monthIndex] = month.split('-').map(Number);
+	return {
+		startDate: `${month}-01`,
+		endDate: toDateKey(new Date(year, monthIndex, 0)),
+	};
+};
 
 export const getExportPresetRange = (preset: DatePreset, now = new Date()) => {
 	if (preset === 'this-month') return { startDate: toDateKey(new Date(now.getFullYear(), now.getMonth(), 1)), endDate: toDateKey(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
@@ -50,6 +59,7 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 	const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 	const [type, setType] = useState<TransactionExportFilters['type']>('overall');
 	const [datePreset, setDatePreset] = useState<DatePreset>('all');
+	const [selectedMonth, setSelectedMonth] = useState(toDateKey(new Date()).slice(0, 7));
 	const [customStartDate, setCustomStartDate] = useState('');
 	const [customEndDate, setCustomEndDate] = useState('');
 
@@ -59,20 +69,35 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 		setSelectedCategories([]);
 		setType('overall');
 		setDatePreset('all');
+		setSelectedMonth(toDateKey(new Date()).slice(0, 7));
 		setCustomStartDate('');
 		setCustomEndDate('');
 	};
 
-	const filters = useMemo<TransactionExportFilters>(() => ({
-		accountIds,
-		categories: selectedCategories,
-		type,
-		...(datePreset === 'custom'
-			? { startDate: customStartDate || undefined, endDate: customEndDate || undefined }
-			: getExportPresetRange(datePreset)),
-	}), [accountIds, customEndDate, customStartDate, datePreset, selectedCategories, type]);
+	const filters = useMemo<TransactionExportFilters>(() => {
+		const selectedRange = getMonthRange(selectedMonth);
+		const dateRange = datePreset === 'custom'
+			? {
+				startDate: customStartDate || selectedRange.startDate,
+				endDate: customEndDate || selectedRange.endDate,
+			}
+			: datePreset === 'month'
+				? selectedRange
+				: getExportPresetRange(datePreset);
+		return {
+			accountIds,
+			categories: selectedCategories,
+			type,
+			...dateRange,
+		};
+	}, [accountIds, customEndDate, customStartDate, datePreset, selectedCategories, selectedMonth, type]);
 	const matches = useMemo(() => filterTransactionsForExport(transactions, filters), [filters, transactions]);
-	const invalidRange = datePreset === 'custom' && Boolean(customStartDate && customEndDate && customStartDate > customEndDate);
+	const selectedRange = getMonthRange(selectedMonth);
+	const invalidRange = datePreset === 'custom' && Boolean(
+		(customStartDate && customEndDate && customStartDate > customEndDate) ||
+		(customStartDate && selectedRange.startDate && customStartDate < selectedRange.startDate) ||
+		(customEndDate && selectedRange.endDate && customEndDate > selectedRange.endDate)
+	);
 	const hasFilters = Boolean(accountIds.length || selectedCategories.length || type !== 'overall' || datePreset !== 'all');
 	const close = () => { onOpenChange(false); reset(); };
 
@@ -95,7 +120,7 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 					<div className="space-y-2">
 						<Label htmlFor="export-type">Transaction data</Label>
 						<select id="export-type" value={type} onChange={(event) => setType(event.target.value as TransactionExportFilters['type'])} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-							<option value="overall">All transaction data</option><option value="income">Income only</option><option value="expense">Expenses only</option>
+							<option value="overall">All transaction data</option><option value="income">Income only</option><option value="expense">Expenses only</option><option value="transfer">Transfers only</option>
 						</select>
 					</div>
 					<fieldset className="space-y-2 rounded-xl border p-3">
@@ -117,15 +142,16 @@ const TransactionExportDialog: React.FC<Props> = ({ open, onOpenChange, transact
 					<div className="space-y-2 sm:col-span-2">
 						<Label htmlFor="export-date-preset">Date range</Label>
 						<select id="export-date-preset" value={datePreset} onChange={(event) => setDatePreset(event.target.value as DatePreset)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-							<option value="all">All time</option><option value="this-month">This month</option><option value="last-month">Last month</option><option value="this-year">This year</option><option value="custom">Custom range</option>
+							<option value="all">All time</option><option value="this-month">This month</option><option value="last-month">Last month</option><option value="this-year">This year</option><option value="month">Selected month</option><option value="custom">Custom range within selected month</option>
 						</select>
+						{(datePreset === 'month' || datePreset === 'custom') && <div className="mt-3"><Label htmlFor="export-month">Month</Label><Input id="export-month" type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} /></div>}
 						{datePreset === 'custom' && (
 							<div className="grid gap-3 sm:grid-cols-2">
-								<div><Label htmlFor="export-start-date">Start date</Label><Input id="export-start-date" type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} /></div>
-								<div><Label htmlFor="export-end-date">End date</Label><Input id="export-end-date" type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} /></div>
+								<div><Label htmlFor="export-start-date">Start date</Label><Input id="export-start-date" type="date" min={selectedRange.startDate} max={selectedRange.endDate} value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} /></div>
+								<div><Label htmlFor="export-end-date">End date</Label><Input id="export-end-date" type="date" min={selectedRange.startDate} max={selectedRange.endDate} value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} /></div>
 							</div>
 						)}
-						{invalidRange && <p className="text-sm text-destructive">Start date must be on or before end date.</p>}
+						{invalidRange && <p className="text-sm text-destructive">Choose dates in the selected month, with the start date on or before the end date.</p>}
 					</div>
 				</div>
 				<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

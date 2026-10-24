@@ -93,6 +93,7 @@ const ReportsView: React.FC<ReportsViewProps> = () => {
 		() => getReportMonthKeys(filters.startDate, filters.endDate),
 		[filters.endDate, filters.startDate]
 	);
+	const activeMonthKey = localDateKey(new Date()).slice(0, 7);
 	const totals = baseTransactions.reduce(
 		(result, transaction) => {
 			if (transaction.type === 'income') result.income += transaction.amount;
@@ -173,7 +174,7 @@ const ReportsView: React.FC<ReportsViewProps> = () => {
 			<section className="mb-6 overflow-hidden rounded-3xl border bg-card">
 				<div className="border-b p-5"><h2 className="font-semibold">Category totals across months</h2><p className="text-sm text-muted-foreground">Select a category or month to drill down.</p></div>
 				{categories.length === 0 ? <EmptyState title="No report data" description="Transactions matching these filters will appear here." /> : (
-					<div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr className="border-b"><th className="p-3 text-left">Category</th>{months.map((month) => <th key={month} className="p-3 text-right"><button onClick={() => drillIntoMonth(month)} className={cn('whitespace-nowrap', selectedMonth === month && 'text-blue-600')}>{monthLabel(month)}</button></th>)}</tr></thead><tbody>{categories.map((category) => <tr key={category.key} className="border-b last:border-0"><th className="p-3 text-left"><button onClick={() => drillIntoCategory(category.key)} className={cn(selectedCategory === category.key && 'text-blue-600')}>{category.label}</button></th>{months.map((month) => { const value = baseTransactions.filter((transaction) => transaction.category === category.key && getReportGroupKey(transaction, 'month') === month).reduce((sum, transaction) => sum + getReportMatrixCellAmount(transaction, filters.type), 0); return <td key={month} className="p-3 text-right"><SensitiveValue widthClassName="w-16">{formatCurrency(value)}</SensitiveValue></td>; })}</tr>)}</tbody></table></div>
+					<div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr className="border-b"><th className="p-3 text-left">Category</th>{months.map((month) => <th key={month} className={cn('p-3 text-right', month === activeMonthKey && 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300')}><button onClick={() => drillIntoMonth(month)} className={cn('whitespace-nowrap', selectedMonth === month && 'text-blue-600')}>{monthLabel(month)}</button></th>)}</tr></thead><tbody>{categories.map((category) => <tr key={category.key} className="border-b last:border-0"><th className="p-3 text-left"><button onClick={() => drillIntoCategory(category.key)} className={cn(selectedCategory === category.key && 'text-blue-600')}>{category.label}</button></th>{months.map((month) => { const value = baseTransactions.filter((transaction) => transaction.category === category.key && getReportGroupKey(transaction, 'month') === month).reduce((sum, transaction) => sum + getReportMatrixCellAmount(transaction, filters.type), 0); return <td key={month} className={cn('p-3 text-right', month === activeMonthKey && 'bg-blue-50/70 dark:bg-blue-950/25')}><SensitiveValue widthClassName="w-16">{formatCurrency(value)}</SensitiveValue></td>; })}</tr>)}</tbody></table></div>
 				)}
 			</section>
 
