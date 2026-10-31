@@ -23,6 +23,7 @@ const mockBudgets = [
 	},
 ];
 const mockTransactions: Array<Record<string, unknown>> = [];
+let mockReferenceDate = new Date(`${currentMonth}-15T12:00:00`);
 
 const mockBudgetForm = jest.fn(({ budget }: { budget?: { id?: string } }) => (
 	<div>Budget form {budget?.id ?? 'new'}</div>
@@ -55,12 +56,13 @@ jest.mock('@/domains/categories/context/CategoriesContext', () => ({
 }));
 
 jest.mock('@/hooks/useCurrentDate', () => ({
-	useCurrentDate: () => new Date(`${currentMonth}-15T12:00:00`),
+	useCurrentDate: () => mockReferenceDate,
 }));
 
 describe('PlanBudgetsTab', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockReferenceDate = new Date(`${currentMonth}-15T12:00:00`);
 		mockBudgets.splice(0, mockBudgets.length, {
 			id: 'budget-1',
 			userId: 'user-1',
@@ -140,5 +142,49 @@ describe('PlanBudgetsTab', () => {
 
 		expect(screen.getAllByText(/125,00/).length).toBeGreaterThan(0);
 		expect(screen.getAllByText(/875,00/).length).toBeGreaterThan(0);
+	});
+
+	it('resets current-month spending on the renewal day', () => {
+		mockReferenceDate = new Date('2026-06-26T12:00:00');
+		mockBudgets.splice(0, mockBudgets.length, {
+			id: 'custom-budget',
+			userId: 'user-1',
+			categoryId: 'personal',
+			amount: 1000,
+			period: 'custom',
+			cycleDay: 26,
+			startDate: '2026-05-26',
+			endDate: '2026-06-26',
+			lifecycleStatus: 'published',
+		});
+		mockTransactions.push(
+			{
+				id: 'previous-cycle',
+				userId: 'user-1',
+				accountId: 'account-1',
+				title: 'Previous cycle',
+				amount: 700,
+				type: 'expense',
+				category: 'personal',
+				date: new Date('2026-06-25T12:00:00'),
+			},
+			{
+				id: 'new-cycle',
+				userId: 'user-1',
+				accountId: 'account-1',
+				title: 'New cycle',
+				amount: 200,
+				type: 'expense',
+				category: 'personal',
+				date: new Date('2026-06-26T12:00:00'),
+			}
+		);
+
+		render(<PlanBudgetsTab defaultMonth="2026-06" />);
+
+		expect(screen.getAllByText(/200,00/).length).toBeGreaterThan(0);
+		expect(screen.getAllByText(/800,00/).length).toBeGreaterThan(0);
+		expect(screen.queryByText(/700,00/)).not.toBeInTheDocument();
+		expect(screen.getByText(/26 Jun – 26 Jul 2026/)).toBeInTheDocument();
 	});
 });

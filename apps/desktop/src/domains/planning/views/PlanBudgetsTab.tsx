@@ -7,6 +7,7 @@ import BudgetForm from '@/domains/budgets/views/BudgetForm';
 import {
 	budgetOverlapsMonth,
 	calculateBudgetProgress,
+	getCurrentBudgetMonth,
 	MAX_BUDGETS,
 	sortBudgetsByDisplayOrder,
 } from '@/domains/budgets/models/BudgetModel';
@@ -50,16 +51,21 @@ const PlanBudgetsTab: React.FC<PlanBudgetsTabProps> = ({ defaultMonth }) => {
 		() => sortBudgetsByDisplayOrder(budgets),
 		[budgets]
 	);
+	const selectedMonthReferenceDate = useMemo(
+		() => selectedMonth === getCurrentBudgetMonth(referenceDate)
+			? referenceDate
+			: new Date(`${selectedMonth}-15T12:00:00`),
+		[referenceDate, selectedMonth]
+	);
 
 	const monthProgress = useMemo(() => {
-		const selectedMonthReferenceDate = new Date(`${selectedMonth}-15T12:00:00`);
 		return orderedBudgets
 			.filter((budget) => Boolean(budget.categoryId))
 			.map((budget) =>
 				calculateBudgetProgress(budget, transactions, selectedMonthReferenceDate)
 			)
 			.filter((item) => budgetOverlapsMonth(item.budget, selectedMonth));
-	}, [orderedBudgets, referenceDate, selectedMonth, transactions]);
+	}, [orderedBudgets, selectedMonth, selectedMonthReferenceDate, transactions]);
 
 	const draftItems = monthProgress.filter(
 		(item) => item.budget.lifecycleStatus === 'draft'
@@ -229,7 +235,7 @@ const PlanBudgetsTab: React.FC<PlanBudgetsTabProps> = ({ defaultMonth }) => {
 										<SensitiveText widthClassName="w-32">{title}</SensitiveText>
 									</p>
 									<p className="mt-0.5 text-xs text-muted-foreground">
-										{getBudgetPeriodLabel(item.budget, referenceDate)}
+										{getBudgetPeriodLabel(item.budget, selectedMonthReferenceDate)}
 									</p>
 									<div
 										className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
