@@ -6,6 +6,7 @@ import {
 
 export interface FilterPreferences {
 	recurring: {
+		account: boolean;
 		frequency: boolean;
 		category: boolean;
 		type: boolean;

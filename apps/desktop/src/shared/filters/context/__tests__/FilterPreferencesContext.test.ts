@@ -1,6 +1,16 @@
 import { mergeFilterPreferences } from '@/shared/filters/utils/filterPreferences';
 
 describe('FilterPreferencesContext', () => {
+	it('defaults the recurring account filter to visible', () => {
+		expect(mergeFilterPreferences().recurring.account).toBe(true);
+	});
+
+	it('preserves the stored recurring account filter preference', () => {
+		expect(
+			mergeFilterPreferences({ recurring: { account: false } }).recurring.account
+		).toBe(false);
+	});
+
 	it('merges report defaults into older stored preferences', () => {
 		expect(
 			mergeFilterPreferences({

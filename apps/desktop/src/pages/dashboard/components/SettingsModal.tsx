@@ -629,6 +629,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 										<div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-5">
 											{(
 												[
+													['account', 'Account filter'],
 													['frequency', 'Frequency filter'],
 													['category', 'Category filter'],
 													['type', 'Type filter (Income / Expense)'],
