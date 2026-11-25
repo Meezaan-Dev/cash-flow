@@ -87,14 +87,20 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 ];
 
 const buildFilterLabel = (
+	accountFilter: string,
 	frequencyFilter: string,
 	categoryFilter: string,
 	typeFilter: string,
 	expectedDateFilter: string,
 	sortBy: SortBy,
-	categoryOptions: Array<{ value: string; label: string }>
+	categoryOptions: Array<{ value: string; label: string }>,
+	accounts: Array<{ id?: string; name: string }>
 ): string => {
 	const parts: string[] = [];
+	if (accountFilter !== 'all') {
+		const account = accounts.find((item) => item.id === accountFilter);
+		if (account) parts.push(account.name);
+	}
 	if (frequencyFilter !== 'all') parts.push(getRecurringFrequencyLabel(frequencyFilter));
 	if (categoryFilter !== 'all') {
 		const opt = categoryOptions.find((o) => o.value === categoryFilter);
@@ -122,6 +128,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 	const { prefs } = useFilterPreferences();
 	const recurringPrefs = prefs.recurring;
 
+	const [accountFilter, setAccountFilter] = useState('all');
 	const [frequencyFilter, setFrequencyFilter] = useState('all');
 	const [categoryFilter, setCategoryFilter] = useState('all');
 	const [typeFilter, setTypeFilter] = useState('all');
@@ -182,6 +189,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 	}, [isDesktopCalendarAllowed]);
 
 	const hasActiveFilters =
+		accountFilter !== 'all' ||
 		frequencyFilter !== 'all' ||
 		categoryFilter !== 'all' ||
 		typeFilter !== 'all' ||
@@ -189,6 +197,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 		sortBy !== 'default';
 
 	const allFiltersHidden =
+		!recurringPrefs.account &&
 		!recurringPrefs.frequency &&
 		!recurringPrefs.category &&
 		!recurringPrefs.type &&
@@ -197,6 +206,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 
 	const filteredTransactions = useMemo(() => {
 		const filtered = recurringTransactions.filter((transaction) => {
+			if (accountFilter !== 'all' && transaction.accountId !== accountFilter) return false;
 			if (frequencyFilter !== 'all' && transaction.frequency !== frequencyFilter) return false;
 			if (categoryFilter !== 'all' && transaction.category !== categoryFilter) return false;
 			if (typeFilter !== 'all') {
@@ -237,7 +247,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 		}
 
 		return filtered;
-	}, [recurringTransactions, frequencyFilter, categoryFilter, typeFilter, expectedDateFilter, sortBy]);
+	}, [recurringTransactions, accountFilter, frequencyFilter, categoryFilter, typeFilter, expectedDateFilter, sortBy]);
 
 	const filteredTotal = useMemo(
 		() => filteredTransactions.reduce((sum, e) => sum + e.amount, 0),
@@ -247,14 +257,16 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 	const filterLabel = useMemo(
 		() =>
 			buildFilterLabel(
+				accountFilter,
 				frequencyFilter,
 				categoryFilter,
 				typeFilter,
 				expectedDateFilter,
 				sortBy,
-				filterCategoryOptions
+				filterCategoryOptions,
+				accounts
 			),
-		[frequencyFilter, categoryFilter, typeFilter, expectedDateFilter, sortBy, filterCategoryOptions]
+		[accountFilter, frequencyFilter, categoryFilter, typeFilter, expectedDateFilter, sortBy, filterCategoryOptions, accounts]
 	);
 
 	const handleEdit = (transaction: RecurringTransaction) => {
@@ -290,6 +302,7 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 	};
 
 	const handleResetFilters = () => {
+		setAccountFilter('all');
 		setFrequencyFilter('all');
 		setCategoryFilter('all');
 		setTypeFilter('all');
@@ -346,6 +359,24 @@ const RecurringTransactionsView: React.FC<{ onOpenSettings?: () => void }> = ({ 
 				</div>
 			) : (
 				<div className="mb-4 flex flex-wrap items-center gap-3">
+					{recurringPrefs.account && (
+						<Select value={accountFilter} onValueChange={setAccountFilter}>
+							<SelectTrigger className="h-9 w-44 text-sm">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All accounts</SelectItem>
+								{accounts.map((account) => (
+									account.id ? (
+										<SelectItem key={account.id} value={account.id}>
+											{account.name}
+										</SelectItem>
+									) : null
+								))}
+							</SelectContent>
+						</Select>
+					)}
+
 					{recurringPrefs.frequency && (
 						<Select value={frequencyFilter} onValueChange={setFrequencyFilter}>
 							<SelectTrigger className="h-9 w-44 text-sm">

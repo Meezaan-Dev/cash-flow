@@ -2,6 +2,7 @@ import type { FilterPreferences } from '@/shared/filters/context/FilterPreferenc
 
 export const DEFAULT_FILTER_PREFS: FilterPreferences = {
 	recurring: {
+		account: true,
 		frequency: true,
 		category: true,
 		type: true,

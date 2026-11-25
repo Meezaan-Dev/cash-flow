@@ -10,6 +10,14 @@ import { Dialog, DialogContent } from '@/components/app/ui/dialog';
 const mockDeleteRecurringTransaction = jest.fn();
 const mockAddRecurringTransaction = jest.fn();
 const mockUpdateRecurringTransaction = jest.fn();
+let mockRecurringPrefs = {
+	account: true,
+	frequency: true,
+	category: true,
+	type: true,
+	date: true,
+	sortBy: true,
+};
 
 jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 	useTransactionsContext: () => ({
@@ -25,6 +33,24 @@ jest.mock('@/domains/transactions/context/TransactionsContext', () => ({
 				description: 'Apartment',
 				frequency: 'monthly',
 				expectedDate: 1,
+			},
+			{
+				id: 'groceries',
+				accountId: 'savings',
+				title: 'Groceries',
+				amount: 2500,
+				type: 'expense',
+				category: 'home',
+				frequency: 'monthly',
+				expectedDate: 15,
+			},
+			{
+				id: 'unassigned',
+				title: 'Unassigned',
+				amount: 500,
+				type: 'expense',
+				category: 'home',
+				frequency: 'monthly',
 			},
 		],
 		deleteRecurringTransaction: mockDeleteRecurringTransaction,
@@ -54,13 +80,7 @@ jest.mock('@/domains/accounts/context/AccountsContext', () => ({
 jest.mock('@/shared/filters/context/FilterPreferencesContext', () => ({
 	useFilterPreferences: () => ({
 		prefs: {
-			recurring: {
-				frequency: true,
-				category: true,
-				type: true,
-				date: true,
-				sortBy: true,
-			},
+			recurring: mockRecurringPrefs,
 		},
 	}),
 }));
@@ -102,6 +122,14 @@ describe('RecurringTransactionsView', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockRecurringPrefs = {
+			account: true,
+			frequency: true,
+			category: true,
+			type: true,
+			date: true,
+			sortBy: true,
+		};
 		(window.localStorage.getItem as jest.Mock).mockReturnValue('list');
 	});
 
@@ -114,8 +142,8 @@ describe('RecurringTransactionsView', () => {
 		expect(screen.getByText('Amount')).toBeInTheDocument();
 		expect(screen.getByText('Account / Category')).toBeInTheDocument();
 		expect(screen.getByText('Rent')).toBeInTheDocument();
-		expect(screen.getByText('Monthly')).toBeInTheDocument();
-		expect(screen.getByText('Home / Rent')).toBeInTheDocument();
+		expect(screen.getAllByText('Monthly')).toHaveLength(3);
+		expect(screen.getAllByText('Home / Rent')).toHaveLength(3);
 		expect(screen.queryByRole('button', { name: 'List' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Calendar' })).not.toBeInTheDocument();
 		expect(window.localStorage.setItem).not.toHaveBeenCalledWith(
@@ -125,11 +153,40 @@ describe('RecurringTransactionsView', () => {
 		expect(screen.getByTestId('section-header')).toHaveAttribute('data-compact', 'false');
 	});
 
+	it('filters recurring transactions by account and resets the filter', async () => {
+		const user = userEvent.setup();
+		render(<RecurringTransactionsView />);
+
+		const accountFilter = screen.getAllByRole('combobox')[0];
+		await user.click(accountFilter);
+		expect(screen.getByRole('option', { name: 'All accounts' })).toBeInTheDocument();
+		expect(screen.getByRole('option', { name: 'Checking' })).toBeInTheDocument();
+		expect(screen.getByRole('option', { name: 'Savings' })).toBeInTheDocument();
+
+		await user.click(screen.getByRole('option', { name: 'Savings' }));
+
+		expect(screen.getByText('Groceries')).toBeInTheDocument();
+		expect(screen.queryByText('Rent')).not.toBeInTheDocument();
+		expect(screen.queryByText('Unassigned')).not.toBeInTheDocument();
+		expect(screen.getAllByText('Savings')).toHaveLength(2);
+
+		await user.click(screen.getByRole('button', { name: /reset/i }));
+		expect(screen.getByText('Rent')).toBeInTheDocument();
+		expect(screen.getByText('Unassigned')).toBeInTheDocument();
+	});
+
+	it('hides the account filter when disabled in preferences', () => {
+		mockRecurringPrefs.account = false;
+		render(<RecurringTransactionsView />);
+
+		expect(screen.getAllByRole('combobox')).toHaveLength(5);
+	});
+
 	it('shows one close button in the edit recurring modal', async () => {
 		const user = userEvent.setup();
 		render(<RecurringTransactionsView />);
 
-		await user.click(screen.getByRole('button', { name: 'Edit recurring transaction' }));
+		await user.click(screen.getAllByRole('button', { name: 'Edit recurring transaction' })[0]);
 
 		expect(screen.getByRole('heading', { name: 'Edit Recurring Transaction' })).toBeInTheDocument();
 		expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
